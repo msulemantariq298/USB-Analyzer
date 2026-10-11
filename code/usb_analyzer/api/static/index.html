@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>USB Analyzer Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">INFORMATION SECURITY · WEEK 1</p>
+          <h1>USB Analyzer</h1>
+          <p class="subtitle">USB device security monitoring dashboard</p>
+        </div>
+        <div class="status-pill"><span class="status-dot"></span><span id="api-status">Checking API</span></div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow accent">MONITORING CONSOLE</p>
+          <h2>Know what is connected.</h2>
+          <p>Shared event contract and dashboard foundation for the Windows and Linux analyzers.</p>
+        </div>
+        <button id="simulate-event" class="primary-button">＋ Simulate USB event</button>
+      </section>
+
+      <section class="metrics" aria-label="Event summary">
+        <article class="metric-card"><span>Total events</span><strong id="total-events">0</strong></article>
+        <article class="metric-card"><span>Warnings</span><strong id="warning-events">0</strong></article>
+        <article class="metric-card"><span>Critical</span><strong id="critical-events">0</strong></article>
+        <article class="metric-card"><span>Last update</span><strong id="last-update">—</strong></article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">AUDIT LOG</p>
+            <h2>Recent device events</h2>
+          </div>
+          <button id="refresh-events" class="secondary-button">Refresh</button>
+        </div>
+        <div id="message" class="message" role="status"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Time</th><th>Event</th><th>Device</th><th>Source</th><th>Severity</th><th>Details</th></tr>
+            </thead>
+            <tbody id="events-body">
+              <tr><td colspan="6" class="empty-state">No events recorded yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+# Local Python environment created for the project
+.venv/
+venv/
+
+# Python and editor artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+
+# Local configuration and generated database
+code/.env
+code/data/*.db
+code/data/*.sqlite
