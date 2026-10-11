@@ -51,7 +51,7 @@ Open `http://127.0.0.1:8000/` for the dashboard. The **Simulate USB event** butt
 
 ## Run tests
 
-```powershell
+```terminal
 python -m pytest
 ```
 
@@ -74,4 +74,4 @@ The contract is defined in `usb_analyzer/core/events.py`. Keep module-specific d
 - Shared event interface and JSON format: complete
 - Basic web UI and API wiring: complete
 - Library spike: complete for FastAPI, Pydantic Settings, SQLite, and Pytest
-- GitHub repository creation: intentionally left for the project owner
+- GitHub repository initialized by the project owner
