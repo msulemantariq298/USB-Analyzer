@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.115,<1.0",
     "pydantic-settings>=2.6,<3.0",
     "uvicorn[standard]>=0.34,<1.0",
+    "wmi>=1.5.1; sys_platform == 'win32'",
 ]
 
 [project.optional-dependencies]
