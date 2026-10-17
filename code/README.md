@@ -116,6 +116,22 @@ If the API is unreachable, times out, or returns an error, the monitor logs the 
 
 This initial backend reports USB and USB storage PnP instances only. It does not yet inspect file contents, detect keystroke injection, or block devices. Linux monitoring and automated Windows startup are future work.
 
+## Storage scanner (standalone, read-only)
+
+`usb_analyzer.storage_scanner.scan_path(folder)` walks a folder or volume root you select and returns a `ScanResult`:
+
+- SHA-256 of every file, computed with chunked reads (1 MiB by default).
+- Flags: `autorun_inf` for `autorun.inf` (case-insensitive) and `risky_extension` for extensions in `RISKY_EXTENSIONS` (e.g. `.exe`, `.dll`, `.scr`, `.bat`, `.ps1`, `.vbs`, `.lnk`). Check this list against the proposal and adjust if needed.
+- Unreadable files/folders are recorded in `errors`; symlinks are skipped.
+
+```python
+from usb_analyzer.storage_scanner import scan_path
+result = scan_path(r"E:\test-folder")
+details = result.to_details()
+```
+
+Limits: it does not mount drives, modify or delete files, emit events, or detect malware by content/signature; flags are name-based only. `ScanResult.to_details()` produces a dict that can later be used as `DeviceEvent.details` (keys: `root`, `files_scanned`, `flagged_count`, `flagged[]` with `path`/`size`/`sha256`/`flags`, `errors`) with no change to the event schema.
+
 ## Run tests
 
 ```terminal
@@ -144,7 +160,8 @@ The contract is defined in `usb_analyzer/core/events.py`. Keep module-specific d
 - Windows WMI USB inventory monitor: implemented; representative plug/unplug testing still required
 - Windows monitor-to-API event delivery: implemented; offline queue/retry not implemented
 - Background service and automatic startup: not implemented
-- Storage scanning and threat detection: not implemented
+- Storage scanner module (`usb_analyzer/storage_scanner`): standalone and read-only; implemented with unit tests. Not yet wired to the monitor, API, or dashboard
+- Malware/signature detection: not implemented
 - HID/BadUSB detection: not implemented
 - User notifications, reports, and threat quarantine/remediation: not implemented
 - Linux monitor: not implemented
