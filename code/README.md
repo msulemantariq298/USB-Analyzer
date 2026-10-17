@@ -120,9 +120,9 @@ This initial backend reports USB and USB storage PnP instances only. It does not
 
 `usb_analyzer.storage_scanner.scan_path(folder)` walks a folder or volume root you select and returns a `ScanResult`:
 
-- SHA-256 of every file, computed with chunked reads (1 MiB by default).
+- SHA-256 of every file, computed with positive-sized chunked reads (1 MiB by default).
 - Flags: `autorun_inf` for `autorun.inf` (case-insensitive) and `risky_extension` for extensions in `RISKY_EXTENSIONS` (e.g. `.exe`, `.dll`, `.scr`, `.bat`, `.ps1`, `.vbs`, `.lnk`). Check this list against the proposal and adjust if needed.
-- Unreadable files/folders are recorded in `errors`; symlinks are skipped.
+- Unreadable files/folders are recorded in `errors`; symlinks and filesystem reparse points (including Windows junctions) are skipped. The selected scan root itself cannot be a symlink or reparse point.
 
 ```python
 from usb_analyzer.storage_scanner import scan_path
@@ -130,7 +130,7 @@ result = scan_path(r"E:\test-folder")
 details = result.to_details()
 ```
 
-Limits: it does not mount drives, modify or delete files, emit events, or detect malware by content/signature; flags are name-based only. `ScanResult.to_details()` produces a dict that can later be used as `DeviceEvent.details` (keys: `root`, `files_scanned`, `flagged_count`, `flagged[]` with `path`/`size`/`sha256`/`flags`, `errors`) with no change to the event schema.
+Limits: it does not mount drives, modify or delete files, emit events, or detect malware by content/signature; flags are name-based only. Symlinks and reparse points are not traversed, but this path-based scanner is not designed to defend against a hostile process changing filesystem entries during a scan. `ScanResult.to_details()` produces a dict that can later be used as `DeviceEvent.details` (keys: `root`, `files_scanned`, `flagged_count`, `flagged[]` with `path`/`size`/`sha256`/`flags`, `errors`) with no change to the event schema.
 
 ## Run tests
 

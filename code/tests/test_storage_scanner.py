@@ -1,11 +1,17 @@
 import hashlib
+import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
 from usb_analyzer.core.events import DeviceEvent
 from usb_analyzer.storage_scanner import flag_file, scan_path, sha256_file
-from usb_analyzer.storage_scanner.scanner import FLAG_AUTORUN, FLAG_RISKY_EXTENSION
+from usb_analyzer.storage_scanner.scanner import (
+    FLAG_AUTORUN,
+    FLAG_RISKY_EXTENSION,
+    _is_reparse_point,
+)
 
 
 def _snapshot(root: Path) -> dict[str, tuple[bytes, int]]:
@@ -29,6 +35,18 @@ def test_empty_file_hash(tmp_path: Path) -> None:
     target.write_bytes(b"")
 
     assert sha256_file(target) == hashlib.sha256(b"").hexdigest()
+
+
+@pytest.mark.parametrize("chunk_size", [0, -1])
+def test_sha256_rejects_non_positive_chunk_size(
+    tmp_path: Path,
+    chunk_size: int,
+) -> None:
+    target = tmp_path / "data.bin"
+    target.write_bytes(b"data")
+
+    with pytest.raises(ValueError, match="chunk_size must be greater than zero"):
+        sha256_file(target, chunk_size=chunk_size)
 
 
 def test_flag_file_rules() -> None:
@@ -74,12 +92,81 @@ def test_scan_leaves_files_unchanged(tmp_path: Path) -> None:
     assert _snapshot(tmp_path) == before
 
 
+def test_scan_skips_symlink_to_directory(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (outside / "outside.txt").write_text("outside")
+    link = root / "linked-directory"
+
+    try:
+        link.symlink_to(outside, target_is_directory=True)
+    except OSError as error:
+        pytest.skip(f"Directory symlinks are unavailable: {error}")
+
+    result = scan_path(root)
+
+    assert result.files == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows junction test")
+def test_scan_skips_junction_to_directory(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (outside / "outside.txt").write_text("outside")
+    junction = root / "linked-directory"
+
+    result = subprocess.run(
+        ["cmd.exe", "/c", "mklink", "/J", str(junction), str(outside)],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Could not create a test junction: {result.stderr or result.stdout}")
+
+    try:
+        assert _is_reparse_point(junction)
+        scan_result = scan_path(root)
+        assert scan_result.files == []
+    finally:
+        junction.rmdir()
+
+
+def test_scan_rejects_reparse_point_root(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    target = tmp_path / "target"
+    root.mkdir()
+    target.mkdir()
+    link = tmp_path / "root-link"
+
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except OSError as error:
+        pytest.skip(f"Directory symlinks are unavailable: {error}")
+
+    with pytest.raises(ValueError, match="Scan root must not be a symlink or reparse point"):
+        scan_path(link)
+
+
 def test_scan_rejects_non_directory(tmp_path: Path) -> None:
     file_path = tmp_path / "f.txt"
     file_path.write_text("x")
 
     with pytest.raises(NotADirectoryError):
         scan_path(file_path)
+
+
+@pytest.mark.parametrize("chunk_size", [0, -1])
+def test_scan_rejects_non_positive_chunk_size(
+    tmp_path: Path,
+    chunk_size: int,
+) -> None:
+    with pytest.raises(ValueError, match="chunk_size must be greater than zero"):
+        scan_path(tmp_path, chunk_size=chunk_size)
 
 
 def test_details_fit_device_event_without_schema_change(tmp_path: Path) -> None:

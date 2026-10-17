@@ -31,6 +31,7 @@ This is an early prototype, not yet the finished always-on protection system:
 - The dashboard can show stored events and create a simulated event for UI testing.
 - If the API is unavailable or rejects an event, the monitor logs the HTTP error and exits rather than silently dropping it. Durable offline queuing and retry are not implemented.
 - A standalone, read-only storage scanner module (SHA-256 hashing plus `autorun.inf`/risky-extension flags) exists with unit tests, but it is not yet connected to the monitor, API, or dashboard.
+- The storage scanner skips symlinks/filesystem reparse points (including Windows junctions) and rejects a reparse point as its scan root.
 - Malware signatures/YARA rules, HID/BadUSB behavior detection, user notifications, incident reports, quarantine/remediation, USB blocking, and Linux monitoring are not implemented.
 - Real plug/unplug event handling still needs hands-on validation. WMI inventory access has been tested on Windows, but that alone does not verify the full detection workflow.
 

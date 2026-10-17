@@ -7,6 +7,7 @@ only walks a directory the caller selected and reports what it found.
 from dataclasses import dataclass, field
 import hashlib
 from pathlib import Path
+import stat
 from typing import Any
 
 CHUNK_SIZE = 1024 * 1024
@@ -33,6 +34,7 @@ AUTORUN_FILENAME = "autorun.inf"
 
 FLAG_AUTORUN = "autorun_inf"
 FLAG_RISKY_EXTENSION = "risky_extension"
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,8 @@ class ScanResult:
 
 def sha256_file(path: Path, chunk_size: int = CHUNK_SIZE) -> str:
     """Hash a file using chunked reads so large files are not loaded into memory."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than zero")
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         while chunk := handle.read(chunk_size):
@@ -92,8 +96,12 @@ def scan_path(
     risky_extensions: frozenset[str] = RISKY_EXTENSIONS,
     chunk_size: int = CHUNK_SIZE,
 ) -> ScanResult:
-    """Scan a folder/volume root. Symlinks are skipped; unreadable files are recorded."""
+    """Scan a folder/volume root without following symlinks or reparse points."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than zero")
     root_path = Path(root)
+    if _is_reparse_point(root_path):
+        raise ValueError("Scan root must not be a symlink or reparse point")
     if not root_path.is_dir():
         raise NotADirectoryError(f"Not a directory: {root_path}")
 
@@ -108,7 +116,7 @@ def scan_path(
             continue
         for entry in entries:
             try:
-                if entry.is_symlink():
+                if _is_reparse_point(entry):
                     continue
                 if entry.is_dir():
                     pending.append(entry)
@@ -129,3 +137,10 @@ def scan_path(
 
 def _rel(root: Path, path: Path) -> str:
     return path.relative_to(root).as_posix() if path != root else "."
+
+
+def _is_reparse_point(path: Path) -> bool:
+    metadata = path.lstat()
+    return stat.S_ISLNK(metadata.st_mode) or bool(
+        getattr(metadata, "st_file_attributes", 0) & _FILE_ATTRIBUTE_REPARSE_POINT
+    )
