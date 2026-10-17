@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     app_name: str = "USB Analyzer"
     database_path: Path = Field(default=Path("data/usb_analyzer.db"))
     api_prefix: str = "/api/v1"
+    api_base_url: str = "http://127.0.0.1:8000"
+    api_timeout_seconds: float = 5.0
     log_level: str = "INFO"
 
 

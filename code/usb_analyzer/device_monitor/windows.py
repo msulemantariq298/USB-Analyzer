@@ -4,8 +4,8 @@ import os
 from threading import Event
 from typing import Any
 
+from usb_analyzer.core.api_client import ApiEventClient
 from usb_analyzer.core.config import get_settings
-from usb_analyzer.core.database import EventStore
 from usb_analyzer.device_monitor.monitor import DeviceProvider, UsbDevice, run_monitor
 
 logger = logging.getLogger(__name__)
@@ -77,17 +77,25 @@ def main() -> None:
         help="seconds between WMI inventory checks (default: 1.0)",
     )
     args = parser.parse_args()
+    settings = get_settings()
     logging.basicConfig(
-        level=get_settings().log_level.upper(),
+        level=settings.log_level.upper(),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
     stop_event = Event()
-    event_store = EventStore(get_settings().database_path)
     provider = WindowsWmiProvider()
-    logger.info("Starting USB Analyzer Windows device monitor")
+    logger.info(
+        "Starting USB Analyzer Windows device monitor; API base URL: %s",
+        settings.api_base_url,
+    )
     try:
-        run_monitor(provider, event_store, stop_event, args.interval)
+        with ApiEventClient(
+            base_url=settings.api_base_url,
+            api_prefix=settings.api_prefix,
+            timeout_seconds=settings.api_timeout_seconds,
+        ) as event_sink:
+            run_monitor(provider, event_sink, stop_event, args.interval)
     except KeyboardInterrupt:
         logger.info("Stopping USB Analyzer Windows device monitor")
         stop_event.set()

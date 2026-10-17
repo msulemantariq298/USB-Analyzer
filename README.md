@@ -26,9 +26,10 @@ This is an early prototype, not yet the finished always-on protection system:
 
 - The FastAPI API, SQLite event store, shared `DeviceEvent` model, and browser dashboard exist.
 - The Windows monitor uses WMI polling to inventory USB and USB-storage Plug and Play devices. It can compare inventories and generate connect/disconnect events.
-- The monitor currently writes directly to SQLite; it does **not** yet send events to the API.
+- The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.
 - The monitor and web server must be started manually in separate terminals. Automatic startup/background service support is not implemented.
 - The dashboard can show stored events and create a simulated event for UI testing.
+- If the API is unavailable or rejects an event, the monitor logs the HTTP error and exits rather than silently dropping it. Durable offline queuing and retry are not implemented.
 - File scanning, malware signatures/YARA rules, HID/BadUSB behavior detection, user notifications, incident reports, quarantine/remediation, USB blocking, and Linux monitoring are not implemented.
 - Real plug/unplug event handling still needs hands-on validation. WMI inventory access has been tested on Windows, but that alone does not verify the full detection workflow.
 
@@ -49,7 +50,7 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 
 ## Run the current prototype on Windows
 
-Run the API and USB monitor in **separate terminals**. In each terminal, start at the repository root, activate the same environment, and change into `code`. Running both from the same directory makes them share the relative SQLite database path (`code/data/usb_analyzer.db`).
+Run the API and USB monitor in **separate terminals**. Start the API first. In each terminal, start at the repository root, activate the same environment, and change into `code` so each process reads the same `.env` configuration.
 
 **Terminal 1 — dashboard and API**, from the repository root:
 
@@ -67,9 +68,13 @@ Set-Location code
 python -m usb_analyzer.device_monitor.windows
 ```
 
-The monitor's first inventory is a baseline: devices already connected when it starts are not reported as new connections. Plug in or remove a USB device after startup to test inventory changes. Currently, events are written directly to the shared SQLite database, not sent through the API. Keep both terminals running, then open the dashboard at <http://127.0.0.1:8000/> or the API docs at <http://127.0.0.1:8000/docs>. Press `Ctrl+C` in a terminal to stop that process.
+The monitor's first inventory is a baseline: devices already connected when it starts are not reported as new connections. Plug in or remove a USB device after startup to test inventory changes. Each detected event is sent by HTTP POST to the API, which stores it in SQLite for the dashboard. Keep both terminals running, then open the dashboard at <http://127.0.0.1:8000/> or the API docs at <http://127.0.0.1:8000/docs>. Press `Ctrl+C` in a terminal to stop that process.
 
-To change the monitor polling interval, pass (for example) `--interval 0.5` to its command. The interval is the time between WMI inventory checks; actual detection latency also depends on the WMI query.
+The API currently has no authentication and is intended for local use only. Keep Uvicorn bound to its default loopback address; do not expose it to an untrusted network.
+
+The API defaults to `http://127.0.0.1:8000` and the monitor uses a 5-second HTTP timeout. Set `USB_ANALYZER_API_BASE_URL` or `USB_ANALYZER_API_TIMEOUT_SECONDS` in `code/.env` to change those settings. To change the monitor polling interval, pass (for example) `--interval 0.5` to its command. The interval is the time between WMI inventory checks; actual detection latency also depends on the WMI query.
+
+If the API is stopped or rejects an event, the monitor logs the failure and exits; restart it after resolving the API issue. Offline event queuing and automatic retry are not implemented yet.
 
 Run tests from `code` with the project environment active:
 

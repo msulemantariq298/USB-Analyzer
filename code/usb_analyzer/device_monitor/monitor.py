@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from threading import Event
 from typing import Protocol
 
-from usb_analyzer.core.database import EventStore
 from usb_analyzer.core.events import DeviceEvent
 
 logger = logging.getLogger(__name__)
@@ -30,6 +29,11 @@ class UsbDevice:
 class DeviceProvider(Protocol):
     def list_devices(self) -> Mapping[str, UsbDevice]:
         """Return currently present USB devices, keyed by stable instance ID."""
+
+
+class EventSink(Protocol):
+    def add(self, event: DeviceEvent) -> DeviceEvent:
+        """Accept a device event and return the accepted event."""
 
 
 def is_usb_device_id(device_id: str) -> bool:
@@ -81,18 +85,18 @@ def diff_devices(
 
 
 class DeviceMonitor:
-    """Poll a device provider and persist changes using the shared event store."""
+    """Poll devices and send inventory changes to the configured event sink."""
 
     def __init__(
         self,
         provider: DeviceProvider,
-        event_store: EventStore,
+        event_sink: EventSink,
         interval_seconds: float = 1.0,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be greater than zero")
         self.provider = provider
-        self.event_store = event_store
+        self.event_sink = event_sink
         self.interval_seconds = interval_seconds
 
     def run(self, stop_event: Event) -> None:
@@ -106,9 +110,9 @@ class DeviceMonitor:
             current = dict(self.provider.list_devices())
             events = diff_devices(previous, current)
             for event in events:
-                self.event_store.add(event)
+                self.event_sink.add(event)
                 logger.info(
-                    "%s: %s (%s)",
+                    "Sent %s event for %s (%s)",
                     event.event_type,
                     event.device_id,
                     event.details.get("name") or "unnamed device",
@@ -118,7 +122,7 @@ class DeviceMonitor:
 
 def run_monitor(
     provider: DeviceProvider,
-    event_store: EventStore,
+    event_sink: EventSink,
     stop_event: Event,
     interval_seconds: float = 1.0,
 ) -> None:
@@ -126,6 +130,6 @@ def run_monitor(
 
     DeviceMonitor(
         provider=provider,
-        event_store=event_store,
+        event_sink=event_sink,
         interval_seconds=interval_seconds,
     ).run(stop_event)
