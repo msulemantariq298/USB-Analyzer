@@ -26,7 +26,7 @@ Implemented:
 - Windows WMI inventory monitor for USB and USB-storage Plug and Play devices.
 - Inventory comparison that can create connection/disconnection events.
 - The Windows monitor posts detected events to the FastAPI API; the API persists them for the dashboard.
-- Dashboard event history, severity counts, and simulated event control.
+- Dashboard event history, severity counts, and expandable activity details. Events are recorded by the USB monitor through the API; there is no dashboard control for creating test events.
 
 Not yet implemented or fully validated:
 
@@ -42,7 +42,7 @@ Not yet implemented or fully validated:
 
 - FastAPI application with health and event endpoints
 - Initial Windows WMI USB inventory monitor (sends events through the API)
-- Browser dashboard with event summary, audit table, and demo event button
+- Browser dashboard with event summary, an expandable event-history table, and a light/dark theme toggle
 - SQLite event store
 - Shared JSON event contract for all modules
 - Configuration through environment variables or `.env`
@@ -84,7 +84,7 @@ The API will be available at `http://127.0.0.1:8000`.
 - `POST /api/v1/events`
 - `GET /docs`
 
-Open `http://127.0.0.1:8000/` for the dashboard. The **Simulate USB event** button creates a warning event using the frozen Week 1 contract, so the UI can be developed before the platform monitors are implemented.
+Open `http://127.0.0.1:8000/` for the dashboard. Expand an activity row to review its recorded device details. The dashboard is read-only for event creation; the USB monitor sends detected events to the API, which stores them for the dashboard.
 
 The API currently has no authentication and is intended for local use only. Keep Uvicorn bound to its default loopback address; do not expose it to an untrusted network.
 

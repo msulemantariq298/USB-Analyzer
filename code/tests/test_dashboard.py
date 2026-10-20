@@ -8,3 +8,5 @@ def test_dashboard_is_served() -> None:
 
     assert response.status_code == 200
     assert "USB Analyzer Dashboard" in response.text
+    assert 'id="simulate-event"' not in response.text
+    assert 'id="theme-toggle"' in response.text

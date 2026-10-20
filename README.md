@@ -28,7 +28,7 @@ This is an early prototype, not yet the finished always-on protection system:
 - The Windows monitor uses WMI polling to inventory USB and USB-storage Plug and Play devices. It can compare inventories and generate connect/disconnect events.
 - The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.
 - The monitor and web server must be started manually in separate terminals. Automatic startup/background service support is not implemented.
-- The dashboard can show stored events and create a simulated event for UI testing.
+- The dashboard shows stored events, summary counts, and expandable event details. It does not create events; detected events come from the USB monitor through the API.
 - If the API is unavailable or rejects an event, the monitor logs the HTTP error and exits rather than silently dropping it. Durable offline queuing and retry are not implemented.
 - A standalone, read-only storage scanner module (SHA-256 hashing plus `autorun.inf`/risky-extension flags) exists with unit tests, but it is not yet connected to the monitor, API, or dashboard.
 - The storage scanner skips symlinks/filesystem reparse points (including Windows junctions) and rejects a reparse point as its scan root.

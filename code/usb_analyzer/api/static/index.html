@@ -3,56 +3,100 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>USB Analyzer Dashboard</title>
+    <meta name="theme-color" content="#f3f5f2">
+    <title>USB Analyzer Dashboard — Device activity</title>
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">INFORMATION SECURITY · WEEK 1</p>
-          <h1>USB Analyzer</h1>
-          <p class="subtitle">USB device security monitoring dashboard</p>
+        <a class="brand" href="/" aria-label="USB Analyzer home">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M16 4v17m0-17-4 4m4-4 4 4M16 14l-7-4m7 8 7-4M16 21v5m-7-16-3 2m3-2v4m14-4 3 2m-3-2v4m-7 11a2 2 0 1 0 0 .01M6 13a2 2 0 1 0 0 .01m20 0a2 2 0 1 0 0 .01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="brand-name">USB Analyzer</span>
+        </a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+          <svg class="theme-icon icon-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="3.25" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10 2.5v1.25m0 12.5v1.25m7.5-7.5h-1.25m-12.5 0H2.5m12.8-5.3-.88.88m-8.84 8.84-.88.88m11.48 0-.88-.88m-8.84-8.84-.88-.88" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <svg class="theme-icon icon-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M16.2 12.1A6.75 6.75 0 0 1 7.9 3.8a6.75 6.75 0 1 0 8.3 8.3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="connection" aria-live="polite">
+          <span class="connection-dot"></span>
+          <span id="api-status">Checking API</span>
         </div>
-        <div class="status-pill"><span class="status-dot"></span><span id="api-status">Checking API</span></div>
       </header>
 
-      <section class="hero">
-        <div>
-          <p class="eyebrow accent">MONITORING CONSOLE</p>
-          <h2>Know what is connected.</h2>
-          <p>Shared event contract and dashboard foundation for the Windows and Linux analyzers.</p>
+      <section class="overview" aria-labelledby="page-title">
+        <div class="overview-copy">
+          <h1 id="page-title">USB device activity</h1>
+          <p class="lede">A clear record of what enters your machine, and when.</p>
         </div>
-        <button id="simulate-event" class="primary-button">＋ Simulate USB event</button>
       </section>
 
-      <section class="metrics" aria-label="Event summary">
-        <article class="metric-card"><span>Total events</span><strong id="total-events">0</strong></article>
-        <article class="metric-card"><span>Warnings</span><strong id="warning-events">0</strong></article>
-        <article class="metric-card"><span>Critical</span><strong id="critical-events">0</strong></article>
-        <article class="metric-card"><span>Last update</span><strong id="last-update">—</strong></article>
+      <section class="summary" aria-label="Event summary">
+        <article class="summary-item">
+          <span class="summary-label">Events recorded</span>
+          <strong id="total-events">0</strong>
+          <span class="summary-note">In the current log</span>
+        </article>
+        <article class="summary-item">
+          <span class="summary-label">Needs review</span>
+          <strong id="warning-events">0</strong>
+          <span class="summary-note">Warnings</span>
+        </article>
+        <article class="summary-item">
+          <span class="summary-label">Critical findings</span>
+          <strong id="critical-events">0</strong>
+          <span class="summary-note">Requires attention</span>
+        </article>
+        <article class="summary-item summary-updated">
+          <span class="summary-label">Latest activity</span>
+          <strong id="last-update">—</strong>
+          <span class="summary-note">Most recent event time</span>
+        </article>
       </section>
 
-      <section class="panel">
-        <div class="panel-heading">
+      <section class="activity" aria-labelledby="activity-title">
+        <div class="section-heading">
           <div>
-            <p class="eyebrow">AUDIT LOG</p>
-            <h2>Recent device events</h2>
+            <h2 id="activity-title">Recent activity</h2>
           </div>
-          <button id="refresh-events" class="secondary-button">Refresh</button>
+          <button id="refresh-events" class="refresh-button" type="button">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M16 10a6 6 0 1 1-1.76-4.24M16 4v4h-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Refresh
+          </button>
         </div>
-        <div id="message" class="message" role="status"></div>
+        <div id="message" class="message" role="status" aria-live="polite"></div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Time</th><th>Event</th><th>Device</th><th>Source</th><th>Severity</th><th>Details</th></tr>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Activity</th>
+                <th scope="col">Device ID</th>
+                <th scope="col">Source</th>
+                <th scope="col">Severity</th>
+              </tr>
             </thead>
             <tbody id="events-body">
-              <tr><td colspan="6" class="empty-state">No events recorded yet.</td></tr>
+              <tr><td colspan="5" class="empty-state">No device activity yet. Connect a USB device while the monitor is running.</td></tr>
             </tbody>
           </table>
         </div>
       </section>
+      <footer class="page-footer">
+        <span>USB Analyzer</span>
+        <span>Local monitoring · Event history</span>
+      </footer>
     </main>
     <script src="/static/app.js"></script>
   </body>

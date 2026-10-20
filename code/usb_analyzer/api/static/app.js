@@ -1,5 +1,44 @@
 const eventsBody = document.querySelector("#events-body");
 const message = document.querySelector("#message");
+const apiStatus = document.querySelector("#api-status");
+const connection = document.querySelector(".connection");
+const themeToggle = document.querySelector("#theme-toggle");
+const themeStorageKey = "usb-analyzer-theme";
+
+function updateThemeToggle(isDark) {
+  const label = `Switch to ${isDark ? "light" : "dark"} mode`;
+  themeToggle.setAttribute("aria-label", label);
+  themeToggle.setAttribute("title", label);
+  themeToggle.setAttribute("aria-pressed", String(isDark));
+}
+
+function setTheme(isDark) {
+  const theme = isDark ? "dark" : "light";
+  document.documentElement.dataset.theme = theme;
+  updateThemeToggle(isDark);
+}
+
+function getInitialTheme() {
+  try {
+    const savedTheme = localStorage.getItem(themeStorageKey);
+    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
+  } catch (error) {
+    showMessage(`Theme preference could not be loaded: ${error.message}`, true);
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+setTheme(getInitialTheme() === "dark");
+
+themeToggle.addEventListener("click", () => {
+  const isDark = document.documentElement.dataset.theme !== "dark";
+  setTheme(isDark);
+  try {
+    localStorage.setItem(themeStorageKey, isDark ? "dark" : "light");
+  } catch (error) {
+    showMessage(`Theme changed for this session but could not be saved: ${error.message}`, true);
+  }
+});
 
 function showMessage(text, isError = false) {
   message.textContent = text;
@@ -23,21 +62,117 @@ function renderEvents(events) {
     events.length ? formatTime(events[0].time) : "—";
 
   if (!events.length) {
-    eventsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No events recorded yet.</td></tr>';
+    eventsBody.innerHTML = '<tr><td colspan="5" class="empty-state">No device activity yet. Connect a USB device while the monitor is running.</td></tr>';
     return;
   }
 
-  eventsBody.innerHTML = events.map((event) => `
-    <tr>
-      <td>${formatTime(event.time)}</td>
-      <td><strong>${event.event_type}</strong></td>
-      <td><code>${event.device_id}</code></td>
-      <td>${event.source}</td>
-      <td><span class="severity ${event.severity}">${event.severity}</span></td>
-      <td><code>${JSON.stringify(event.details)}</code></td>
-    </tr>
-  `).join("");
+  const rows = events.flatMap((event, index) => {
+    const row = document.createElement("tr");
+    row.className = "event-row";
+    const cells = [
+      { label: "Time", value: formatTime(event.time) },
+      { label: "Activity" },
+      { label: "Device ID", value: event.device_id, tag: "code" },
+      { label: "Source", value: event.source },
+    ];
+
+    for (const { label, value, tag } of cells) {
+      const cell = document.createElement("td");
+      if (label === "Activity") {
+        const toggle = document.createElement("button");
+        toggle.className = "activity-toggle";
+        toggle.type = "button";
+        toggle.dataset.detailToggle = "";
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-controls", `event-details-${index}`);
+        toggle.setAttribute("aria-label", `Show details for ${event.event_type}`);
+        const activity = document.createElement("strong");
+        activity.textContent = event.event_type;
+        const chevron = document.createElement("span");
+        chevron.className = "activity-chevron";
+        chevron.setAttribute("aria-hidden", "true");
+        toggle.append(activity, chevron);
+        cell.append(toggle);
+      } else if (tag) {
+        const content = document.createElement(tag);
+        content.textContent = value;
+        cell.append(content);
+      } else {
+        cell.textContent = value;
+      }
+      cell.dataset.label = label;
+      row.append(cell);
+    }
+
+    const severityCell = document.createElement("td");
+    severityCell.dataset.label = "Severity";
+    const severity = document.createElement("span");
+    const severityValue = ["info", "warning", "critical"].includes(event.severity)
+      ? event.severity
+      : "info";
+    severity.className = `severity ${severityValue}`;
+    severity.textContent = event.severity;
+    severityCell.append(severity);
+    row.append(severityCell);
+
+    const detailsRow = document.createElement("tr");
+    detailsRow.className = "details-row";
+    detailsRow.id = `event-details-${index}`;
+    detailsRow.hidden = true;
+    const detailsCell = document.createElement("td");
+    detailsCell.colSpan = 5;
+    const detailsPanel = document.createElement("div");
+    detailsPanel.className = "details-panel";
+    const detailsHeading = document.createElement("h3");
+    detailsHeading.textContent = "Event details";
+    const detailsList = document.createElement("dl");
+    detailsList.className = "details-list";
+    const entries = event.details && typeof event.details === "object" && !Array.isArray(event.details)
+      ? Object.entries(event.details)
+      : [["Details", event.details]];
+
+    for (const [key, value] of entries) {
+      const field = document.createElement("div");
+      field.className = "details-field";
+      const term = document.createElement("dt");
+      term.textContent = key.replaceAll("_", " ");
+      const description = document.createElement("dd");
+      description.textContent = value !== null && typeof value === "object"
+        ? JSON.stringify(value)
+        : String(value ?? "—");
+      field.append(term, description);
+      detailsList.append(field);
+    }
+
+    if (!entries.length) {
+      const field = document.createElement("div");
+      field.className = "details-field";
+      const term = document.createElement("dt");
+      term.textContent = "Details";
+      const emptyDetails = document.createElement("dd");
+      emptyDetails.textContent = "No additional details were recorded.";
+      field.append(term, emptyDetails);
+      detailsList.append(field);
+    }
+
+    detailsPanel.append(detailsHeading, detailsList);
+    detailsCell.append(detailsPanel);
+    detailsRow.append(detailsCell);
+    return [row, detailsRow];
+  });
+  eventsBody.replaceChildren(...rows);
 }
+
+eventsBody.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-detail-toggle]");
+  if (!toggle) return;
+
+  const details = document.getElementById(toggle.getAttribute("aria-controls"));
+  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+  toggle.setAttribute("aria-expanded", String(!isExpanded));
+  toggle.setAttribute("aria-label", `${isExpanded ? "Show" : "Hide"} details for ${toggle.querySelector("strong").textContent}`);
+  details.hidden = isExpanded;
+});
 
 async function loadEvents() {
   try {
@@ -45,43 +180,18 @@ async function loadEvents() {
     if (!response.ok) throw new Error(`API returned ${response.status}`);
     const events = await response.json();
     renderEvents(events);
-    document.querySelector("#api-status").textContent = "API connected";
+    apiStatus.textContent = "API connected";
+    connection.classList.remove("is-unavailable");
+    connection.classList.add("is-connected");
     showMessage(`Loaded ${events.length} event${events.length === 1 ? "" : "s"}.`);
   } catch (error) {
-    document.querySelector("#api-status").textContent = "API unavailable";
+    apiStatus.textContent = "API unavailable";
+    connection.classList.remove("is-connected");
+    connection.classList.add("is-unavailable");
     showMessage(error.message, true);
   }
-}
-
-async function simulateEvent() {
-  const response = await fetch("/api/v1/events", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      device_id: "demo:usb:001",
-      source: "week-1-demo",
-      severity: "warning",
-      event_type: "device.connected",
-      details: {
-        vendor_id: "1234",
-        product_id: "5678",
-        manufacturer: "Demo device",
-        note: "Replace with a real Device Monitor event",
-      },
-    }),
-  });
-  if (!response.ok) throw new Error(`Could not create event (${response.status})`);
-  await loadEvents();
 }
 
 document.querySelector("#refresh-events").addEventListener("click", loadEvents);
-document.querySelector("#simulate-event").addEventListener("click", async () => {
-  try {
-    await simulateEvent();
-    showMessage("Demo USB event added.");
-  } catch (error) {
-    showMessage(error.message, true);
-  }
-});
 
 loadEvents();
