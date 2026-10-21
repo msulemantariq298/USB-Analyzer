@@ -4,6 +4,7 @@ const apiStatus = document.querySelector("#api-status");
 const connection = document.querySelector(".connection");
 const themeToggle = document.querySelector("#theme-toggle");
 const themeStorageKey = "usb-analyzer-theme";
+let eventsLoadInProgress = false;
 
 function updateThemeToggle(isDark) {
   const label = `Switch to ${isDark ? "light" : "dark"} mode`;
@@ -52,6 +53,19 @@ function formatTime(value) {
   });
 }
 
+function latestScanStates(events) {
+  const latestByVolume = new Map();
+  for (const event of events) {
+    if (!["scan.started", "scan.completed", "scan.failed"].includes(event.event_type)) {
+      continue;
+    }
+    const volume = event.details?.volume_path ?? "unknown";
+    const key = `${event.device_id}|${volume}`;
+    if (!latestByVolume.has(key)) latestByVolume.set(key, event);
+  }
+  return [...latestByVolume.values()];
+}
+
 function renderEvents(events) {
   document.querySelector("#total-events").textContent = events.length;
   document.querySelector("#warning-events").textContent =
@@ -60,6 +74,15 @@ function renderEvents(events) {
     events.filter((event) => event.severity === "critical").length;
   document.querySelector("#last-update").textContent =
     events.length ? formatTime(events[0].time) : "—";
+  const scanStates = latestScanStates(events);
+  document.querySelector("#active-scans").textContent =
+    scanStates.filter((event) => event.event_type === "scan.started").length;
+  document.querySelector("#flagged-files").textContent = scanStates
+    .filter((event) => event.event_type === "scan.completed")
+    .reduce((total, event) => {
+      const count = Number(event.details?.flagged_count ?? 0);
+      return total + (Number.isFinite(count) && count > 0 ? count : 0);
+    }, 0);
 
   if (!events.length) {
     eventsBody.innerHTML = '<tr><td colspan="5" class="empty-state">No device activity yet. Connect a USB device while the monitor is running.</td></tr>';
@@ -133,13 +156,64 @@ function renderEvents(events) {
 
     for (const [key, value] of entries) {
       const field = document.createElement("div");
-      field.className = "details-field";
+      field.className = key === "flagged" || key === "errors"
+        ? "details-field details-field-wide"
+        : "details-field";
       const term = document.createElement("dt");
       term.textContent = key.replaceAll("_", " ");
       const description = document.createElement("dd");
-      description.textContent = value !== null && typeof value === "object"
-        ? JSON.stringify(value)
-        : String(value ?? "—");
+      if (key === "flagged" && Array.isArray(value)) {
+        if (value.length === 0) {
+          description.textContent = "No filename indicators were found.";
+        } else {
+          const list = document.createElement("ul");
+          list.className = "finding-list";
+          for (const finding of value) {
+            const findingDetails = finding && typeof finding === "object" && !Array.isArray(finding)
+              ? finding
+              : {};
+            const item = document.createElement("li");
+            item.className = "finding-entry";
+            const path = document.createElement("strong");
+            path.className = "finding-path";
+            path.textContent = findingDetails.path ?? "Unknown path";
+            const metadata = document.createElement("span");
+            metadata.className = "finding-meta";
+            metadata.textContent = `${Number(findingDetails.size ?? 0).toLocaleString()} bytes · SHA-256 ${findingDetails.sha256 ?? "unavailable"}`;
+            const flags = document.createElement("div");
+            flags.className = "finding-flags";
+            for (const flag of Array.isArray(findingDetails.flags) ? findingDetails.flags : []) {
+              const label = document.createElement("span");
+              label.className = "flag-label";
+              label.textContent = String(flag).replaceAll("_", " ");
+              flags.append(label);
+            }
+            item.append(path, metadata, flags);
+            list.append(item);
+          }
+          description.append(list);
+        }
+      } else if (key === "errors" && Array.isArray(value)) {
+        if (value.length === 0) {
+          description.textContent = "No file access errors.";
+        } else {
+          const list = document.createElement("ul");
+          list.className = "scan-errors";
+          for (const scanError of value) {
+            const errorDetails = scanError && typeof scanError === "object" && !Array.isArray(scanError)
+              ? scanError
+              : {};
+            const item = document.createElement("li");
+            item.textContent = `${errorDetails.path ?? "Unknown path"}: ${errorDetails.error ?? "Unknown error"}`;
+            list.append(item);
+          }
+          description.append(list);
+        }
+      } else {
+        description.textContent = value !== null && typeof value === "object"
+          ? JSON.stringify(value)
+          : String(value ?? "—");
+      }
       field.append(term, description);
       detailsList.append(field);
     }
@@ -155,7 +229,14 @@ function renderEvents(events) {
       detailsList.append(field);
     }
 
-    detailsPanel.append(detailsHeading, detailsList);
+    if (event.event_type === "scan.completed" && Number(event.details?.flagged_count ?? 0) > 0) {
+      const caveat = document.createElement("p");
+      caveat.className = "scan-caveat";
+      caveat.textContent = "These are filename-based indicators only, not confirmed malware detections.";
+      detailsPanel.append(detailsHeading, caveat, detailsList);
+    } else {
+      detailsPanel.append(detailsHeading, detailsList);
+    }
     detailsCell.append(detailsPanel);
     detailsRow.append(detailsCell);
     return [row, detailsRow];
@@ -174,7 +255,9 @@ eventsBody.addEventListener("click", (event) => {
   details.hidden = isExpanded;
 });
 
-async function loadEvents() {
+async function loadEvents(showStatus = true) {
+  if (eventsLoadInProgress) return;
+  eventsLoadInProgress = true;
   try {
     const response = await fetch("/api/v1/events?limit=100");
     if (!response.ok) throw new Error(`API returned ${response.status}`);
@@ -183,15 +266,22 @@ async function loadEvents() {
     apiStatus.textContent = "API connected";
     connection.classList.remove("is-unavailable");
     connection.classList.add("is-connected");
-    showMessage(`Loaded ${events.length} event${events.length === 1 ? "" : "s"}.`);
+    if (showStatus) {
+      showMessage(`Loaded ${events.length} event${events.length === 1 ? "" : "s"}.`);
+    }
   } catch (error) {
     apiStatus.textContent = "API unavailable";
     connection.classList.remove("is-connected");
     connection.classList.add("is-unavailable");
     showMessage(error.message, true);
+  } finally {
+    eventsLoadInProgress = false;
   }
 }
 
 document.querySelector("#refresh-events").addEventListener("click", loadEvents);
 
 loadEvents();
+window.setInterval(() => {
+  if (document.visibilityState === "visible") loadEvents(false);
+}, 5000);

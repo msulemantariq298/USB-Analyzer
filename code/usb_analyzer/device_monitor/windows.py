@@ -7,6 +7,7 @@ from typing import Any
 from usb_analyzer.core.api_client import ApiEventClient
 from usb_analyzer.core.config import get_settings
 from usb_analyzer.device_monitor.monitor import DeviceProvider, UsbDevice, run_monitor
+from usb_analyzer.storage_scanner.service import StorageScanService
 
 logger = logging.getLogger(__name__)
 
@@ -30,15 +31,24 @@ class WindowsWmiProvider(DeviceProvider):
 
     def list_devices(self) -> dict[str, UsbDevice]:
         devices: dict[str, UsbDevice] = {}
-        for entity in self._connection.query(
+        entities = self._connection.query(
             "SELECT * FROM Win32_PnPEntity WHERE Present = TRUE"
-        ):
+        )
+        device_entities = []
+        for entity in entities:
             device_id = _string_value(entity, "PNPDeviceID") or _string_value(
                 entity, "DeviceID"
             )
             if not device_id or not device_id.upper().startswith(("USB\\", "USBSTOR\\")):
                 continue
+            device_entities.append((entity, device_id))
 
+        volume_paths_by_device = _usb_volume_paths_by_device(
+            self._connection,
+            {device_id.casefold() for _, device_id in device_entities},
+        )
+        for entity, device_id in device_entities:
+            volume_paths = volume_paths_by_device.get(device_id.casefold(), ())
             device = UsbDevice(
                 device_id=device_id,
                 name=_string_value(entity, "Name"),
@@ -47,9 +57,34 @@ class WindowsWmiProvider(DeviceProvider):
                 service=_string_value(entity, "Service"),
                 hardware_ids=_string_sequence(entity, "HardwareID"),
                 status=_string_value(entity, "Status"),
+                volume_paths=volume_paths,
             )
             devices[device_id] = device
         return devices
+
+
+def _usb_volume_paths_by_device(
+    connection: Any,
+    device_ids: set[str],
+) -> dict[str, tuple[str, ...]]:
+    requested_ids = {device_id.casefold() for device_id in device_ids}
+    paths_by_device: dict[str, set[str]] = {}
+    for disk in connection.Win32_DiskDrive():
+        device_id = _string_value(disk, "PNPDeviceID")
+        if device_id is None or device_id.casefold() not in requested_ids:
+            continue
+
+        volume_paths = paths_by_device.setdefault(device_id.casefold(), set())
+        for partition in disk.associators("Win32_DiskDriveToDiskPartition"):
+            for logical_disk in partition.associators("Win32_LogicalDiskToPartition"):
+                drive_id = _string_value(logical_disk, "DeviceID")
+                if drive_id and len(drive_id) == 2 and drive_id[1] == ":":
+                    volume_paths.add(f"{drive_id}\\")
+
+    return {
+        device_id: tuple(sorted(paths))
+        for device_id, paths in paths_by_device.items()
+    }
 
 
 def _string_value(entity: Any, property_name: str) -> str | None:
@@ -95,7 +130,14 @@ def main() -> None:
             api_prefix=settings.api_prefix,
             timeout_seconds=settings.api_timeout_seconds,
         ) as event_sink:
-            run_monitor(provider, event_sink, stop_event, args.interval)
+            with StorageScanService(event_sink) as scan_service:
+                run_monitor(
+                    provider,
+                    event_sink,
+                    stop_event,
+                    args.interval,
+                    storage_scan_scheduler=scan_service,
+                )
     except KeyboardInterrupt:
         logger.info("Stopping USB Analyzer Windows device monitor")
         stop_event.set()

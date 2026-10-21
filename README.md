@@ -29,9 +29,12 @@ This is an early prototype, not yet the finished always-on protection system:
 - The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.
 - The monitor and web server must be started manually in separate terminals. Automatic startup/background service support is not implemented.
 - The dashboard shows stored events, summary counts, and expandable event details. It does not create events; detected events come from the USB monitor through the API.
-- If the API is unavailable or rejects an event, the monitor logs the HTTP error and exits rather than silently dropping it. Durable offline queuing and retry are not implemented.
-- A standalone, read-only storage scanner module (SHA-256 hashing plus `autorun.inf`/risky-extension flags) exists with unit tests, but it is not yet connected to the monitor, API, or dashboard.
+- Device-inventory events and `scan.started` have no retry: if their API request fails, the monitor logs the error and exits. Terminal scan events are retried up to three times using the same idempotent event ID, but there is no durable offline queue.
+- For a newly detected USB storage device, the Windows monitor resolves mounted drive-letter volumes and schedules the read-only scanner in worker threads. Scan lifecycle/results are sent through the API and shown in the dashboard.
+- The dashboard refreshes events every five seconds, shows active scans and flagged-file counts, and expands scan results with paths, hashes, file-access errors, and a heuristic warning.
 - The storage scanner skips symlinks/filesystem reparse points (including Windows junctions) and rejects a reparse point as its scan root.
+- Devices already connected at monitor startup establish the baseline and are not automatically scanned. Only newly detected devices or newly mounted volumes are scanned.
+- Current scanning is limited to mounted drive-letter volumes found by WMI. Files with selected extensions or `autorun.inf` are only name-based indicators, not confirmed malware.
 - Malware signatures/YARA rules, HID/BadUSB behavior detection, user notifications, incident reports, quarantine/remediation, USB blocking, and Linux monitoring are not implemented.
 - Real plug/unplug event handling still needs hands-on validation. WMI inventory access has been tested on Windows, but that alone does not verify the full detection workflow.
 

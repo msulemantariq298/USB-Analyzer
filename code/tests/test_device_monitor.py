@@ -23,6 +23,7 @@ def test_diff_devices_creates_connect_and_disconnect_events() -> None:
         device_id=r"USB\VID_1234&PID_ABCD\SERIAL",
         name="Demo USB drive",
         manufacturer="Example",
+        volume_paths=("E:\\",),
     )
     disconnected = UsbDevice(device_id=r"USBSTOR\DISK&VEN_DEMO\OLD")
 
@@ -38,6 +39,7 @@ def test_diff_devices_creates_connect_and_disconnect_events() -> None:
     assert events[0].source == "device-monitor"
     assert events[0].details["vendor_id"] == "1234"
     assert events[0].details["product_id"] == "ABCD"
+    assert events[0].details["volume_paths"] == ["E:\\"]
     assert events[1].device_id == disconnected.device_id
 
 
@@ -76,3 +78,33 @@ def test_monitor_persists_inventory_changes(tmp_path) -> None:
 def test_monitor_rejects_non_positive_interval(tmp_path) -> None:
     with pytest.raises(ValueError, match="greater than zero"):
         DeviceMonitor(object(), EventStore(tmp_path / "events.db"), interval_seconds=0)
+
+
+def test_monitor_schedules_newly_mounted_volume(tmp_path) -> None:
+    class ChangingProvider:
+        calls = 0
+        device_id = r"USBSTOR\DISK&VEN_DEMO\SERIAL"
+
+        def list_devices(self):
+            self.calls += 1
+            volume_paths = () if self.calls == 1 else ("E:\\",)
+            device = UsbDevice(
+                device_id=self.device_id,
+                volume_paths=volume_paths,
+            )
+            return {self.device_id: device}
+
+    provider = ChangingProvider()
+    event_store = EventStore(tmp_path / "events.db")
+    scheduler = Mock()
+    stop_event = Mock(spec=Event)
+    stop_event.wait.side_effect = [False, True]
+
+    DeviceMonitor(
+        provider,
+        event_store,
+        interval_seconds=0.01,
+        storage_scan_scheduler=scheduler,
+    ).run(stop_event)
+
+    scheduler.schedule.assert_called_once_with(provider.device_id, "E:\\")

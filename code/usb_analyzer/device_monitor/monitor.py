@@ -24,6 +24,7 @@ class UsbDevice:
     service: str | None = None
     hardware_ids: tuple[str, ...] = ()
     status: str | None = None
+    volume_paths: tuple[str, ...] = ()
 
 
 class DeviceProvider(Protocol):
@@ -34,6 +35,11 @@ class DeviceProvider(Protocol):
 class EventSink(Protocol):
     def add(self, event: DeviceEvent) -> DeviceEvent:
         """Accept a device event and return the accepted event."""
+
+
+class StorageScanScheduler(Protocol):
+    def schedule(self, device_id: str, volume_path: str) -> None:
+        """Schedule a read-only scan without blocking device polling."""
 
 
 def is_usb_device_id(device_id: str) -> bool:
@@ -54,6 +60,7 @@ def _event_for(device: UsbDevice, connected: bool) -> DeviceEvent:
         "service": device.service,
         "hardware_ids": list(device.hardware_ids),
         "status": device.status,
+        "volume_paths": list(device.volume_paths),
     }
     if "vid" in identifiers:
         details["vendor_id"] = identifiers["vid"]
@@ -92,12 +99,14 @@ class DeviceMonitor:
         provider: DeviceProvider,
         event_sink: EventSink,
         interval_seconds: float = 1.0,
+        storage_scan_scheduler: StorageScanScheduler | None = None,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be greater than zero")
         self.provider = provider
         self.event_sink = event_sink
         self.interval_seconds = interval_seconds
+        self.storage_scan_scheduler = storage_scan_scheduler
 
     def run(self, stop_event: Event) -> None:
         previous = dict(self.provider.list_devices())
@@ -117,6 +126,19 @@ class DeviceMonitor:
                     event.device_id,
                     event.details.get("name") or "unnamed device",
                 )
+            if self.storage_scan_scheduler is not None:
+                for device_id, device in current.items():
+                    old_device = previous.get(device_id)
+                    previous_paths = {
+                        path.casefold()
+                        for path in old_device.volume_paths
+                    } if old_device is not None else set()
+                    for volume_path in device.volume_paths:
+                        if volume_path.casefold() not in previous_paths:
+                            self.storage_scan_scheduler.schedule(
+                                device_id,
+                                volume_path,
+                            )
             previous = current
 
 
@@ -125,6 +147,7 @@ def run_monitor(
     event_sink: EventSink,
     stop_event: Event,
     interval_seconds: float = 1.0,
+    storage_scan_scheduler: StorageScanScheduler | None = None,
 ) -> None:
     """Run the monitor using an injectable provider for tests and OS backends."""
 
@@ -132,4 +155,5 @@ def run_monitor(
         provider=provider,
         event_sink=event_sink,
         interval_seconds=interval_seconds,
+        storage_scan_scheduler=storage_scan_scheduler,
     ).run(stop_event)

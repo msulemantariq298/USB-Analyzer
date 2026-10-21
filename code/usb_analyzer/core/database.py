@@ -45,6 +45,7 @@ class EventStore:
                 INSERT INTO events
                     (id, time, device_id, source, severity, event_type, details)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO NOTHING
                 """,
                 (
                     str(event.id),
@@ -56,7 +57,26 @@ class EventStore:
                     json.dumps(event.details),
                 ),
             )
-        return event
+            row = connection.execute(
+                "SELECT * FROM events WHERE id = ?",
+                (str(event.id),),
+            ).fetchone()
+
+        if row is None:
+            raise RuntimeError(f"Event {event.id} was not persisted")
+
+        stored_event = DeviceEvent(
+            id=row["id"],
+            time=row["time"],
+            device_id=row["device_id"],
+            source=row["source"],
+            severity=row["severity"],
+            event_type=row["event_type"],
+            details=json.loads(row["details"]),
+        )
+        if stored_event != event:
+            raise ValueError(f"Event ID {event.id} already exists with different data")
+        return stored_event
 
     def list(self, limit: int = 100) -> list[DeviceEvent]:
         with self._connect() as connection:
