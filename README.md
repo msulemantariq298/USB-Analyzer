@@ -27,6 +27,7 @@ This is an early prototype, not yet the finished always-on protection system:
 - The FastAPI API, SQLite event store, shared `DeviceEvent` model, and browser dashboard exist.
 - Whitelist storage and Policy Engine evaluate USB devices, issue allow/block decisions, support audit-only and enforce modes, and expose REST endpoints (`/api/v1/policy/*`).
 - Device fingerprinting extracts vendor ID, product ID, serial number, device class, revision, and interfaces, and flags spoofed-identity attempts (trusted VID/PID with mismatched serial).
+- HID / BadUSB keystroke injection detector analyzes inter-keystroke intervals (IKIs) and characters per second (CPS) to detect automated rapid typing attacks and trigger device blocking.
 - Storage scanner matches files against known malware hashes (including EICAR), evaluates YARA signature rules (suspicious autorun.inf, PowerShell download cradles, auto-executing macros), emits critical alerts, and triggers device blocking.
 - The Windows monitor uses WMI polling to inventory USB and USB-storage Plug and Play devices. It can compare inventories and generate connect/disconnect events.
 - The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.

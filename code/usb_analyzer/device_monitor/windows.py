@@ -8,6 +8,7 @@ from usb_analyzer.core.api_client import ApiEventClient
 from usb_analyzer.core.config import get_settings
 from usb_analyzer.device_monitor.fingerprint import extract_serial_number
 from usb_analyzer.device_monitor.monitor import DeviceProvider, UsbDevice, run_monitor
+from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
 from usb_analyzer.policy.store import WhitelistStore
 from usb_analyzer.storage_scanner.service import StorageScanService
@@ -137,15 +138,21 @@ def main() -> None:
             api_prefix=settings.api_prefix,
             timeout_seconds=settings.api_timeout_seconds,
         ) as event_sink:
-            with StorageScanService(event_sink, policy_engine=policy_engine) as scan_service:
-                run_monitor(
-                    provider,
-                    event_sink,
-                    stop_event,
-                    args.interval,
-                    storage_scan_scheduler=scan_service,
-                    policy_engine=policy_engine,
-                )
+            hid_detector = BadUsbDetector(event_sink=event_sink, policy_engine=policy_engine)
+            hid_detector.start_listener()
+            try:
+                with StorageScanService(event_sink, policy_engine=policy_engine) as scan_service:
+                    run_monitor(
+                        provider,
+                        event_sink,
+                        stop_event,
+                        args.interval,
+                        storage_scan_scheduler=scan_service,
+                        policy_engine=policy_engine,
+                        hid_detector=hid_detector,
+                    )
+            finally:
+                hid_detector.stop_listener()
     except KeyboardInterrupt:
         logger.info("Stopping USB Analyzer Windows device monitor")
         stop_event.set()

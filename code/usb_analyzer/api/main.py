@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, Query
@@ -8,7 +9,10 @@ from pydantic import BaseModel
 
 from usb_analyzer.core.config import get_settings
 from usb_analyzer.core.database import EventStore
-from usb_analyzer.core.events import DeviceEvent
+from usb_analyzer.core.events import DeviceEvent, EventSeverity
+from usb_analyzer.hid_detector.detector import BadUsbDetector
+from usb_analyzer.policy.engine import PolicyEngine
+from usb_analyzer.policy.enforcement import get_platform_blocker
 from usb_analyzer.policy.models import PolicyMode, WhitelistEntry
 from usb_analyzer.policy.store import WhitelistStore
 
@@ -16,6 +20,12 @@ settings = get_settings()
 event_store = EventStore(settings.database_path)
 whitelist_store = WhitelistStore(settings.database_path)
 current_policy_mode = PolicyMode(settings.policy_mode)
+policy_engine = PolicyEngine(
+    store=whitelist_store,
+    blocker=get_platform_blocker(dry_run=True),
+    mode=current_policy_mode,
+)
+hid_detector = BadUsbDetector(event_sink=event_store, policy_engine=policy_engine)
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 static_directory = Path(__file__).parent / "static"
@@ -92,5 +102,28 @@ def get_policy_status() -> dict[str, object]:
 def update_policy_mode(req: PolicyModeUpdateRequest) -> dict[str, str]:
     global current_policy_mode
     current_policy_mode = req.mode
+    policy_engine.mode = current_policy_mode
     return {"mode": current_policy_mode.value}
+
+
+class BadUsbSimulationRequest(BaseModel):
+    device_id: str = "USB\\VID_1B4F&PID_9206\\BADUSB_ATTACKER"
+    device_name: str = "SparkFun Pro Micro (BadUSB Simulation)"
+    char_count: int = 30
+    delay_ms: float = 5.0
+
+
+@app.post(f"{settings.api_prefix}/simulate/badusb")
+def simulate_badusb(req: BadUsbSimulationRequest) -> dict[str, Any]:
+    hid_detector.register_hid_device(req.device_id, req.device_name)
+    alert = hid_detector.simulate_injection(
+        char_count=req.char_count,
+        delay_per_char_seconds=req.delay_ms / 1000.0,
+    )
+    return {
+        "status": "simulated",
+        "detected": alert is not None,
+        "summary": alert.summary if alert else "Typing speed did not trigger threshold",
+    }
+
 

@@ -11,6 +11,7 @@ from usb_analyzer.device_monitor.fingerprint import (
     detect_spoofed_identity,
     extract_fingerprint,
 )
+from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
 
 logger = logging.getLogger(__name__)
@@ -117,6 +118,7 @@ class DeviceMonitor:
         interval_seconds: float = 1.0,
         storage_scan_scheduler: StorageScanScheduler | None = None,
         policy_engine: PolicyEngine | None = None,
+        hid_detector: BadUsbDetector | None = None,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be greater than zero")
@@ -125,6 +127,7 @@ class DeviceMonitor:
         self.interval_seconds = interval_seconds
         self.storage_scan_scheduler = storage_scan_scheduler
         self.policy_engine = policy_engine
+        self.hid_detector = hid_detector
         self.blocked_device_ids: set[str] = set()
 
     def run(self, stop_event: Event) -> None:
@@ -148,57 +151,68 @@ class DeviceMonitor:
 
                 if event.event_type == "device.disconnected":
                     self.blocked_device_ids.discard(event.device_id)
+                    if self.hid_detector is not None:
+                        self.hid_detector.unregister_hid_device(event.device_id)
 
-                elif event.event_type == "device.connected" and self.policy_engine is not None:
-                    device = current.get(event.device_id)
-                    fp = extract_fingerprint(
-                        device_id=event.device_id,
-                        hardware_ids=device.hardware_ids if device else (),
-                        pnp_class=device.pnp_class if device else None,
-                        service=device.service if device else None,
-                    )
-                    serial = event.details.get("serial_number") or fp.serial_number
+                elif event.event_type == "device.connected":
+                    if self.hid_detector is not None:
+                        dev_class = event.details.get("device_class") or ""
+                        if "HID" in dev_class or "Keyboard" in dev_class:
+                            self.hid_detector.register_hid_device(
+                                event.device_id,
+                                event.details.get("name"),
+                            )
 
-                    # Check Scenario 5: Spoofed Identity
-                    trusted_list = self.policy_engine.store.list()
-                    is_spoofed, spoof_reason, spoof_details = detect_spoofed_identity(fp, trusted_list)
-                    if is_spoofed:
-                        spoof_event = DeviceEvent(
+                    if self.policy_engine is not None:
+                        device = current.get(event.device_id)
+                        fp = extract_fingerprint(
                             device_id=event.device_id,
-                            source="device-monitor",
-                            severity=EventSeverity.CRITICAL,
-                            event_type="device.spoofed_identity",
-                            details={
-                                "reason": spoof_reason,
-                                **spoof_details,
-                                **event.details,
-                            },
+                            hardware_ids=device.hardware_ids if device else (),
+                            pnp_class=device.pnp_class if device else None,
+                            service=device.service if device else None,
                         )
-                        self.event_sink.add(spoof_event)
-                        # Block the spoofed device
-                        _, block_event = self.policy_engine.block_threat(
+                        serial = event.details.get("serial_number") or fp.serial_number
+
+                        # Check Scenario 5: Spoofed Identity
+                        trusted_list = self.policy_engine.store.list()
+                        is_spoofed, spoof_reason, spoof_details = detect_spoofed_identity(fp, trusted_list)
+                        if is_spoofed:
+                            spoof_event = DeviceEvent(
+                                device_id=event.device_id,
+                                source="device-monitor",
+                                severity=EventSeverity.CRITICAL,
+                                event_type="device.spoofed_identity",
+                                details={
+                                    "reason": spoof_reason,
+                                    **spoof_details,
+                                    **event.details,
+                                },
+                            )
+                            self.event_sink.add(spoof_event)
+                            # Block the spoofed device
+                            _, block_event = self.policy_engine.block_threat(
+                                device_id=event.device_id,
+                                reason=spoof_reason or "Spoofed USB identity detected",
+                                threat_type="spoofed_identity",
+                                details=spoof_details,
+                            )
+                            self.event_sink.add(block_event)
+                            self.blocked_device_ids.add(event.device_id)
+                            continue
+
+                        # Evaluate Policy Engine Whitelist
+                        decision, policy_events = self.policy_engine.evaluate_device(
                             device_id=event.device_id,
-                            reason=spoof_reason or "Spoofed USB identity detected",
-                            threat_type="spoofed_identity",
-                            details=spoof_details,
+                            serial_number=serial,
+                            vendor_id=fp.vendor_id,
+                            product_id=fp.product_id,
+                            details=event.details,
                         )
-                        self.event_sink.add(block_event)
-                        self.blocked_device_ids.add(event.device_id)
-                        continue
+                        for pe in policy_events:
+                            self.event_sink.add(pe)
 
-                    # Evaluate Policy Engine Whitelist
-                    decision, policy_events = self.policy_engine.evaluate_device(
-                        device_id=event.device_id,
-                        serial_number=serial,
-                        vendor_id=fp.vendor_id,
-                        product_id=fp.product_id,
-                        details=event.details,
-                    )
-                    for pe in policy_events:
-                        self.event_sink.add(pe)
-
-                    if not decision.allowed:
-                        self.blocked_device_ids.add(event.device_id)
+                        if not decision.allowed:
+                            self.blocked_device_ids.add(event.device_id)
 
             if self.storage_scan_scheduler is not None:
                 for device_id, device in current.items():
@@ -225,6 +239,7 @@ def run_monitor(
     interval_seconds: float = 1.0,
     storage_scan_scheduler: StorageScanScheduler | None = None,
     policy_engine: PolicyEngine | None = None,
+    hid_detector: BadUsbDetector | None = None,
 ) -> None:
     """Run the monitor using an injectable provider for tests and OS backends."""
 
@@ -234,4 +249,5 @@ def run_monitor(
         interval_seconds=interval_seconds,
         storage_scan_scheduler=storage_scan_scheduler,
         policy_engine=policy_engine,
+        hid_detector=hid_detector,
     ).run(stop_event)
