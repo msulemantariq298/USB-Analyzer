@@ -1,32 +1,66 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0d1117">
+    <meta name="theme-color" content="#0b0f19">
     <title>USB Analyzer Dashboard — Security Defense & Activity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <main class="shell">
-      <header class="topbar">
+    <!-- Top Global Security Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
         <a class="brand" href="/" aria-label="USB Analyzer home">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" fill="none">
-              <path d="M16 4v17m0-17-4 4m4-4 4 4M16 14l-7-4m7 8 7-4M16 21v5m-7-16-3 2m3-2v4m14-4 3 2m-3-2v4m-7 11a2 2 0 1 0 0 .01M6 13a2 2 0 1 0 0 .01m20 0a2 2 0 1 0 0 .01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <div class="brand-shield" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" class="shield-svg">
+              <path d="M12 2L3 6v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V6l-9-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 7v6m0 0l-3-3m3 3l3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-          </span>
-          <span class="brand-name">USB Analyzer</span>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">USB ANALYZER</span>
+            <span class="brand-sub">ENDPOINT HARDWARE DEFENSE</span>
+          </div>
         </a>
-        <div class="topbar-actions">
-          <a id="export-pdf" class="btn btn-primary" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf">
-            <svg viewBox="0 0 20 20" fill="none" width="16" height="16" stroke="currentColor" stroke-width="1.8">
-              <path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 3v10m-3-3 3 3 3-3"/>
+      </div>
+
+      <!-- Quick Actions & Status -->
+      <div class="topbar-actions">
+        <div class="status-pill-group">
+          <div class="connection" aria-live="polite">
+            <span class="connection-dot"></span>
+            <span id="api-status">Connecting...</span>
+          </div>
+
+          <div class="policy-badge-container">
+            <button id="policy-toggle-btn" class="policy-toggle-btn badge-enforce" type="button" title="Click to toggle between ENFORCE and AUDIT ONLY policy modes">
+              <span class="mode-dot"></span>
+              <span id="policy-mode-text">ENFORCE</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button id="simulate-badusb-btn" class="btn btn-secondary btn-icon" type="button" title="Simulate rapid keystroke injection (BadUSB Scenario 3)">
+            <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+              <path d="M13 2L3 14h6l-2 6 10-12h-6l2-6z" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            Export PDF Report
+            <span>Simulate BadUSB</span>
+          </button>
+
+          <a id="export-pdf" class="btn btn-primary btn-icon" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf" title="Export full forensic incident report">
+            <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+              <path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 3v10m-3-3 3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>Export Report (PDF)</span>
           </a>
-          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="true" title="Toggle color theme">
             <svg class="theme-icon icon-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <circle cx="10" cy="10" r="3.25" stroke="currentColor" stroke-width="1.5"/>
               <path d="M10 2.5v1.25m0 12.5v1.25m7.5-7.5h-1.25m-12.5 0H2.5m12.8-5.3-.88.88m-8.84 8.84-.88.88m11.48 0-.88-.88m-8.84-8.84-.88-.88" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -35,168 +69,262 @@
               <path d="M16.2 12.1A6.75 6.75 0 0 1 7.9 3.8a6.75 6.75 0 1 0 8.3 8.3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
           </button>
-          <div class="connection" aria-live="polite">
-            <span class="connection-dot"></span>
-            <span id="api-status">Checking API</span>
-          </div>
         </div>
-      </header>
+      </div>
+    </header>
 
-      <!-- Live Security Alert Banner for Critical Threats -->
+    <main class="shell">
+      <!-- Live Security Alert Banner for Critical Incidents -->
       <div id="security-alert-banner" class="alert-banner" hidden>
-        <div class="alert-content">
-          <span class="alert-badge">SECURITY THREAT DETECTED</span>
-          <strong id="alert-summary">High-risk USB anomaly intercepted</strong>
-          <span id="alert-detail" class="alert-sub">Device has been contained per security policy.</span>
+        <div class="alert-left">
+          <div class="alert-icon-wrap" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <div class="alert-content">
+            <div class="alert-header">
+              <span class="alert-badge">SECURITY ALERT</span>
+              <strong id="alert-summary">High-risk USB anomaly intercepted</strong>
+            </div>
+            <span id="alert-detail" class="alert-sub">Device has been isolated per security policy.</span>
+          </div>
         </div>
         <button id="dismiss-alert-btn" class="alert-close" type="button" aria-label="Dismiss alert">&times;</button>
       </div>
 
-      <section class="overview" aria-labelledby="page-title">
-        <div class="overview-copy">
-          <h1 id="page-title">USB Device Security Center</h1>
-          <p class="lede">Real-time USB device fingerprinting, BadUSB keystroke injection protection, YARA threat scanning, and hardware containment.</p>
+      <!-- Hero Header & Global Telemetry Strip -->
+      <section class="overview">
+        <div class="overview-header">
+          <div>
+            <h1 id="page-title" class="page-title">Endpoint Threat Monitor</h1>
+            <p class="lede">Continuous hardware bus telemetry, YARA signature inspection, and zero-trust USB containment.</p>
+          </div>
+          <div class="last-sync">
+            <span class="sync-label">Last updated:</span>
+            <span id="last-update" class="sync-value">—</span>
+          </div>
         </div>
-        <div class="policy-pill-wrap">
-          <span class="policy-label">Policy Mode:</span>
-          <button id="policy-toggle-btn" class="btn btn-badge" type="button" title="Toggle between Enforce and Audit Only mode">
-            <span id="policy-mode-text">ENFORCE (Active Blocking)</span>
-          </button>
-          <button id="simulate-badusb-btn" class="btn btn-secondary" type="button" title="Simulate keystroke injection (BadUSB Scenario 3)">
-            Simulate BadUSB
-          </button>
+
+        <!-- KPI Metrics Strip -->
+        <div class="kpi-grid" aria-label="Telemetry KPI summary">
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-blue">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M10 2v6m0 0l-3-3m3 3l3-3M3 13v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">TOTAL EVENTS</span>
+              <strong id="total-events" class="kpi-value">0</strong>
+              <span class="kpi-meta">Recorded activity log</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-yellow">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M10 3L2 17h16L10 3zm0 5v4m0 3h.01"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">POLICY WARNINGS</span>
+              <strong id="warning-events" class="kpi-value">0</strong>
+              <span class="kpi-meta">Deviations & indicators</span>
+            </div>
+          </article>
+
+          <article class="kpi-card kpi-highlight-crit">
+            <div class="kpi-icon kpi-red">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="10" cy="10" r="8"/>
+                <path d="M10 6v5m0 3h.01"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">CRITICAL THREATS</span>
+              <strong id="critical-events" class="kpi-value">0</strong>
+              <span class="kpi-meta">Malware & BadUSB alerts</span>
+            </div>
+          </article>
+
+          <article class="kpi-card kpi-highlight-block">
+            <div class="kpi-icon kpi-orange">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="10" cy="10" r="8"/>
+                <path d="M4.93 4.93l10.14 10.14"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">DEVICES BLOCKED</span>
+              <strong id="blocked-count" class="kpi-value">0</strong>
+              <span class="kpi-meta">Hardware isolated</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-teal">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="10" cy="10" r="7"/>
+                <path d="M10 6v4l2.5 2.5"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">SCANS ACTIVE</span>
+              <strong id="active-scans" class="kpi-value">0</strong>
+              <span class="kpi-meta">Volumes in progress</span>
+            </div>
+          </article>
+
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-purple">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 4h12v12H4zM4 9h12M9 4v12"/>
+              </svg>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-label">FLAGGED FILES</span>
+              <strong id="flagged-files" class="kpi-value">0</strong>
+              <span class="kpi-meta">YARA & extension flags</span>
+            </div>
+          </article>
         </div>
       </section>
 
-      <section class="summary" aria-label="Event summary">
-        <article class="summary-item">
-          <span class="summary-label">Events Recorded</span>
-          <strong id="total-events">0</strong>
-          <span class="summary-note">All device telemetry</span>
-        </article>
-        <article class="summary-item">
-          <span class="summary-label">Policy Warnings</span>
-          <strong id="warning-events">0</strong>
-          <span class="summary-note">Anomalies & indicators</span>
-        </article>
-        <article class="summary-item summary-critical">
-          <span class="summary-label">Critical Threats</span>
-          <strong id="critical-events">0</strong>
-          <span class="summary-note">Malware & BadUSB alerts</span>
-        </article>
-        <article class="summary-item summary-blocked">
-          <span class="summary-label">Devices Blocked</span>
-          <strong id="blocked-count">0</strong>
-          <span class="summary-note">Unauthorized or malicious</span>
-        </article>
-        <article class="summary-item">
-          <span class="summary-label">Scans In Progress</span>
-          <strong id="active-scans">0</strong>
-          <span class="summary-note">Mounted USB volumes</span>
-        </article>
-        <article class="summary-item">
-          <span class="summary-label">Flagged Files</span>
-          <strong id="flagged-files">0</strong>
-          <span class="summary-note">YARA & extension matches</span>
-        </article>
-      </section>
-
-      <!-- Charts Section -->
-      <section class="charts-grid" aria-label="Security Metrics and Analytics">
-        <div class="chart-card">
-          <h2 class="chart-title">Severity Breakdown</h2>
-          <div class="chart-container">
+      <!-- Analytics Charts Grid -->
+      <section class="charts-bento" aria-label="Security Analytics">
+        <div class="bento-card">
+          <div class="bento-header">
+            <div>
+              <h2 class="bento-title">Threat Severity Distribution</h2>
+              <span class="bento-sub">Proportion of safe vs. high-risk events</span>
+            </div>
+            <span class="bento-tag">REAL-TIME</span>
+          </div>
+          <div class="chart-wrapper">
             <canvas id="severity-chart"></canvas>
           </div>
         </div>
-        <div class="chart-card">
-          <h2 class="chart-title">Activity by Event Type</h2>
-          <div class="chart-container">
+
+        <div class="bento-card">
+          <div class="bento-header">
+            <div>
+              <h2 class="bento-title">Telemetry by Activity Type</h2>
+              <span class="bento-sub">Breakdown of connections, scans, and blocking decisions</span>
+            </div>
+            <span class="bento-tag">VOLUME</span>
+          </div>
+          <div class="chart-wrapper">
             <canvas id="activity-chart"></canvas>
           </div>
         </div>
       </section>
 
-      <!-- Whitelist Management Section -->
-      <section class="whitelist-section" aria-labelledby="whitelist-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="whitelist-title">Authorized Device Whitelist</h2>
-            <p class="section-desc">Devices on this list are trusted and permitted to connect. In ENFORCE mode, all other devices are blocked.</p>
+      <!-- Whitelist Management Panel -->
+      <section class="panel-section" aria-labelledby="whitelist-title">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <div class="panel-icon-badge" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <h2 id="whitelist-title" class="panel-title">Authorized Device Whitelist</h2>
+              <p class="panel-desc">Only registered peripherals are permitted in ENFORCE mode. All unknown devices are disabled at once.</p>
+            </div>
           </div>
           <button id="show-add-whitelist-btn" class="btn btn-secondary" type="button">
-            + Authorize Device
+            + Authorize New Device
           </button>
         </div>
 
+        <!-- Add Whitelist Form Drawer -->
         <form id="add-whitelist-form" class="whitelist-form" hidden>
-          <div class="form-row">
-            <div class="form-group">
+          <div class="form-title">Register Trusted USB Peripheral</div>
+          <div class="form-grid">
+            <div class="form-field">
               <label for="wl-name">Device Name *</label>
-              <input type="text" id="wl-name" required placeholder="e.g. Admin Flash Drive">
+              <input type="text" id="wl-name" required placeholder="e.g. Admin Kingston Drive">
             </div>
-            <div class="form-group">
-              <label for="wl-serial">Serial Number</label>
-              <input type="text" id="wl-serial" placeholder="e.g. 0014D12345678">
+            <div class="form-field">
+              <label for="wl-serial">Physical Serial Number</label>
+              <input type="text" id="wl-serial" placeholder="e.g. 0014D12345678" class="font-mono">
             </div>
-            <div class="form-group">
+            <div class="form-field">
               <label for="wl-vid">Vendor ID (VID)</label>
-              <input type="text" id="wl-vid" placeholder="e.g. 0951" maxlength="4">
+              <input type="text" id="wl-vid" placeholder="e.g. 0951" maxlength="4" class="font-mono">
             </div>
-            <div class="form-group">
+            <div class="form-field">
               <label for="wl-pid">Product ID (PID)</label>
-              <input type="text" id="wl-pid" placeholder="e.g. 1666" maxlength="4">
+              <input type="text" id="wl-pid" placeholder="e.g. 1666" maxlength="4" class="font-mono">
             </div>
-            <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Save to Whitelist</button>
-              <button type="button" id="cancel-whitelist-btn" class="btn btn-outline">Cancel</button>
-            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save to Whitelist</button>
+            <button type="button" id="cancel-whitelist-btn" class="btn btn-ghost">Cancel</button>
           </div>
         </form>
 
-        <div class="table-wrap">
-          <table>
+        <div class="data-table-container">
+          <table class="data-table">
             <thead>
               <tr>
                 <th scope="col">Device Name</th>
-                <th scope="col">Serial Number</th>
-                <th scope="col">Vendor & Product ID</th>
-                <th scope="col">Authorized On</th>
-                <th scope="col">Actions</th>
+                <th scope="col">Hardware Serial</th>
+                <th scope="col">VID : PID</th>
+                <th scope="col">Authorized Date</th>
+                <th scope="col" class="text-right">Action</th>
               </tr>
             </thead>
             <tbody id="whitelist-body">
-              <tr><td colspan="5" class="empty-state">No devices whitelisted yet.</td></tr>
+              <tr><td colspan="5" class="empty-state">No authorized devices configured.</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- Event Activity Log Table -->
-      <section class="activity" aria-labelledby="activity-title">
-        <div class="section-heading">
-          <div>
-            <h2 id="activity-title">Real-Time Activity Log</h2>
-            <p class="section-desc">Audit trail of all connection events, policy decisions, and security scans.</p>
+      <!-- Real-Time Activity Log & Forensics -->
+      <section class="panel-section" aria-labelledby="activity-title">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <div class="panel-icon-badge" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 6h16M4 10h16M4 14h10" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <h2 id="activity-title" class="panel-title">Real-Time Event Audit Log</h2>
+              <p class="panel-desc">Chronological stream of bus plug events, storage hash inspections, and containment actions.</p>
+            </div>
           </div>
-          <button id="refresh-events" class="refresh-button" type="button">
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M16 10a6 6 0 1 1-1.76-4.24M16 4v4h-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Refresh
-          </button>
+          <div class="table-tools">
+            <div class="search-wrap">
+              <input type="search" id="event-search" class="search-input" placeholder="Filter by device ID, event, serial..." aria-label="Search events">
+            </div>
+            <button id="refresh-events" class="btn btn-secondary refresh-btn" type="button" title="Refresh event log">
+              <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+                <path d="M16 10a6 6 0 1 1-1.76-4.24M16 4v4h-4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
-        <div id="message" class="message" role="status" aria-live="polite"></div>
-        <div class="table-wrap">
-          <table>
+
+        <div id="message" class="toast-message" role="status" aria-live="polite"></div>
+
+        <div class="data-table-container">
+          <table class="data-table">
             <thead>
               <tr>
-                <th scope="col">Time</th>
-                <th scope="col">Activity</th>
-                <th scope="col">Device ID / Details</th>
-                <th scope="col">Source</th>
+                <th scope="col">Timestamp</th>
+                <th scope="col">Event Activity</th>
+                <th scope="col">Device Identifier & Metadata</th>
+                <th scope="col">Source Engine</th>
                 <th scope="col">Severity</th>
-                <th scope="col">Action</th>
+                <th scope="col" class="text-right">Action</th>
               </tr>
             </thead>
             <tbody id="events-body">
@@ -208,6 +336,15 @@
         </div>
       </section>
     </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-inner">
+        <span>USB Analyzer — Endpoint USB Threat Defense System</span>
+        <span class="footer-sep">•</span>
+        <span>SEECS NUST Information Security</span>
+      </div>
+    </footer>
 
     <script src="/static/app.js"></script>
   </body>
