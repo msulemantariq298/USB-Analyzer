@@ -63,19 +63,36 @@ $env:PYTHONPATH="code"
 python -m usb_analyzer.demo_runner
 ```
 
-## Running the Application on Windows
+## Quick Start (One-Click Launchers on Windows)
 
-Run the API and USB monitor in **separate terminals**. Start the API first. In each terminal, start at the repository root, activate the environment, and change into `code`:
+From the repository root, you can quickly launch the system using the bundled batch scripts:
 
-**Terminal 1 — dashboard and API**:
+- **Launch Full System (Web Dashboard + Device Monitor)**:
+  Double-click `run_usb_analyzer.bat` or run:
+  ```powershell
+  .\run_usb_analyzer.bat
+  ```
+  This starts the API server, opens `http://127.0.0.1:8000/` in your browser, and starts the live USB monitor.
+
+- **Run 5-Scenario Attack Defense Demo**:
+  Double-click `run_demo.bat` or run:
+  ```powershell
+  .\run_demo.bat
+  ```
+
+## Running the Application Manually on Windows
+
+If you prefer running the API and USB monitor in **separate terminals**:
+
+**Terminal 1 — Dashboard and API**:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 Set-Location code
-python -m uvicorn usb_analyzer.api.main:app --reload
+python -m uvicorn usb_analyzer.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-**Terminal 2 — USB device monitor**:
+**Terminal 2 — USB Device Monitor**:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
@@ -84,6 +101,8 @@ python -m usb_analyzer.device_monitor.windows
 ```
 
 Open the dashboard in your browser at <http://127.0.0.1:8000/> or review API documentation at <http://127.0.0.1:8000/docs>.
+
+The monitor's first inventory is a baseline: devices already connected when it starts are not reported as new connections. Plug in or remove a USB device after startup to test inventory changes. Each detected event is sent by HTTP POST to the API, which stores it in SQLite for the dashboard. Keep both terminals running. Press `Ctrl+C` in a terminal to stop that process.
 
 ## Running on Linux
 
@@ -99,34 +118,12 @@ python -m usb_analyzer.device_monitor.linux
 
 ## Running Tests
 
-Run the full pytest suite from `code`:
+Run the full pytest suite with the project environment active:
 
 ```powershell
-python -m pytest
+.\venv\Scripts\python.exe -m pytest code/tests
 ```
-python -m uvicorn usb_analyzer.api.main:app --reload
-```
-
-**Terminal 2 — USB device monitor**, also from the repository root:
-
-```powershell
-.\venv\Scripts\Activate.ps1
-Set-Location code
-python -m usb_analyzer.device_monitor.windows
-```
-
-The monitor's first inventory is a baseline: devices already connected when it starts are not reported as new connections. Plug in or remove a USB device after startup to test inventory changes. Each detected event is sent by HTTP POST to the API, which stores it in SQLite for the dashboard. Keep both terminals running, then open the dashboard at <http://127.0.0.1:8000/> or the API docs at <http://127.0.0.1:8000/docs>. Press `Ctrl+C` in a terminal to stop that process.
-
-The API currently has no authentication and is intended for local use only. Keep Uvicorn bound to its default loopback address; do not expose it to an untrusted network.
 
 The API defaults to `http://127.0.0.1:8000` and the monitor uses a 5-second HTTP timeout. Set `USB_ANALYZER_API_BASE_URL` or `USB_ANALYZER_API_TIMEOUT_SECONDS` in `code/.env` to change those settings. To change the monitor polling interval, pass (for example) `--interval 0.5` to its command. The interval is the time between WMI inventory checks; actual detection latency also depends on the WMI query.
 
-If the API is stopped or rejects an event, the monitor logs the failure and exits; restart it after resolving the API issue. Offline event queuing and automatic retry are not implemented yet.
-
-Run tests from `code` with the project environment active:
-
-```powershell
-python -m pytest
-```
-
-The Windows WMI monitor is not available on Linux yet. See [code/README.md](code/README.md) for the detailed setup, event contract, API endpoints, and module status.
+See [code/README.md](code/README.md) and [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for detailed setup, event contracts, API endpoints, and full operations manual.
