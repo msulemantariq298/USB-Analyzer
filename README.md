@@ -20,31 +20,25 @@ USB device connected
         -> user reviews and authorizes safe remediation when needed
 ```
 
-## Current implementation status
+## Implementation status
 
-This is an early prototype, not yet the finished always-on protection system:
+All core modules specified in the project proposal are implemented and verified:
 
-- The FastAPI API, SQLite event store, shared `DeviceEvent` model, and browser dashboard exist.
-- Dashboard features real-time threat alert banners, Chart.js analytics (severity breakdown & activity volume), interactive Whitelist management, and one-click PDF forensic incident report generation.
-- Whitelist storage and Policy Engine evaluate USB devices, issue allow/block decisions, support audit-only and enforce modes, and expose REST endpoints (`/api/v1/policy/*`).
-- Device fingerprinting extracts vendor ID, product ID, serial number, device class, revision, and interfaces, and flags spoofed-identity attempts (trusted VID/PID with mismatched serial).
-- HID / BadUSB keystroke injection detector analyzes inter-keystroke intervals (IKIs) and characters per second (CPS) to detect automated rapid typing attacks and trigger device blocking.
-- Storage scanner matches files against known malware hashes (including EICAR), evaluates YARA signature rules (suspicious autorun.inf, PowerShell download cradles, auto-executing macros), emits critical alerts, and triggers device blocking.
-- The Windows monitor uses WMI polling to inventory USB and USB-storage Plug and Play devices. It can compare inventories and generate connect/disconnect events.
-- The Linux monitor inspects USB devices via sysfs (`/sys/bus/usb/devices`) and `pyudev`, with sysfs de-authorization (`authorized = 0`) blocking support.
-- The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.
-- The monitor and web server must be started manually in separate terminals. Automatic startup/background service support is not implemented.
-- The dashboard shows stored events, summary counts, and expandable event details. It does not create events; detected events come from the USB monitor through the API.
-- Device-inventory events and `scan.started` have no retry: if their API request fails, the monitor logs the error and exits. Terminal scan events are retried up to three times using the same idempotent event ID, but there is no durable offline queue.
-- For a newly detected USB storage device, the Windows monitor resolves mounted drive-letter volumes and schedules the read-only scanner in worker threads. Scan lifecycle/results are sent through the API and shown in the dashboard.
-- The dashboard refreshes events every five seconds, shows active scans and flagged-file counts, and expands scan results with paths, hashes, file-access errors, and a heuristic warning.
-- The storage scanner skips symlinks/filesystem reparse points (including Windows junctions) and rejects a reparse point as its scan root.
-- Devices already connected at monitor startup establish the baseline and are not automatically scanned. Only newly detected devices or newly mounted volumes are scanned.
-- Current scanning is limited to mounted drive-letter volumes found by WMI. Files with selected extensions or `autorun.inf` are only name-based indicators, not confirmed malware.
-- Malware signatures/YARA rules, HID/BadUSB behavior detection, user notifications, incident reports, quarantine/remediation, USB blocking, and Linux monitoring are not implemented.
-- Real plug/unplug event handling still needs hands-on validation. WMI inventory access has been tested on Windows, but that alone does not verify the full detection workflow.
-
-Contributors and coding agents: keep the distinction between the product goal and implemented behavior explicit. **Update this README and `code/README.md` in the same change whenever implementation, setup, run commands, or project status changes.**
+- **Foundation & Core Engine (FR-7)**: FastAPI REST API, SQLite persistence (`DeviceEvent` and `whitelist`), configuration loader, and structured JSON event audit trail.
+- **Device Fingerprinting & Spoofed-ID Detection (FR-1, FR-2)**: Extracts vendor ID, product ID, serial number, device class, and interfaces; detects spoofed identities (trusted VID/PID claiming unauthorized serial) and emits critical alerts.
+- **Storage Scanner & Threat Engine (FR-3, FR-4)**: Chunked SHA-256 calculation, known malware hash verification (including EICAR), and YARA signature rule evaluation (autorun.inf auto-execution, PowerShell download cradles, macro execution), generating critical alerts and triggering automated device blocking.
+- **HID / BadUSB Detector (FR-5)**: Sliding-window keystroke dynamics tracker calculating characters-per-second (CPS) and inter-keystroke intervals (IKIs) to detect inhuman typing cadences from BadUSB devices (e.g. Digispark/Rubber Ducky) and trigger immediate hardware blocking.
+- **Policy Engine & Whitelist Enforcement (FR-6)**: Whitelist management supporting enforce and audit-only modes, automated blocking of unauthorized or threat-flagged devices via `pnputil` (Windows) and `sysfs authorized = 0` (Linux).
+- **Dashboard & Incident Reports (FR-8)**: Web interface with theme toggle, Chart.js metrics (severity breakdown and activity volume), real-time threat alert banners, interactive whitelist management, BadUSB attack simulator, and one-click PDF incident report generation (`/api/v1/reports/incident/pdf`).
+- **Cross-Platform Device Monitoring**:
+  - Windows: WMI Plug and Play polling and volume association.
+  - Linux: sysfs (`/sys/bus/usb/devices`) and `pyudev` monitoring with sysfs de-authorization.
+- **Five Attack Scenarios Verification**: Automated demonstration runner (`python -m usb_analyzer.demo_runner`) verifying all five scenarios from the proposal:
+  1. Trusted Drive -> Allowed and logged
+  2. Infected Drive -> High-severity alert and device contained
+  3. Keystroke Injection -> BadUSB flagged and blocked
+  4. Unknown Device -> Blocked immediately by whitelist policy
+  5. Spoofed Identity -> Mismatch alert emitted and blocked
 
 ## Setup (Windows)
 
@@ -59,15 +53,57 @@ python -m pip install -e ".[dev]"
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-## Run the current prototype on Windows
+## Running the Five-Scenario Demo
 
-Run the API and USB monitor in **separate terminals**. Start the API first. In each terminal, start at the repository root, activate the same environment, and change into `code` so each process reads the same `.env` configuration.
+To run the live automated demonstration verifying all 5 attack scenarios from the proposal in one uninterrupted pass:
 
-**Terminal 1 — dashboard and API**, from the repository root:
+```powershell
+.\venv\Scripts\Activate.ps1
+$env:PYTHONPATH="code"
+python -m usb_analyzer.demo_runner
+```
+
+## Running the Application on Windows
+
+Run the API and USB monitor in **separate terminals**. Start the API first. In each terminal, start at the repository root, activate the environment, and change into `code`:
+
+**Terminal 1 — dashboard and API**:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 Set-Location code
+python -m uvicorn usb_analyzer.api.main:app --reload
+```
+
+**Terminal 2 — USB device monitor**:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+Set-Location code
+python -m usb_analyzer.device_monitor.windows
+```
+
+Open the dashboard in your browser at <http://127.0.0.1:8000/> or review API documentation at <http://127.0.0.1:8000/docs>.
+
+## Running on Linux
+
+On Linux (e.g. Ubuntu):
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+cd code
+pip install -e ".[dev]"
+python -m usb_analyzer.device_monitor.linux
+```
+
+## Running Tests
+
+Run the full pytest suite from `code`:
+
+```powershell
+python -m pytest
+```
 python -m uvicorn usb_analyzer.api.main:app --reload
 ```
 

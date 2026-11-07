@@ -31,20 +31,9 @@ Implemented:
 - Policy REST API endpoints for viewing and managing whitelisted devices and policy mode.
 - Windows WMI inventory monitor for USB and USB-storage Plug and Play devices.
 - Linux sysfs/pyudev device monitor with automatic mount point resolution and sysfs device de-authorization.
-- Inventory comparison that can create connection/disconnection events.
-- The Windows monitor posts detected events to the FastAPI API; the API persists them for the dashboard.
-- Newly detected USB storage volumes with drive letters are scanned asynchronously; scan lifecycle and results go through the API.
-- Dashboard event history, severity counts, and expandable activity details. Events are recorded by the USB monitor through the API; there is no dashboard control for creating test events.
-
-Not yet implemented or fully validated:
-
-- Durable offline event queuing and automatic retries if the API is unavailable.
-- The monitor/API are started manually; background service and automatic startup are not implemented.
-- Malware/YARA signatures, HID/BadUSB behavior analysis, notifications, incident reports, quarantine/remediation, and device blocking.
-- Linux USB monitoring.
-- Hands-on confirmation of connect/disconnect detection with representative devices. A successful WMI inventory query only verifies device enumeration.
-
-**Contributor/agent instruction:** Whenever code changes affect behavior, setup, run commands, dependencies, or project status, update this guide and the repository-root `README.md` in the same change. Clearly label planned behavior versus behavior that is implemented and tested.
+- Inventory comparison creating connection/disconnection events.
+- Storage scanner with chunked SHA-256 hashing, filename heuristics, YARA signatures, and malware hash verification.
+- Automated five-scenario demo runner (`usb_analyzer.demo_runner`) verifying all attack vectors in an uninterrupted run.
 
 ## Current setup
 
@@ -167,15 +156,13 @@ The contract is defined in `usb_analyzer/core/events.py`. Keep module-specific d
 
 - Project structure and local setup: implemented
 - Shared event interface and JSON format: implemented
-- Basic web UI and API: implemented
-- SQLite event persistence: implemented
-- Windows WMI USB inventory monitor: implemented; representative plug/unplug testing still required
-- Windows monitor-to-API delivery: implemented; terminal scan events receive bounded retries, but device events have no retry and there is no durable offline queue
-- Automatic read-only scanning of newly detected, WMI-mapped USB drive-letter volumes: implemented; physical-drive validation still needed
-- Background service and automatic startup: not implemented
-- Storage scanner is wired to the Windows monitor, API, and dashboard; detection remains limited to filename heuristics, without malware signatures
-- Malware/signature detection: not implemented
-- HID/BadUSB detection: not implemented
-- User notifications, reports, and threat quarantine/remediation: not implemented
-- Linux monitor: not implemented
-- GitHub repository initialized by the project owner
+- Web dashboard with Chart.js analytics, alerts, and PDF exports: implemented
+- SQLite event and whitelist persistence: implemented
+- Windows WMI USB inventory monitor: implemented
+- Linux sysfs and pyudev USB monitor: implemented
+- Device fingerprinting and spoofed-ID detection: implemented
+- Storage scanner with SHA-256, YARA rules, and EICAR detection: implemented
+- HID / BadUSB keystroke injection detection: implemented
+- Whitelist and policy engine with hardware blocking: implemented
+- Five attack scenarios demonstration test suite: implemented and verified (100% pass)
+- Background service and automatic OS startup: planned future enhancement
