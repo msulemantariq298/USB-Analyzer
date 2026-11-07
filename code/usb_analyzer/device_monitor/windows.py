@@ -6,7 +6,10 @@ from typing import Any
 
 from usb_analyzer.core.api_client import ApiEventClient
 from usb_analyzer.core.config import get_settings
+from usb_analyzer.device_monitor.fingerprint import extract_serial_number
 from usb_analyzer.device_monitor.monitor import DeviceProvider, UsbDevice, run_monitor
+from usb_analyzer.policy.engine import PolicyEngine
+from usb_analyzer.policy.store import WhitelistStore
 from usb_analyzer.storage_scanner.service import StorageScanService
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,7 @@ class WindowsWmiProvider(DeviceProvider):
                 hardware_ids=_string_sequence(entity, "HardwareID"),
                 status=_string_value(entity, "Status"),
                 volume_paths=volume_paths,
+                serial_number=extract_serial_number(device_id),
             )
             devices[device_id] = device
         return devices
@@ -120,9 +124,12 @@ def main() -> None:
 
     stop_event = Event()
     provider = WindowsWmiProvider()
+    policy_store = WhitelistStore(settings.database_path)
+    policy_engine = PolicyEngine(store=policy_store, mode=settings.policy_mode)
     logger.info(
-        "Starting USB Analyzer Windows device monitor; API base URL: %s",
+        "Starting USB Analyzer Windows device monitor; API base URL: %s, Policy mode: %s",
         settings.api_base_url,
+        settings.policy_mode,
     )
     try:
         with ApiEventClient(
@@ -137,6 +144,7 @@ def main() -> None:
                     stop_event,
                     args.interval,
                     storage_scan_scheduler=scan_service,
+                    policy_engine=policy_engine,
                 )
     except KeyboardInterrupt:
         logger.info("Stopping USB Analyzer Windows device monitor")

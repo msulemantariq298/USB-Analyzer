@@ -3,9 +3,15 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from threading import Event
-from typing import Protocol
+from typing import Any, Protocol
 
-from usb_analyzer.core.events import DeviceEvent
+from usb_analyzer.core.events import DeviceEvent, EventSeverity
+from usb_analyzer.device_monitor.fingerprint import (
+    DeviceFingerprint,
+    detect_spoofed_identity,
+    extract_fingerprint,
+)
+from usb_analyzer.policy.engine import PolicyEngine
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +31,7 @@ class UsbDevice:
     hardware_ids: tuple[str, ...] = ()
     status: str | None = None
     volume_paths: tuple[str, ...] = ()
+    serial_number: str | None = None
 
 
 class DeviceProvider(Protocol):
@@ -47,12 +54,16 @@ def is_usb_device_id(device_id: str) -> bool:
 
 
 def _event_for(device: UsbDevice, connected: bool) -> DeviceEvent:
-    identifiers: dict[str, str] = {}
-    for value in (device.device_id, *device.hardware_ids):
-        for match in _USB_ID_PATTERN.finditer(value):
-            identifiers.setdefault(match.group(1).lower(), match.group(2).upper())
+    fingerprint = extract_fingerprint(
+        device_id=device.device_id,
+        hardware_ids=device.hardware_ids,
+        pnp_class=device.pnp_class,
+        service=device.service,
+    )
 
-    details: dict[str, object] = {
+    serial = device.serial_number or fingerprint.serial_number
+
+    details: dict[str, Any] = {
         "pnp_device_id": device.device_id,
         "name": device.name,
         "manufacturer": device.manufacturer,
@@ -61,11 +72,16 @@ def _event_for(device: UsbDevice, connected: bool) -> DeviceEvent:
         "hardware_ids": list(device.hardware_ids),
         "status": device.status,
         "volume_paths": list(device.volume_paths),
+        "serial_number": serial,
+        "device_class": fingerprint.device_class,
+        "interfaces": list(fingerprint.interfaces),
     }
-    if "vid" in identifiers:
-        details["vendor_id"] = identifiers["vid"]
-    if "pid" in identifiers:
-        details["product_id"] = identifiers["pid"]
+    if fingerprint.vendor_id:
+        details["vendor_id"] = fingerprint.vendor_id
+    if fingerprint.product_id:
+        details["product_id"] = fingerprint.product_id
+    if fingerprint.revision:
+        details["revision"] = fingerprint.revision
 
     return DeviceEvent(
         device_id=device.device_id,
@@ -100,6 +116,7 @@ class DeviceMonitor:
         event_sink: EventSink,
         interval_seconds: float = 1.0,
         storage_scan_scheduler: StorageScanScheduler | None = None,
+        policy_engine: PolicyEngine | None = None,
     ) -> None:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be greater than zero")
@@ -107,6 +124,8 @@ class DeviceMonitor:
         self.event_sink = event_sink
         self.interval_seconds = interval_seconds
         self.storage_scan_scheduler = storage_scan_scheduler
+        self.policy_engine = policy_engine
+        self.blocked_device_ids: set[str] = set()
 
     def run(self, stop_event: Event) -> None:
         previous = dict(self.provider.list_devices())
@@ -126,8 +145,65 @@ class DeviceMonitor:
                     event.device_id,
                     event.details.get("name") or "unnamed device",
                 )
+
+                if event.event_type == "device.disconnected":
+                    self.blocked_device_ids.discard(event.device_id)
+
+                elif event.event_type == "device.connected" and self.policy_engine is not None:
+                    device = current.get(event.device_id)
+                    fp = extract_fingerprint(
+                        device_id=event.device_id,
+                        hardware_ids=device.hardware_ids if device else (),
+                        pnp_class=device.pnp_class if device else None,
+                        service=device.service if device else None,
+                    )
+                    serial = event.details.get("serial_number") or fp.serial_number
+
+                    # Check Scenario 5: Spoofed Identity
+                    trusted_list = self.policy_engine.store.list()
+                    is_spoofed, spoof_reason, spoof_details = detect_spoofed_identity(fp, trusted_list)
+                    if is_spoofed:
+                        spoof_event = DeviceEvent(
+                            device_id=event.device_id,
+                            source="device-monitor",
+                            severity=EventSeverity.CRITICAL,
+                            event_type="device.spoofed_identity",
+                            details={
+                                "reason": spoof_reason,
+                                **spoof_details,
+                                **event.details,
+                            },
+                        )
+                        self.event_sink.add(spoof_event)
+                        # Block the spoofed device
+                        _, block_event = self.policy_engine.block_threat(
+                            device_id=event.device_id,
+                            reason=spoof_reason or "Spoofed USB identity detected",
+                            threat_type="spoofed_identity",
+                            details=spoof_details,
+                        )
+                        self.event_sink.add(block_event)
+                        self.blocked_device_ids.add(event.device_id)
+                        continue
+
+                    # Evaluate Policy Engine Whitelist
+                    decision, policy_events = self.policy_engine.evaluate_device(
+                        device_id=event.device_id,
+                        serial_number=serial,
+                        vendor_id=fp.vendor_id,
+                        product_id=fp.product_id,
+                        details=event.details,
+                    )
+                    for pe in policy_events:
+                        self.event_sink.add(pe)
+
+                    if not decision.allowed:
+                        self.blocked_device_ids.add(event.device_id)
+
             if self.storage_scan_scheduler is not None:
                 for device_id, device in current.items():
+                    if device_id in self.blocked_device_ids:
+                        continue  # Do not scan blocked devices
                     old_device = previous.get(device_id)
                     previous_paths = {
                         path.casefold()
@@ -148,6 +224,7 @@ def run_monitor(
     stop_event: Event,
     interval_seconds: float = 1.0,
     storage_scan_scheduler: StorageScanScheduler | None = None,
+    policy_engine: PolicyEngine | None = None,
 ) -> None:
     """Run the monitor using an injectable provider for tests and OS backends."""
 
@@ -156,4 +233,5 @@ def run_monitor(
         event_sink=event_sink,
         interval_seconds=interval_seconds,
         storage_scan_scheduler=storage_scan_scheduler,
+        policy_engine=policy_engine,
     ).run(stop_event)
