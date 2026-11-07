@@ -30,3 +30,4 @@ echo   Insert any USB device now to automatically inspect and defend!
 echo   (Press Ctrl+C in this window anytime to stop monitoring)
 echo ========================================================================
 venv\Scripts\python.exe -m usb_analyzer.device_monitor.windows
+

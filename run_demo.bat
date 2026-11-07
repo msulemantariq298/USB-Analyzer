@@ -12,3 +12,4 @@ set PYTHONPATH=%~dp0code
 venv\Scripts\python.exe code\usb_analyzer\demo_runner.py
 echo.
 pause
+
