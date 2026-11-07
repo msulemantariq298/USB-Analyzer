@@ -1,4 +1,4 @@
-"""Read-only storage scanner: SHA-256 hashing plus simple risky-file flags.
+"""Read-only storage scanner: SHA-256 hashing, YARA signatures, and malware indicators.
 
 The scanner never mounts drives, modifies/deletes files, or emits events. It
 only walks a directory the caller selected and reports what it found.
@@ -10,9 +10,11 @@ from pathlib import Path
 import stat
 from typing import Any
 
+from usb_analyzer.storage_scanner.signatures import SignatureEngine
+
 CHUNK_SIZE = 1024 * 1024
 
-# Extensions flagged as risky. Adjust to match the proposal's list if it differs.
+# Extensions flagged as risky per project specification
 RISKY_EXTENSIONS: frozenset[str] = frozenset(
     {
         # Executables / installers
@@ -55,12 +57,26 @@ class ScanResult:
     def flagged(self) -> list[FileFinding]:
         return [f for f in self.files if f.flags]
 
+    @property
+    def has_threats(self) -> bool:
+        """Return True if any high-severity malware or signature match was detected."""
+        threat_prefixes = ("malware_hash:", "yara:", "eicar_test_file", "os_detected_malware")
+        for finding in self.files:
+            for flag in finding.flags:
+                if any(flag == p or flag.startswith(p) for p in threat_prefixes):
+                    return True
+        for err in self.errors:
+            if err.get("threat"):
+                return True
+        return False
+
     def to_details(self) -> dict[str, Any]:
         """JSON-serialisable dict suitable for ``DeviceEvent.details``."""
         return {
             "root": self.root,
             "files_scanned": len(self.files),
             "flagged_count": len(self.flagged),
+            "has_threats": self.has_threats,
             "flagged": [
                 {"path": f.path, "size": f.size, "sha256": f.sha256, "flags": list(f.flags)}
                 for f in self.flagged
@@ -95,6 +111,7 @@ def scan_path(
     root: str | Path,
     risky_extensions: frozenset[str] = RISKY_EXTENSIONS,
     chunk_size: int = CHUNK_SIZE,
+    signature_engine: SignatureEngine | None = None,
 ) -> ScanResult:
     """Scan a folder/volume root without following symlinks or reparse points."""
     if chunk_size <= 0:
@@ -107,12 +124,16 @@ def scan_path(
 
     result = ScanResult(root=str(root_path))
     pending = [root_path]
+
     while pending:
         current = pending.pop()
         try:
             entries = sorted(current.iterdir())
         except OSError as exc:
-            result.errors.append({"path": _rel(root_path, current), "error": type(exc).__name__})
+            err_dict = {"path": _rel(root_path, current), "error": type(exc).__name__}
+            if getattr(exc, "winerror", None) == 225:
+                err_dict["threat"] = "antivirus_quarantined_by_os"
+            result.errors.append(err_dict)
             continue
         for entry in entries:
             try:
@@ -121,16 +142,27 @@ def scan_path(
                 if entry.is_dir():
                     pending.append(entry)
                 elif entry.is_file():
+                    sha = sha256_file(entry, chunk_size)
+                    flags = list(flag_file(entry.name, risky_extensions))
+                    if signature_engine is not None:
+                        sig_flags = signature_engine.scan_file(entry, sha)
+                        for sf in sig_flags:
+                            if sf not in flags:
+                                flags.append(sf)
+
                     result.files.append(
                         FileFinding(
                             path=_rel(root_path, entry),
                             size=entry.stat().st_size,
-                            sha256=sha256_file(entry, chunk_size),
-                            flags=flag_file(entry.name, risky_extensions),
+                            sha256=sha,
+                            flags=tuple(flags),
                         )
                     )
             except OSError as exc:
-                result.errors.append({"path": _rel(root_path, entry), "error": type(exc).__name__})
+                err_dict = {"path": _rel(root_path, entry), "error": type(exc).__name__}
+                if getattr(exc, "winerror", None) == 225:
+                    err_dict["threat"] = "antivirus_quarantined_by_os"
+                result.errors.append(err_dict)
     result.files.sort(key=lambda f: f.path)
     return result
 

@@ -137,7 +137,7 @@ def main() -> None:
             api_prefix=settings.api_prefix,
             timeout_seconds=settings.api_timeout_seconds,
         ) as event_sink:
-            with StorageScanService(event_sink) as scan_service:
+            with StorageScanService(event_sink, policy_engine=policy_engine) as scan_service:
                 run_monitor(
                     provider,
                     event_sink,

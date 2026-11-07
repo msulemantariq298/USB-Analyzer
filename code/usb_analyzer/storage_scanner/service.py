@@ -7,12 +7,18 @@ from typing import Callable, Protocol
 import httpx
 
 from usb_analyzer.core.events import DeviceEvent, EventSeverity
+from usb_analyzer.policy.engine import PolicyEngine
 from usb_analyzer.storage_scanner.scanner import ScanResult, scan_path
+from usb_analyzer.storage_scanner.signatures import SignatureEngine
 
 logger = logging.getLogger(__name__)
 Scanner = Callable[[str | Path], ScanResult]
 _TERMINAL_EVENT_ATTEMPTS = 3
 _RETRY_BASE_DELAY_SECONDS = 0.25
+
+
+def default_storage_scanner(root: str | Path) -> ScanResult:
+    return scan_path(root, signature_engine=SignatureEngine())
 
 
 class ScanEventSink(Protocol):
@@ -26,13 +32,15 @@ class StorageScanService:
     def __init__(
         self,
         event_sink: ScanEventSink,
-        scanner: Scanner = scan_path,
+        scanner: Scanner = default_storage_scanner,
         max_workers: int = 2,
+        policy_engine: PolicyEngine | None = None,
     ) -> None:
         if max_workers < 1:
             raise ValueError("max_workers must be at least one")
         self.event_sink = event_sink
         self.scanner = scanner
+        self.policy_engine = policy_engine
         self._executor = ThreadPoolExecutor(
             max_workers=max_workers,
             thread_name_prefix="usb-storage-scan",
@@ -81,11 +89,14 @@ class StorageScanService:
 
         details = result.to_details()
         details["volume_path"] = volume_path
-        severity = (
-            EventSeverity.WARNING
-            if result.flagged or result.errors
-            else EventSeverity.INFO
-        )
+
+        if result.has_threats:
+            severity = EventSeverity.CRITICAL
+        elif result.flagged or result.errors:
+            severity = EventSeverity.WARNING
+        else:
+            severity = EventSeverity.INFO
+
         self._publish_terminal_event(
             DeviceEvent(
                 device_id=device_id,
@@ -95,6 +106,15 @@ class StorageScanService:
                 details=details,
             )
         )
+
+        if result.has_threats and self.policy_engine is not None:
+            _, block_event = self.policy_engine.block_threat(
+                device_id=device_id,
+                reason=f"Storage volume at {volume_path} contains confirmed malware / YARA threat signatures",
+                threat_type="storage_malware",
+                details={"volume_path": volume_path, "flagged": details["flagged"]},
+            )
+            self._publish_terminal_event(block_event)
 
     def _publish_terminal_event(self, event: DeviceEvent) -> None:
         for attempt in range(_TERMINAL_EVENT_ATTEMPTS):

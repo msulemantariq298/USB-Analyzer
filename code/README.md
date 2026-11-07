@@ -25,6 +25,7 @@ Implemented:
 - FastAPI API, SQLite event store, shared `DeviceEvent` contract, and browser dashboard.
 - Device Whitelist store and Policy Engine supporting allow/block decisions, audit-only/enforce modes, and pnputil/sysfs platform blocking.
 - Device fingerprinting module extracting VID, PID, serial number, device class, and interfaces, with spoofed-identity mismatch alerts.
+- Signature engine with SHA-256 known malware hash verification and YARA rule matching (EICAR, malicious autorun commands, download cradles, macros).
 - Policy REST API endpoints for viewing and managing whitelisted devices and policy mode.
 - Windows WMI inventory monitor for USB and USB-storage Plug and Play devices.
 - Inventory comparison that can create connection/disconnection events.
