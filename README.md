@@ -25,6 +25,7 @@ USB device connected
 This is an early prototype, not yet the finished always-on protection system:
 
 - The FastAPI API, SQLite event store, shared `DeviceEvent` model, and browser dashboard exist.
+- Whitelist storage and Policy Engine evaluate USB devices, issue allow/block decisions, support audit-only and enforce modes, and expose REST endpoints (`/api/v1/policy/*`).
 - The Windows monitor uses WMI polling to inventory USB and USB-storage Plug and Play devices. It can compare inventories and generate connect/disconnect events.
 - The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.
 - The monitor and web server must be started manually in separate terminals. Automatic startup/background service support is not implemented.

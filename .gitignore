@@ -13,3 +13,8 @@ code/.env
 code/data/*.db
 code/data/*.sqlite
 /data/
+
+# Agent tools
+.agents/
+skills-lock.json
+

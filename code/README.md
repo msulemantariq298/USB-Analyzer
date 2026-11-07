@@ -23,6 +23,8 @@ This is an early prototype. The final workflow above is **not yet implemented en
 Implemented:
 
 - FastAPI API, SQLite event store, shared `DeviceEvent` contract, and browser dashboard.
+- Device Whitelist store and Policy Engine supporting allow/block decisions, audit-only/enforce modes, and pnputil/sysfs platform blocking.
+- Policy REST API endpoints for viewing and managing whitelisted devices and policy mode.
 - Windows WMI inventory monitor for USB and USB-storage Plug and Play devices.
 - Inventory comparison that can create connection/disconnection events.
 - The Windows monitor posts detected events to the FastAPI API; the API persists them for the dashboard.
