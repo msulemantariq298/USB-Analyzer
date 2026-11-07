@@ -25,6 +25,7 @@ USB device connected
 This is an early prototype, not yet the finished always-on protection system:
 
 - The FastAPI API, SQLite event store, shared `DeviceEvent` model, and browser dashboard exist.
+- Dashboard features real-time threat alert banners, Chart.js analytics (severity breakdown & activity volume), interactive Whitelist management, and one-click PDF forensic incident report generation.
 - Whitelist storage and Policy Engine evaluate USB devices, issue allow/block decisions, support audit-only and enforce modes, and expose REST endpoints (`/api/v1/policy/*`).
 - Device fingerprinting extracts vendor ID, product ID, serial number, device class, revision, and interfaces, and flags spoofed-identity attempts (trusted VID/PID with mismatched serial).
 - HID / BadUSB keystroke injection detector analyzes inter-keystroke intervals (IKIs) and characters per second (CPS) to detect automated rapid typing attacks and trigger device blocking.

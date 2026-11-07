@@ -23,6 +23,7 @@ This is an early prototype. The final workflow above is **not yet implemented en
 Implemented:
 
 - FastAPI API, SQLite event store, shared `DeviceEvent` contract, and browser dashboard.
+- Dashboard with Chart.js analytics, real-time critical threat alert banner, interactive whitelist management, BadUSB attack simulator, and one-click PDF incident report generation (`/api/v1/reports/incident/pdf`).
 - Device Whitelist store and Policy Engine supporting allow/block decisions, audit-only/enforce modes, and pnputil/sysfs platform blocking.
 - Device fingerprinting module extracting VID, PID, serial number, device class, and interfaces, with spoofed-identity mismatch alerts.
 - HID detector for BadUSB keystroke injection attacks tracking keystroke cadence and typing bursts, with automated device isolation.

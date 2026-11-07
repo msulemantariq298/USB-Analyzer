@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -15,6 +15,7 @@ from usb_analyzer.policy.engine import PolicyEngine
 from usb_analyzer.policy.enforcement import get_platform_blocker
 from usb_analyzer.policy.models import PolicyMode, WhitelistEntry
 from usb_analyzer.policy.store import WhitelistStore
+from usb_analyzer.reports.incident_pdf import generate_incident_pdf
 
 settings = get_settings()
 event_store = EventStore(settings.database_path)
@@ -96,6 +97,22 @@ def get_policy_status() -> dict[str, object]:
         "mode": current_policy_mode.value,
         "whitelist_count": len(entries),
     }
+
+
+@app.get(f"{settings.api_prefix}/reports/incident/pdf")
+def export_incident_report_pdf() -> Response:
+    events = event_store.list(limit=200)
+    whitelist = whitelist_store.list()
+    pdf_bytes = generate_incident_pdf(
+        events=events,
+        whitelist=whitelist,
+        policy_mode=current_policy_mode.value,
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="usb_analyzer_incident_report.pdf"'},
+    )
 
 
 @app.post(f"{settings.api_prefix}/policy/mode")
