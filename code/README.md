@@ -29,6 +29,7 @@ Implemented:
 - Signature engine with SHA-256 known malware hash verification and YARA rule matching (EICAR, malicious autorun commands, download cradles, macros).
 - Policy REST API endpoints for viewing and managing whitelisted devices and policy mode.
 - Windows WMI inventory monitor for USB and USB-storage Plug and Play devices.
+- Linux sysfs/pyudev device monitor with automatic mount point resolution and sysfs device de-authorization.
 - Inventory comparison that can create connection/disconnection events.
 - The Windows monitor posts detected events to the FastAPI API; the API persists them for the dashboard.
 - Newly detected USB storage volumes with drive letters are scanned asynchronously; scan lifecycle and results go through the API.

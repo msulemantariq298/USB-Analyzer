@@ -30,6 +30,7 @@ This is an early prototype, not yet the finished always-on protection system:
 - HID / BadUSB keystroke injection detector analyzes inter-keystroke intervals (IKIs) and characters per second (CPS) to detect automated rapid typing attacks and trigger device blocking.
 - Storage scanner matches files against known malware hashes (including EICAR), evaluates YARA signature rules (suspicious autorun.inf, PowerShell download cradles, auto-executing macros), emits critical alerts, and triggers device blocking.
 - The Windows monitor uses WMI polling to inventory USB and USB-storage Plug and Play devices. It can compare inventories and generate connect/disconnect events.
+- The Linux monitor inspects USB devices via sysfs (`/sys/bus/usb/devices`) and `pyudev`, with sysfs de-authorization (`authorized = 0`) blocking support.
 - The Windows monitor posts detected connection/disconnection events to the FastAPI API. The API stores accepted events in SQLite for the dashboard.
 - The monitor and web server must be started manually in separate terminals. Automatic startup/background service support is not implemented.
 - The dashboard shows stored events, summary counts, and expandable event details. It does not create events; detected events come from the USB monitor through the API.
