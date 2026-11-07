@@ -168,3 +168,4 @@ class SignatureEngine:
             pass
 
         return flags
+

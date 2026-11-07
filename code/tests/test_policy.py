@@ -204,3 +204,4 @@ def test_policy_api_endpoints():
     # 6. Delete again -> 404
     del_again = client.delete(f"/api/v1/policy/whitelist/{entry_id}")
     assert del_again.status_code == 404
+

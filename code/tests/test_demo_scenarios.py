@@ -7,3 +7,4 @@ def test_all_five_scenarios_pass_uninterrupted(tmp_path):
     assert len(results) == 5
     for scenario_name, passed in results.items():
         assert passed is True, f"{scenario_name} did not pass!"
+

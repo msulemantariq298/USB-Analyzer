@@ -137,3 +137,4 @@ class WhitelistStore:
             ):
                 return entry
         return None
+

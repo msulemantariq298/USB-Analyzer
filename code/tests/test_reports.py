@@ -66,3 +66,4 @@ def test_api_export_incident_report_pdf():
     assert response.headers["content-type"] == "application/pdf"
     assert "usb_analyzer_incident_report.pdf" in response.headers["content-disposition"]
     assert response.content.startswith(b"%PDF-1.4")
+

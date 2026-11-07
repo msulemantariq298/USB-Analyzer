@@ -150,3 +150,4 @@ class BadUsbDetector:
                 pass
             self._listener = None
         self._running = False
+

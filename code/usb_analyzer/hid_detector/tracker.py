@@ -102,3 +102,4 @@ class KeystrokeDynamicsTracker:
     def reset(self) -> None:
         self._history.clear()
         self._last_alert_time = 0.0
+

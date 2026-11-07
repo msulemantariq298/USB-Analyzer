@@ -109,3 +109,4 @@ def get_platform_blocker(dry_run: bool = False) -> DeviceBlocker:
     if os.name == "nt":
         return WindowsPnpUtilBlocker(dry_run=dry_run)
     return LinuxSysfsBlocker(dry_run=dry_run)
+

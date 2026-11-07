@@ -144,3 +144,4 @@ def test_monitor_spoofed_identity_scenario(tmp_path: Path):
     assert "device.spoofed_identity" in event_types
     assert "device.blocked" in event_types
     assert spoofed_device.device_id in blocker.blocked_devices
+

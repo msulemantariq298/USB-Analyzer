@@ -269,3 +269,4 @@ def generate_incident_pdf(
     pdf.add_text("Page 1 of 1", margin_x + 475.0, 20.0, font="F1", size=7.5, r=0.5, g=0.5, b=0.5)
 
     return pdf.build()
+

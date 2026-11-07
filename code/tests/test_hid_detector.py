@@ -106,3 +106,4 @@ def test_api_simulate_badusb():
     assert data["status"] == "simulated"
     assert data["detected"] is True
     assert "BadUSB" in data["summary"]
+

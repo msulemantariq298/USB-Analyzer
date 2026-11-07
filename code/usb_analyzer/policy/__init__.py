@@ -21,3 +21,4 @@ __all__ = [
     "WindowsPnpUtilBlocker",
     "get_platform_blocker",
 ]
+
