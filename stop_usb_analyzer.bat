@@ -2,21 +2,16 @@
 title USB Analyzer - Shutdown Tool
 cd /d "%~dp0"
 echo ========================================================================
-echo   Stopping any running USB Analyzer instances on port 8000...
+echo   Stopping any running USB Analyzer instances...
 echo ========================================================================
 
-set found=0
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING 2^>nul') do (
-    echo Terminating API process (PID %%a)...
-    taskkill /F /PID %%a >nul 2>&1
-    set found=1
+taskkill /F /FI "WINDOWTITLE eq USB Analyzer*" >nul 2>&1
+
+if exist "venv\Scripts\python.exe" (
+    "%~dp0venv\Scripts\python.exe" -c "import socket, os, subprocess; [subprocess.run(['taskkill', '/F', '/PID', line.split()[-1]], capture_output=True) for line in subprocess.run(['netstat', '-ano'], capture_output=True, text=True).stdout.splitlines() if ':8000 ' in line and 'LISTENING' in line]" >nul 2>&1
 )
 
-if "%found%"=="1" (
-    echo All USB Analyzer background instances have been terminated.
-) else (
-    echo No active USB Analyzer instances were found on port 8000.
-)
-
+echo.
+echo USB Analyzer processes have been stopped.
 echo.
 pause
