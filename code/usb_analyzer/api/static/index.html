@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0b0f29">
+    <meta name="theme-color" content="#f4f7fe">
     <title>USB Analyzer Dashboard — Vision UI Hardware Defense</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=6.1">
+    <link rel="stylesheet" href="/static/styles.css?v=7.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -60,15 +60,7 @@
             <span>Export Report (PDF)</span>
           </a>
 
-          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="true" title="Toggle color theme">
-            <svg class="theme-icon icon-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <circle cx="10" cy="10" r="3.25" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M10 2.5v1.25m0 12.5v1.25m7.5-7.5h-1.25m-12.5 0H2.5m12.8-5.3-.88.88m-8.84 8.84-.88.88m11.48 0-.88-.88m-8.84-8.84-.88-.88" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-            <svg class="theme-icon icon-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M16.2 12.1A6.75 6.75 0 0 1 7.9 3.8a6.75 6.75 0 1 0 8.3 8.3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
-          </button>
+          <button id="theme-toggle" hidden aria-hidden="true" style="display: none;"></button>
         </div>
       </div>
     </header>
@@ -368,6 +360,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=6.1"></script>
+    <script src="/static/app.js?v=7.0"></script>
   </body>
 </html>

@@ -29,47 +29,24 @@ let activityChart = null;
 let dismissedAlertIds = new Set();
 let searchQuery = "";
 
-// Theme handling
-function updateThemeToggle(isDark) {
-  if (!themeToggle) return;
-  const label = `Switch to ${isDark ? "light" : "dark"} mode`;
-  themeToggle.setAttribute("aria-label", label);
-  themeToggle.setAttribute("title", label);
-  themeToggle.setAttribute("aria-pressed", String(isDark));
-}
+// Permanent Vision UI Light Theme
+document.documentElement.dataset.theme = "light";
+document.documentElement.setAttribute("data-theme", "light");
+try {
+  localStorage.setItem(themeStorageKey, "light");
+} catch (e) {}
 
-function setTheme(isDark) {
-  const theme = isDark ? "dark" : "light";
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.setAttribute("data-theme", theme);
-  updateThemeToggle(isDark);
-  if (severityChart && activityChart) {
-    updateChartsTheme(isDark);
-  }
-}
+// Expansion tracking for inspection and details rows (prevents auto-closing on refresh)
+const expandedInspectionKeys = new Set();
 
-function getInitialTheme() {
-  try {
-    const savedTheme = localStorage.getItem(themeStorageKey);
-    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
-  } catch (error) {
-    console.warn("Theme load error:", error);
-  }
-  return "dark"; // Default to dark for Vision UI styling
-}
-
-setTheme(getInitialTheme() === "dark");
-
-if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
-    const isDark = document.documentElement.dataset.theme !== "dark";
-    setTheme(isDark);
-    try {
-      localStorage.setItem(themeStorageKey, isDark ? "dark" : "light");
-    } catch (error) {
-      console.warn("Theme save error:", error);
+function isEventsDataEqual(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].id !== b[i].id || a[i].time !== b[i].time || a[i].severity !== b[i].severity) {
+      return false;
     }
-  });
+  }
+  return true;
 }
 
 function showMessage(text, isError = false) {
@@ -496,13 +473,12 @@ function filterAndRenderEvents() {
   displayEventRows(filtered);
 }
 
-// Chart.js Vision UI Futuristic Theme
+// Chart.js Vision UI Light Theme
 function renderCharts(events) {
   if (typeof Chart === "undefined") return;
 
-  const isDark = document.documentElement.dataset.theme === "dark";
-  const textColor = isDark ? "#a0aec0" : "#64748b";
-  const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
+  const textColor = "#707eae";
+  const gridColor = "rgba(0, 0, 0, 0.05)";
 
   const infoCount = events.filter((e) => e.severity === "info").length;
   const warnCount = events.filter((e) => e.severity === "warning").length;
@@ -519,7 +495,7 @@ function renderCharts(events) {
         datasets: [{
           data: [infoCount, warnCount, critCount],
           backgroundColor: ["#0075FF", "#FFB547", "#E31A1A"],
-          borderColor: isDark ? "#060b26" : "#ffffff",
+          borderColor: "#ffffff",
           borderWidth: 3,
           hoverOffset: 6,
         }],
@@ -582,22 +558,6 @@ function renderCharts(events) {
   }
 }
 
-function updateChartsTheme(isDark) {
-  if (severityChart) {
-    severityChart.data.datasets[0].borderColor = isDark ? "#060b26" : "#ffffff";
-    severityChart.options.plugins.legend.labels.color = isDark ? "#a0aec0" : "#64748b";
-    severityChart.update();
-  }
-  if (activityChart) {
-    const textColor = isDark ? "#a0aec0" : "#64748b";
-    const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
-    activityChart.options.scales.x.ticks.color = textColor;
-    activityChart.options.scales.y.ticks.color = textColor;
-    activityChart.options.scales.y.grid.color = gridColor;
-    activityChart.update();
-  }
-}
-
 function checkLiveAlerts(events) {
   if (!alertBanner) return;
   const criticalEvent = events.find(
@@ -616,6 +576,7 @@ function checkLiveAlerts(events) {
 }
 
 function renderEvents(events) {
+  const hasChanged = !isEventsDataEqual(events, allEventsCache);
   allEventsCache = events;
 
   document.querySelector("#total-events").textContent = events.length;
@@ -638,8 +599,10 @@ function renderEvents(events) {
   }
 
   checkLiveAlerts(events);
-  renderCharts(events);
-  filterAndRenderEvents();
+  if (hasChanged) {
+    renderCharts(events);
+    filterAndRenderEvents();
+  }
 }
 
 function displayEventRows(events) {
@@ -712,13 +675,16 @@ function displayConsolidatedDevices(groups) {
     btnGroup.style.display = "inline-flex";
     btnGroup.style.gap = "6px";
 
+    const isExpanded = expandedInspectionKeys.has(group.primaryDeviceId);
+
     const inspectBtn = document.createElement("button");
     inspectBtn.className = "btn btn-sm btn-secondary";
     inspectBtn.type = "button";
     inspectBtn.dataset.detailToggle = "";
-    inspectBtn.setAttribute("aria-expanded", "false");
+    inspectBtn.dataset.detailKey = group.primaryDeviceId;
+    inspectBtn.setAttribute("aria-expanded", String(isExpanded));
     inspectBtn.setAttribute("aria-controls", `device-details-${index}`);
-    inspectBtn.textContent = "Inspect";
+    inspectBtn.textContent = isExpanded ? "Close" : "Inspect";
     btnGroup.appendChild(inspectBtn);
 
     if (group.verdict === "DANGER" || group.verdict === "WARNING") {
@@ -745,7 +711,7 @@ function displayConsolidatedDevices(groups) {
     const detailsRow = document.createElement("tr");
     detailsRow.className = "details-row";
     detailsRow.id = `device-details-${index}`;
-    detailsRow.hidden = true;
+    detailsRow.hidden = !isExpanded;
 
     const detailsTd = document.createElement("td");
     detailsTd.colSpan = 6;
@@ -832,12 +798,14 @@ function displayRawEvents(events) {
     timeTd.textContent = formatTime(event.time);
 
     // 2. Activity Toggle
+    const isExpanded = expandedInspectionKeys.has(event.id);
     const actTd = document.createElement("td");
     const toggle = document.createElement("button");
     toggle.className = "activity-toggle";
     toggle.type = "button";
     toggle.dataset.detailToggle = "";
-    toggle.setAttribute("aria-expanded", "false");
+    toggle.dataset.detailKey = event.id;
+    toggle.setAttribute("aria-expanded", String(isExpanded));
     toggle.setAttribute("aria-controls", `raw-event-details-${index}`);
     toggle.innerHTML = `<strong>${escapeHtml(event.event_type)}</strong><span class="activity-chevron" aria-hidden="true"></span>`;
     actTd.appendChild(toggle);
@@ -891,7 +859,7 @@ function displayRawEvents(events) {
     const detailsRow = document.createElement("tr");
     detailsRow.className = "details-row";
     detailsRow.id = `raw-event-details-${index}`;
-    detailsRow.hidden = true;
+    detailsRow.hidden = !isExpanded;
 
     const detailsTd = document.createElement("td");
     detailsTd.colSpan = 6;
@@ -942,10 +910,26 @@ function displayRawEvents(events) {
 eventsBody.addEventListener("click", (event) => {
   const toggle = event.target.closest("[data-detail-toggle]");
   if (!toggle) return;
+  const key = toggle.dataset.detailKey;
   const details = document.getElementById(toggle.getAttribute("aria-controls"));
-  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
-  toggle.setAttribute("aria-expanded", String(!isExpanded));
-  details.hidden = isExpanded;
+  if (!details) return;
+  const currentlyExpanded = toggle.getAttribute("aria-expanded") === "true";
+  const willExpand = !currentlyExpanded;
+
+  toggle.setAttribute("aria-expanded", String(willExpand));
+  details.hidden = !willExpand;
+
+  if (toggle.textContent.trim() === "Inspect" || toggle.textContent.trim() === "Close") {
+    toggle.textContent = willExpand ? "Close" : "Inspect";
+  }
+
+  if (key) {
+    if (willExpand) {
+      expandedInspectionKeys.add(key);
+    } else {
+      expandedInspectionKeys.delete(key);
+    }
+  }
 });
 
 async function loadEvents(showStatus = true) {
