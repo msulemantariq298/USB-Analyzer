@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f4f7fe">
-    <title>USB Analyzer Dashboard — Vision UI Hardware Defense</title>
+    <meta name="theme-color" content="#f4f6fa">
+    <title>USB Analyzer Dashboard — Endpoint Hardware Defense</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=8.0">
+    <link rel="stylesheet" href="/static/styles.css?v=9.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <!-- Vision UI Floating Glass Navbar -->
+    <!-- Topbar Navigation (Donezo Floating White Style) -->
     <header class="topbar">
       <div class="topbar-left">
         <a class="brand" href="/" aria-label="USB Analyzer Dashboard Home">
@@ -23,7 +23,7 @@
             </svg>
           </div>
           <div class="brand-breadcrumb">
-            <span class="breadcrumb-path">Pages / Dashboard</span>
+            <span class="breadcrumb-path">System / Defense</span>
             <span class="brand-name">USB Analyzer Dashboard</span>
           </div>
         </a>
@@ -60,6 +60,7 @@
             <span>Export Report (PDF)</span>
           </a>
 
+          <!-- Hidden Theme Toggle for test suite compatibility -->
           <button id="theme-toggle" hidden aria-hidden="true" style="display: none;"></button>
         </div>
       </div>
@@ -72,7 +73,7 @@
           <div class="alert-icon-wrap" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
           </div>
@@ -87,113 +88,98 @@
         <button id="dismiss-alert-btn" class="alert-close" type="button" aria-label="Dismiss alert">&times;</button>
       </div>
 
-      <!-- Vision UI Welcome Hero Banner -->
+      <!-- Page Header (Donezo Style) -->
       <section class="overview">
-        <div class="vision-welcome-banner">
-          <div class="welcome-content">
-            <span class="welcome-subtitle">Welcome back,</span>
-            <div class="welcome-title">
-              <h1 id="page-title" style="font-size: inherit; font-weight: inherit; margin: 0; display: inline;">Endpoint Threat Defense</h1>
-              <span class="live-pill">LIVE PROTECTION ACTIVE</span>
-            </div>
-            <p class="welcome-desc">
-              Continuous hardware bus telemetry, YARA signature inspection, and zero-trust USB containment inspired by modern enterprise operations.
-            </p>
+        <div class="overview-header">
+          <div class="page-title-wrap">
+            <h1 id="page-title" class="page-title">Endpoint Threat Defense</h1>
+            <p class="page-lede">Continuous bus telemetry, automated forensic inspection, and zero-trust hardware containment.</p>
           </div>
-          <div class="welcome-meta">
+          <div class="header-meta">
             <div class="last-sync">
-              <span>Last updated: </span>
+              <span>Last sync: </span>
               <span id="last-update" class="sync-value">—</span>
             </div>
           </div>
         </div>
 
-        <!-- Vision UI Mini Statistics Grid (6 KPI Cards) -->
+        <!-- Donezo-Style KPI Metrics Grid (With Deep Cobalt Anchor) -->
         <div class="kpi-grid" aria-label="Telemetry KPI summary">
-          <article class="kpi-card">
-            <div class="kpi-body">
-              <span class="kpi-label">TOTAL EVENTS</span>
-              <strong id="total-events" class="kpi-value">0</strong>
-              <span class="kpi-meta">Recorded activity log</span>
+          <!-- 1. The Deep Cobalt Anchor Card -->
+          <article class="kpi-card kpi-anchor-blue">
+            <div class="kpi-top-row">
+              <span class="kpi-label">Total Events</span>
+              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
-            <div class="kpi-icon kpi-blue">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M10 2v6m0 0l-3-3m3 3l3-3M3 13v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>
-              </svg>
-            </div>
-          </article>
-
-          <article class="kpi-card">
-            <div class="kpi-body">
-              <span class="kpi-label">POLICY WARNINGS</span>
-              <strong id="warning-events" class="kpi-value">0</strong>
-              <span class="kpi-meta">Deviations & flags</span>
-            </div>
-            <div class="kpi-icon kpi-yellow">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M10 3L2 17h16L10 3zm0 5v4m0 3h.01"/>
-              </svg>
+            <strong id="total-events" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill">Live Telemetry Log</span>
             </div>
           </article>
 
+          <!-- 2. Policy Warnings -->
           <article class="kpi-card">
-            <div class="kpi-body">
-              <span class="kpi-label">CRITICAL THREATS</span>
-              <strong id="critical-events" class="kpi-value">0</strong>
-              <span class="kpi-meta">Malware & BadUSB</span>
+            <div class="kpi-top-row">
+              <span class="kpi-label">Policy Warnings</span>
+              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
-            <div class="kpi-icon kpi-red">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="10" cy="10" r="8"/>
-                <path d="M10 6v5m0 3h.01"/>
-              </svg>
+            <strong id="warning-events" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill">Audit Deviations</span>
             </div>
           </article>
 
+          <!-- 3. Critical Threats -->
           <article class="kpi-card">
-            <div class="kpi-body">
-              <span class="kpi-label">DEVICES BLOCKED</span>
-              <strong id="blocked-count" class="kpi-value">0</strong>
-              <span class="kpi-meta">Hardware isolated</span>
+            <div class="kpi-top-row">
+              <span class="kpi-label">Critical Threats</span>
+              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
-            <div class="kpi-icon kpi-orange">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="10" cy="10" r="8"/>
-                <path d="M4.93 4.93l10.14 10.14"/>
-              </svg>
+            <strong id="critical-events" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill" style="color: var(--danger-crimson); background: var(--danger-bg); border-color: var(--danger-border);">Malware & BadUSB</span>
             </div>
           </article>
 
+          <!-- 4. Devices Blocked -->
           <article class="kpi-card">
-            <div class="kpi-body">
-              <span class="kpi-label">SCANS ACTIVE</span>
-              <strong id="active-scans" class="kpi-value">0</strong>
-              <span class="kpi-meta">Volumes in progress</span>
+            <div class="kpi-top-row">
+              <span class="kpi-label">Devices Blocked</span>
+              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
-            <div class="kpi-icon kpi-teal">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="10" cy="7"/>
-                <path d="M10 6v4l2.5 2.5"/>
-              </svg>
+            <strong id="blocked-count" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill">Hardware Isolated</span>
             </div>
           </article>
 
+          <!-- 5. Active Scans -->
           <article class="kpi-card">
-            <div class="kpi-body">
-              <span class="kpi-label">FLAGGED FILES</span>
-              <strong id="flagged-files" class="kpi-value">0</strong>
-              <span class="kpi-meta">YARA signature hits</span>
+            <div class="kpi-top-row">
+              <span class="kpi-label">Active Scans</span>
+              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
-            <div class="kpi-icon kpi-purple">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 4h12v12H4zM4 9h12M9 4v12"/>
-              </svg>
+            <strong id="active-scans" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill">Volumes Monitored</span>
+            </div>
+          </article>
+
+          <!-- 6. Flagged Files -->
+          <article class="kpi-card">
+            <div class="kpi-top-row">
+              <span class="kpi-label">Flagged Files</span>
+              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
+            </div>
+            <strong id="flagged-files" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill">YARA Rule Hits</span>
             </div>
           </article>
         </div>
       </section>
 
-      <!-- Vision UI Analytics Bento Grid -->
+      <!-- Analytics Bento Grid -->
       <section class="charts-bento" aria-label="Security Analytics">
         <div class="bento-card">
           <div class="bento-header">
@@ -297,7 +283,7 @@
             </div>
             <div>
               <h2 id="activity-title" class="panel-title">Real-Time Event Audit Log</h2>
-              <p class="panel-desc">Live hardware bus inspection, automated security verdict, and policy actions.</p>
+              <p class="panel-desc">Live hardware bus inspection, automated security verdicts, and policy actions.</p>
             </div>
           </div>
           <div class="table-tools">
@@ -310,7 +296,7 @@
               </button>
             </div>
             <div class="search-wrap">
-              <input type="search" id="event-search" class="search-input" placeholder="Search by device, serial, type, risk..." aria-label="Search events">
+              <input type="search" id="event-search" class="search-input" placeholder="Search device, type, risk, serial..." aria-label="Search events">
             </div>
             <button id="clear-events-btn" class="btn btn-secondary" type="button" title="Clear all recorded events from database">
               <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
@@ -351,15 +337,15 @@
       </section>
     </main>
 
-    <!-- Vision UI Footer -->
+    <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-inner">
-        <span>USB Analyzer Dashboard — Vision UI Hardware Defense</span>
+        <span>USB Analyzer Dashboard — Endpoint Hardware Defense</span>
         <span class="footer-sep">•</span>
         <span>SEECS NUST Information Security</span>
       </div>
     </footer>
 
-    <script src="/static/app.js?v=8.0"></script>
+    <script src="/static/app.js?v=9.0"></script>
   </body>
 </html>

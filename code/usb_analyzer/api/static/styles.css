@@ -1,7 +1,7 @@
 /* ==========================================================================
-   VISION UI DASHBOARD DESIGN SYSTEM (LIGHT MODE)
-   Inspired by Vision UI Dashboard React (Creative Tim & Simmmple)
-   Sleek Modern Glassmorphism for Hardware Telemetry & SOC
+   USB ANALYZER — MODERN WHITE & COBALT BLUE DASHBOARD
+   Inspired by Minimalist Award-Winning SaaS Architecture ("Donezo" Style)
+   High Contrast, Crisp White Cards, Cobalt Blue Accents, and Generous Spacing
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -12,53 +12,51 @@
 }
 
 :root {
-  /* Vision UI Light Tokens */
-  --vui-bg: #f4f7fe;
-  --vui-bg-gradient: radial-gradient(circle at 12% 18%, rgba(0, 117, 255, 0.08) 0%, transparent 40%),
-                     radial-gradient(circle at 88% 82%, rgba(121, 40, 202, 0.06) 0%, transparent 42%),
-                     linear-gradient(159deg, #f4f7fe 0%, #e9edf7 100%);
+  /* Layout Canvas & Surfaces */
+  --canvas-bg: #f4f6fa;
+  --surface-card: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-hover: #f1f5f9;
   
-  --vui-card-bg: rgba(255, 255, 255, 0.94);
-  --vui-card-elevated: #ffffff;
-  --vui-card-border: rgba(226, 232, 240, 0.9);
-  --vui-card-shadow: 0px 18px 40px 0px rgba(112, 144, 176, 0.12);
-  --vui-radius: 20px;
-  --vui-radius-sm: 12px;
-  --vui-radius-pill: 9999px;
+  --card-border: #e9eef5;
+  --card-border-subtle: #f1f5f9;
+  --card-shadow: 0 1px 3px rgba(16, 24, 40, 0.04), 0 6px 20px rgba(16, 24, 40, 0.03);
+  --card-shadow-hover: 0 4px 6px -1px rgba(16, 24, 40, 0.06), 0 12px 28px rgba(16, 24, 40, 0.06);
+
+  --radius-card: 20px;
+  --radius-btn: 9999px; /* Pill buttons */
+  --radius-badge: 8px;
+  --radius-input: 9999px; /* Pill inputs */
 
   /* Typography */
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
 
-  --vui-white: #2b3674;        /* Primary deep navy text */
-  --vui-text-muted: #707eae;   /* Secondary slate text */
-  --vui-text-dim: #a3aed0;
+  --text-main: #111827;       /* Deep charcoal title & high-contrast body */
+  --text-muted: #64748b;      /* Balanced neutral slate */
+  --text-dim: #94a3b8;        /* Subtle hints & metadata */
+  --text-light: #ffffff;
 
-  /* Gradients & Accents (Preserved vibrant Vision UI accents) */
-  --vui-primary: #0075FF;
-  --vui-primary-gradient: linear-gradient(135deg, #0075FF 0%, #00d2ff 100%);
-  --vui-primary-glow: 0px 4px 14px rgba(0, 117, 255, 0.35);
+  /* Cobalt Blue Brand System */
+  --blue-anchor: #0f2b5c;     /* Iconic deep cobalt anchor */
+  --blue-anchor-gradient: linear-gradient(135deg, #0e2752 0%, #173b75 100%);
+  --blue-primary: #1d4ed8;    /* Vibrant Royal Blue for CTAs */
+  --blue-primary-hover: #1e40af;
+  --blue-tint: #eff6ff;       /* Soft ice-blue pill tint */
+  --blue-border: #bfdbfe;
 
-  --vui-success: #01B574;
-  --vui-success-gradient: linear-gradient(135deg, #01B574 0%, #00e676 100%);
-  --vui-success-glow: 0px 4px 14px rgba(1, 181, 116, 0.35);
+  /* Semantic Health Palette (Soft, high-clarity pastels) */
+  --safe-green: #059669;
+  --safe-bg: #ecfdf5;
+  --safe-border: #a7f3d0;
 
-  --vui-warning: #FFB547;
-  --vui-warning-gradient: linear-gradient(135deg, #FFB547 0%, #ff8800 100%);
-  --vui-warning-glow: 0px 4px 14px rgba(255, 181, 71, 0.35);
+  --warning-amber: #d97706;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
 
-  --vui-danger: #E31A1A;
-  --vui-danger-gradient: linear-gradient(135deg, #E31A1A 0%, #ff5252 100%);
-  --vui-danger-glow: 0px 4px 14px rgba(227, 26, 26, 0.35);
-
-  --vui-purple-gradient: linear-gradient(135deg, #7928CA 0%, #FF0080 100%);
-  --vui-purple-glow: 0px 4px 14px rgba(121, 40, 202, 0.35);
-
-  --vui-orange-gradient: linear-gradient(135deg, #FF6600 0%, #ff9e40 100%);
-  --vui-orange-glow: 0px 4px 14px rgba(255, 102, 0, 0.35);
-
-  --vui-input-bg: #f4f7fe;
-  --vui-input-border: #e2e8f0;
+  --danger-crimson: #e11d48;
+  --danger-bg: #fff1f2;
+  --danger-border: #fecdd3;
 }
 
 /* Base Reset & Core Setup */
@@ -74,43 +72,38 @@ html, body {
 
 body {
   font-family: var(--font-sans);
-  background: var(--vui-bg);
-  background-image: var(--vui-bg-gradient);
-  background-attachment: fixed;
-  background-size: cover;
-  color: var(--vui-white);
+  background: var(--canvas-bg);
+  color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-bottom: 32px;
+  padding-bottom: 40px;
 }
 
 /* Typography Utilities */
 .font-mono { font-family: var(--font-mono) !important; }
-.text-muted { color: var(--vui-text-muted); }
-.text-dim { color: var(--vui-text-dim); }
+.text-muted { color: var(--text-muted); }
+.text-dim { color: var(--text-dim); }
 .text-right { text-align: right; }
-.small { font-size: 0.75rem; }
+.small { font-size: 0.78rem; }
 
 /* ==========================================================================
-   Vision UI Floating Glass Navbar
+   Floating Modern White Topbar
    ========================================================================== */
 .topbar {
   position: sticky;
   top: 16px;
   z-index: 999;
-  margin: 16px 28px 24px 28px;
+  margin: 16px 32px 24px 32px;
   padding: 12px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--vui-card-border);
-  border-radius: 16px;
-  box-shadow: 0px 10px 30px 0px rgba(112, 144, 176, 0.15);
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
   transition: all 0.2s ease;
 }
 
@@ -125,24 +118,24 @@ body {
   align-items: center;
   gap: 12px;
   text-decoration: none;
-  color: var(--vui-white);
+  color: var(--text-main);
 }
 
 .brand-shield {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  background: var(--vui-primary-gradient);
-  box-shadow: var(--vui-primary-glow);
+  background: var(--blue-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
 }
 
 .shield-svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   color: #ffffff;
 }
 
@@ -154,18 +147,19 @@ body {
 .breadcrumb-path {
   font-size: 0.68rem;
   font-weight: 600;
-  color: var(--vui-text-muted);
-  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .brand-name {
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--vui-white);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-main);
 }
 
-/* Topbar Status & Actions */
+/* Topbar Actions & Status */
 .topbar-actions {
   display: flex;
   align-items: center;
@@ -182,35 +176,35 @@ body {
 .connection {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
+  gap: 7px;
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 6px 12px;
-  background: #f4f7fe;
-  border: 1px solid var(--vui-card-border);
-  border-radius: var(--vui-radius-pill);
-  color: var(--vui-text-muted);
+  padding: 6px 14px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-btn);
+  color: var(--text-muted);
 }
 
 .connection.is-connected {
-  color: var(--vui-white);
+  color: var(--text-main);
 }
 
 .connection-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--vui-warning);
+  background: var(--warning-amber);
 }
 
 .connection.is-connected .connection-dot {
-  background: var(--vui-success);
-  box-shadow: 0 0 8px var(--vui-success);
+  background: var(--safe-green);
+  box-shadow: 0 0 6px rgba(5, 150, 105, 0.4);
 }
 
 .connection.is-unavailable .connection-dot {
-  background: var(--vui-danger);
-  box-shadow: 0 0 8px var(--vui-danger);
+  background: var(--danger-crimson);
+  box-shadow: 0 0 6px rgba(225, 29, 72, 0.4);
 }
 
 /* Policy Badge / Toggle */
@@ -221,8 +215,8 @@ body {
   padding: 6px 14px;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  border-radius: var(--vui-radius-pill);
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-btn);
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -230,19 +224,23 @@ body {
 }
 
 .policy-toggle-btn.badge-enforce {
-  background: rgba(1, 181, 116, 0.12);
-  color: var(--vui-success);
-  border-color: rgba(1, 181, 116, 0.35);
+  background: var(--safe-bg);
+  color: var(--safe-green);
+  border-color: var(--safe-border);
 }
 
 .policy-toggle-btn.badge-enforce:hover {
-  background: rgba(1, 181, 116, 0.22);
+  background: #d1fae5;
 }
 
 .policy-toggle-btn.badge-audit {
-  background: rgba(255, 181, 71, 0.12);
-  color: var(--vui-warning);
-  border-color: rgba(255, 181, 71, 0.35);
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+  border-color: var(--warning-border);
+}
+
+.policy-toggle-btn.badge-audit:hover {
+  background: #fef3c7;
 }
 
 .mode-dot {
@@ -252,23 +250,23 @@ body {
   background: currentColor;
 }
 
-/* Topbar Buttons */
+/* Action Buttons */
 .action-buttons {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-/* Vision UI Button System */
+/* Modern Pill Button System */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 18px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  border-radius: var(--vui-radius-sm);
+  padding: 9px 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-btn);
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
@@ -278,52 +276,52 @@ body {
 }
 
 .btn-primary {
-  background: var(--vui-primary-gradient);
+  background: var(--blue-primary);
   color: #ffffff !important;
-  box-shadow: var(--vui-primary-glow);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
 }
 
 .btn-primary:hover {
+  background: var(--blue-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0px 6px 18px rgba(0, 117, 255, 0.55);
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.35);
 }
 
 .btn-secondary {
-  background: #f4f7fe;
-  color: var(--vui-white);
-  border: 1px solid var(--vui-card-border);
+  background: #ffffff;
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
+  background: var(--surface-subtle);
+  border-color: #cbd5e1;
   transform: translateY(-1px);
 }
 
 .btn-danger {
-  background: var(--vui-danger-gradient);
+  background: var(--danger-crimson);
   color: #ffffff !important;
-  box-shadow: var(--vui-danger-glow);
 }
 
 .btn-danger:hover {
+  background: #be123c;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(227, 26, 26, 0.55);
 }
 
 .btn-ghost {
   background: transparent;
-  color: var(--vui-text-muted);
+  color: var(--text-muted);
 }
 
 .btn-ghost:hover {
-  color: var(--vui-white);
-  background: #f4f7fe;
+  color: var(--text-main);
+  background: var(--surface-subtle);
 }
 
 .btn-sm {
-  padding: 6px 12px;
-  font-size: 0.72rem;
-  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.74rem;
 }
 
 /* ==========================================================================
@@ -332,28 +330,29 @@ body {
 .shell {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0 28px;
+  padding: 0 32px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
 }
 
 /* Security Alert Banner */
 .alert-banner {
-  background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%);
-  border: 1px solid #fca5a5;
-  border-radius: var(--vui-radius);
+  background: #ffffff;
+  border: 1px solid var(--danger-border);
+  border-left: 5px solid var(--danger-crimson);
+  border-radius: 16px;
   padding: 16px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  box-shadow: 0 8px 24px rgba(227, 26, 26, 0.12);
+  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.08);
   animation: slideDown 0.3s ease-out;
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
+  from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -364,15 +363,15 @@ body {
 }
 
 .alert-icon-wrap {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
-  background: var(--vui-danger-gradient);
-  box-shadow: var(--vui-danger-glow);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--danger-crimson);
   flex-shrink: 0;
 }
 
@@ -384,25 +383,25 @@ body {
 }
 
 .alert-badge {
-  background: #fecaca;
-  color: #b91c1c;
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
   font-size: 0.65rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   padding: 2px 8px;
   border-radius: 4px;
 }
 
 .alert-sub {
-  font-size: 0.78rem;
-  color: var(--vui-text-muted);
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .alert-close {
   background: transparent;
   border: none;
-  color: var(--vui-text-muted);
-  font-size: 1.6rem;
+  color: var(--text-dim);
+  font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
   padding: 4px 8px;
@@ -411,12 +410,12 @@ body {
 }
 
 .alert-close:hover {
-  color: #b91c1c;
-  background: #fecaca;
+  color: var(--danger-crimson);
+  background: var(--danger-bg);
 }
 
 /* ==========================================================================
-   Vision UI Welcome Hero Card & Overview
+   Page Header (Donezo Heading Style)
    ========================================================================== */
 .overview {
   display: flex;
@@ -424,112 +423,56 @@ body {
   gap: 20px;
 }
 
-.vision-welcome-banner {
-  background: var(--vui-card-bg);
-  backdrop-filter: blur(120px);
-  -webkit-backdrop-filter: blur(120px);
-  border: 1px solid var(--vui-card-border);
-  box-shadow: var(--vui-card-shadow);
-  border-radius: var(--vui-radius);
-  padding: 28px 32px;
+.overview-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  position: relative;
-  overflow: hidden;
-}
-
-.vision-welcome-banner::before {
-  content: "";
-  position: absolute;
-  top: -40%;
-  right: -10%;
-  width: 380px;
-  height: 380px;
-  background: radial-gradient(circle, rgba(0, 117, 255, 0.12) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.welcome-content {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
-  z-index: 1;
-}
-
-.welcome-subtitle {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--vui-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.welcome-title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--vui-white);
-  letter-spacing: -0.02em;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
-.live-pill {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 3px 10px;
-  border-radius: var(--vui-radius-pill);
-  background: rgba(1, 181, 116, 0.12);
-  color: var(--vui-success);
-  border: 1px solid rgba(1, 181, 116, 0.35);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.live-pill::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--vui-success);
-  box-shadow: 0 0 6px var(--vui-success);
-}
-
-.welcome-desc {
-  font-size: 0.88rem;
-  color: var(--vui-text-muted);
-  max-width: 620px;
-}
-
-.welcome-meta {
+.page-title-wrap {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  position: relative;
-  z-index: 1;
-  text-align: right;
+  gap: 4px;
+}
+
+.page-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.page-lede {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .last-sync {
-  font-size: 0.75rem;
-  color: var(--vui-text-muted);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
+  padding: 6px 14px;
+  border-radius: var(--radius-btn);
 }
 
 .sync-value {
-  color: var(--vui-white);
+  color: var(--text-main);
   font-weight: 600;
   font-family: var(--font-mono);
 }
 
 /* ==========================================================================
-   Vision UI KPI Cards (Mini Statistics Grid)
+   Donezo-Inspired KPI Metric Cards (With Deep Cobalt Anchor)
    ========================================================================== */
 .kpi-grid {
   display: grid;
@@ -538,123 +481,128 @@ body {
 }
 
 .kpi-card {
-  background: var(--vui-card-bg);
-  backdrop-filter: blur(120px);
-  -webkit-backdrop-filter: blur(120px);
-  border: 1px solid var(--vui-card-border);
-  box-shadow: var(--vui-card-shadow);
-  border-radius: var(--vui-radius);
-  padding: 18px 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
+  padding: 22px 20px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .kpi-card:hover {
   transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
   border-color: #cbd5e1;
-  box-shadow: 0px 18px 35px 0px rgba(112, 144, 176, 0.2);
 }
 
-.kpi-body {
+.kpi-top-row {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .kpi-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--vui-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.3;
 }
 
-.kpi-value {
-  font-size: 1.45rem;
-  font-weight: 800;
-  color: var(--vui-white);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-}
-
-.kpi-meta {
-  font-size: 0.72rem;
-  color: var(--vui-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Vision UI Squircle Icon Badges with Gradients */
-.kpi-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+/* Circular Arrow Drill-down Button */
+.kpi-arrow-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--card-border);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-muted);
   flex-shrink: 0;
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
-.kpi-icon svg {
-  width: 22px;
-  height: 22px;
+.kpi-value {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.kpi-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kpi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-btn);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--card-border);
+}
+
+/* --- The Iconic Deep Cobalt Anchor Card --- */
+.kpi-anchor-blue {
+  background: var(--blue-anchor-gradient);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(15, 43, 92, 0.25);
+}
+
+.kpi-anchor-blue:hover {
+  box-shadow: 0 8px 28px rgba(15, 43, 92, 0.35);
+}
+
+.kpi-anchor-blue .kpi-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.kpi-anchor-blue .kpi-arrow-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.kpi-anchor-blue .kpi-value {
   color: #ffffff;
 }
 
-.kpi-blue {
-  background: var(--vui-primary-gradient);
-  box-shadow: var(--vui-primary-glow);
-}
-
-.kpi-yellow {
-  background: var(--vui-warning-gradient);
-  box-shadow: var(--vui-warning-glow);
-}
-
-.kpi-red {
-  background: var(--vui-danger-gradient);
-  box-shadow: var(--vui-danger-glow);
-}
-
-.kpi-orange {
-  background: var(--vui-orange-gradient);
-  box-shadow: var(--vui-orange-glow);
-}
-
-.kpi-teal {
-  background: var(--vui-success-gradient);
-  box-shadow: var(--vui-success-glow);
-}
-
-.kpi-purple {
-  background: var(--vui-purple-gradient);
-  box-shadow: var(--vui-purple-glow);
+.kpi-anchor-blue .kpi-pill {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* ==========================================================================
-   Vision UI Analytics Bento Grid (Charts)
+   Analytics Bento Grid (Charts & Visuals)
    ========================================================================== */
 .charts-bento {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
+  grid-template-columns: 1fr 1.6fr;
   gap: 20px;
 }
 
 .bento-card {
-  background: var(--vui-card-bg);
-  backdrop-filter: blur(120px);
-  -webkit-backdrop-filter: blur(120px);
-  border: 1px solid var(--vui-card-border);
-  box-shadow: var(--vui-card-shadow);
-  border-radius: var(--vui-radius);
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -671,24 +619,23 @@ body {
 .bento-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--vui-white);
+  color: var(--text-main);
   letter-spacing: -0.01em;
 }
 
 .bento-sub {
-  font-size: 0.78rem;
-  color: var(--vui-text-muted);
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .bento-tag {
-  font-size: 0.65rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 3px 9px;
-  border-radius: 6px;
-  background: rgba(0, 117, 255, 0.12);
-  color: var(--vui-primary);
-  border: 1px solid rgba(0, 117, 255, 0.25);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-btn);
+  background: var(--blue-tint);
+  color: var(--blue-primary);
+  border: 1px solid var(--blue-border);
 }
 
 .chart-wrapper {
@@ -698,15 +645,13 @@ body {
 }
 
 /* ==========================================================================
-   Vision UI Panel Sections & Tables
+   Content Panels & Tables
    ========================================================================== */
 .panel-section {
-  background: var(--vui-card-bg);
-  backdrop-filter: blur(120px);
-  -webkit-backdrop-filter: blur(120px);
-  border: 1px solid var(--vui-card-border);
-  box-shadow: var(--vui-card-shadow);
-  border-radius: var(--vui-radius);
+  background: var(--surface-card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -731,9 +676,9 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: rgba(0, 117, 255, 0.1);
-  border: 1px solid rgba(0, 117, 255, 0.2);
-  color: var(--vui-primary);
+  background: var(--blue-tint);
+  border: 1px solid var(--blue-border);
+  color: var(--blue-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -746,15 +691,15 @@ body {
 }
 
 .panel-title {
-  font-size: 1.12rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: var(--vui-white);
+  color: var(--text-main);
   letter-spacing: -0.01em;
 }
 
 .panel-desc {
-  font-size: 0.78rem;
-  color: var(--vui-text-muted);
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 /* Table Toolbar Controls */
@@ -765,70 +710,74 @@ body {
   flex-wrap: wrap;
 }
 
-/* Vision UI Segmented Switcher */
+/* Pill Segmented View Switcher */
 .view-switch-group {
   display: inline-flex;
-  background: #f4f7fe;
-  border: 1px solid var(--vui-card-border);
-  border-radius: 12px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-btn);
   padding: 3px;
-  gap: 3px;
+  gap: 2px;
 }
 
 .btn-tab {
-  padding: 6px 14px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  border-radius: 9px;
+  padding: 6px 16px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: var(--radius-btn);
   border: none;
   background: transparent;
-  color: var(--vui-text-muted);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: inherit;
 }
 
 .btn-tab:hover {
-  color: var(--vui-white);
+  color: var(--text-main);
 }
 
 .btn-tab.active {
-  background: var(--vui-primary);
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 117, 255, 0.4);
+  background: #ffffff;
+  color: var(--blue-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
 }
 
-/* Vision UI Glass Search Input */
+/* Pill Global Search Input with Keyboard Shortcut */
 .search-wrap {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .search-input {
-  background: #f4f7fe;
-  border: 1px solid var(--vui-input-border);
-  border-radius: var(--vui-radius-pill);
-  padding: 8px 16px;
-  font-size: 0.78rem;
-  color: var(--vui-white);
+  background: var(--surface-subtle);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-btn);
+  padding: 8px 36px 8px 16px;
+  font-size: 0.8rem;
+  color: var(--text-main);
   font-family: inherit;
-  width: 260px;
+  width: 270px;
   transition: all 0.2s ease;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--vui-primary);
-  box-shadow: 0 0 0 3px rgba(0, 117, 255, 0.25);
+  background: #ffffff;
+  border-color: var(--blue-primary);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
 }
 
 .search-input::placeholder {
-  color: var(--vui-text-dim);
+  color: var(--text-dim);
 }
 
-/* Form Styles */
+/* Whitelist Form Drawer */
 .whitelist-form {
-  background: #ffffff;
-  border: 1px solid var(--vui-card-border);
+  background: var(--surface-subtle);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
   padding: 20px;
   display: flex;
@@ -838,9 +787,9 @@ body {
 }
 
 .form-title {
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  color: var(--vui-white);
+  color: var(--text-main);
 }
 
 .form-grid {
@@ -858,26 +807,26 @@ body {
 .form-field label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--vui-text-muted);
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .form-field input {
-  background: #f4f7fe;
-  border: 1px solid var(--vui-input-border);
+  background: #ffffff;
+  border: 1px solid var(--card-border);
   border-radius: 10px;
   padding: 9px 14px;
   font-size: 0.82rem;
-  color: var(--vui-white);
+  color: var(--text-main);
   font-family: inherit;
   transition: all 0.15s ease;
 }
 
 .form-field input:focus {
   outline: none;
-  border-color: var(--vui-primary);
-  box-shadow: 0 0 0 3px rgba(0, 117, 255, 0.25);
+  border-color: var(--blue-primary);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
 }
 
 .form-actions {
@@ -887,12 +836,12 @@ body {
 }
 
 /* ==========================================================================
-   Vision UI Glass Tables
+   Clean White Data Tables
    ========================================================================== */
 .data-table-container {
   overflow-x: auto;
   border-radius: 16px;
-  border: 1px solid var(--vui-card-border);
+  border: 1px solid var(--card-border);
   background: #ffffff;
 }
 
@@ -903,14 +852,14 @@ body {
 }
 
 .data-table thead th {
-  background: transparent;
-  color: #707eae;
-  font-size: 0.68rem;
-  font-weight: 800;
+  background: #fafbfc;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 14px 18px;
-  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.06em;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--card-border);
   white-space: nowrap;
 }
 
@@ -920,7 +869,7 @@ body {
 }
 
 .data-table tbody tr:hover {
-  background: rgba(244, 247, 254, 0.7);
+  background: #f8fafc;
 }
 
 .data-table tbody tr:last-child {
@@ -928,47 +877,47 @@ body {
 }
 
 .data-table td {
-  padding: 14px 18px;
-  font-size: 0.82rem;
-  color: var(--vui-white);
+  padding: 15px 20px;
+  font-size: 0.84rem;
+  color: var(--text-main);
   vertical-align: middle;
 }
 
-/* Badges & Status Indicators */
+/* Status Badges */
 .verdict-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-btn);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .verdict-badge.verdict-safe {
-  background: rgba(1, 181, 116, 0.12);
-  color: var(--vui-success);
-  border: 1px solid rgba(1, 181, 116, 0.35);
+  background: var(--safe-bg);
+  color: var(--safe-green);
+  border: 1px solid var(--safe-border);
 }
 
 .verdict-badge.verdict-danger {
-  background: rgba(227, 26, 26, 0.12);
-  color: var(--vui-danger);
-  border: 1px solid rgba(227, 26, 26, 0.35);
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
+  border: 1px solid var(--danger-border);
 }
 
 .verdict-badge.verdict-warning {
-  background: rgba(255, 181, 71, 0.12);
-  color: var(--vui-warning);
-  border: 1px solid rgba(255, 181, 71, 0.35);
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+  border: 1px solid var(--warning-border);
 }
 
 .verdict-badge.verdict-info {
-  background: rgba(0, 117, 255, 0.12);
-  color: var(--vui-primary);
-  border: 1px solid rgba(0, 117, 255, 0.35);
+  background: var(--blue-tint);
+  color: var(--blue-primary);
+  border: 1px solid var(--blue-border);
 }
 
 .device-type-badge {
@@ -976,12 +925,11 @@ body {
   align-items: center;
   padding: 2px 8px;
   border-radius: 6px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: rgba(0, 117, 255, 0.1);
-  color: var(--vui-primary);
-  border: 1px solid rgba(0, 117, 255, 0.25);
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: var(--blue-tint);
+  color: var(--blue-primary);
+  border: 1px solid var(--blue-border);
   margin-left: 8px;
   vertical-align: middle;
 }
@@ -989,66 +937,114 @@ body {
 .action-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-btn);
   font-size: 0.72rem;
   font-weight: 600;
-  background: #f4f7fe;
-  color: var(--vui-white);
-  border: 1px solid #e2e8f0;
+  background: var(--surface-subtle);
+  color: var(--text-main);
+  border: 1px solid var(--card-border);
 }
 
 .device-sub-meta {
   margin-top: 4px;
   font-size: 0.72rem;
-  color: var(--vui-text-muted);
+  color: var(--text-dim);
 }
 
-.summary-callout {
-  padding: 10px 14px;
-  background: #f0f7ff;
-  border-left: 3px solid var(--vui-primary);
-  border-radius: 6px;
+/* Severity Tag for Raw View */
+.severity {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-btn);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.severity.info {
+  background: var(--blue-tint);
+  color: var(--blue-primary);
+}
+
+.severity.warning {
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+}
+
+.severity.critical {
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
+}
+
+/* Activity Toggle Button */
+.activity-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.activity-chevron::after {
+  content: "▾";
   font-size: 0.8rem;
-  color: var(--vui-white);
-  margin-bottom: 8px;
+  color: var(--text-dim);
+}
+
+/* Details Panel Row */
+.details-row {
+  background: #fbfcfe !important;
+}
+
+.details-panel {
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 /* InfoSec Assessment Card in Inspect Panel */
 .infosec-card {
   border-radius: 14px;
-  padding: 16px 20px;
-  margin-bottom: 14px;
-  border: 1px solid #e2e8f0;
+  padding: 18px 22px;
+  margin-bottom: 6px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 4px 14px rgba(112, 144, 176, 0.08);
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.05);
+  border: 1px solid var(--card-border);
 }
 
 .infosec-card.badge-danger {
-  border-left: 4px solid var(--vui-danger);
-  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
-  border-color: #fecaca;
+  border-left: 4px solid var(--danger-crimson);
+  background: linear-gradient(135deg, #fffafa 0%, #ffffff 100%);
+  border-color: var(--danger-border);
 }
 
 .infosec-card.badge-warning {
-  border-left: 4px solid var(--vui-warning);
-  background: linear-gradient(135deg, #fffbf0 0%, #ffffff 100%);
-  border-color: #fed7aa;
+  border-left: 4px solid var(--warning-amber);
+  background: linear-gradient(135deg, #fffdfa 0%, #ffffff 100%);
+  border-color: var(--warning-border);
 }
 
 .infosec-card.badge-safe {
-  border-left: 4px solid var(--vui-success);
-  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
-  border-color: #bbf7d0;
+  border-left: 4px solid var(--safe-green);
+  background: linear-gradient(135deg, #fafdfb 0%, #ffffff 100%);
+  border-color: var(--safe-border);
 }
 
 .infosec-card.badge-info {
-  border-left: 4px solid var(--vui-primary);
-  background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-  border-color: #bfdbfe;
+  border-left: 4px solid var(--blue-primary);
+  background: linear-gradient(135deg, #f8faff 0%, #ffffff 100%);
+  border-color: var(--blue-border);
 }
 
 .infosec-header {
@@ -1061,13 +1057,13 @@ body {
 .infosec-title-group {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .infosec-badge {
   font-size: 0.65rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   padding: 3px 8px;
   border-radius: 4px;
   text-transform: uppercase;
@@ -1076,30 +1072,30 @@ body {
 }
 
 .infosec-card.badge-danger .infosec-badge {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
 }
 
 .infosec-card.badge-warning .infosec-badge {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--warning-bg);
+  color: var(--warning-amber);
 }
 
 .infosec-card.badge-safe .infosec-badge {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--safe-bg);
+  color: var(--safe-green);
 }
 
 .infosec-card.badge-info .infosec-badge {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--blue-tint);
+  color: var(--blue-primary);
 }
 
 .infosec-category {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 800;
-  color: var(--vui-white);
-  margin-top: 2px;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
 }
 
 .infosec-body {
@@ -1119,75 +1115,18 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--vui-text-muted);
+  color: var(--text-muted);
 }
 
 .infosec-text {
-  font-size: 0.82rem;
-  color: var(--vui-white);
-  line-height: 1.45;
-}
-
-/* Severity Tag for Raw View */
-.severity {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.severity.info {
-  background: rgba(0, 117, 255, 0.12);
-  color: var(--vui-primary);
-}
-
-.severity.warning {
-  background: rgba(255, 181, 71, 0.12);
-  color: var(--vui-warning);
-}
-
-.severity.critical {
-  background: rgba(227, 26, 26, 0.14);
-  color: var(--vui-danger);
-}
-
-/* Activity Toggle Button */
-.activity-toggle {
-  background: transparent;
-  border: none;
-  color: var(--vui-white);
-  font-family: inherit;
-  font-size: 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.activity-chevron::after {
-  content: "▾";
-  font-size: 0.8rem;
-  color: var(--vui-text-muted);
-}
-
-/* Details Panel Row */
-.details-row {
-  background: #f8fafc !important;
-}
-
-.details-panel {
-  padding: 14px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  font-size: 0.84rem;
+  color: var(--text-main);
+  line-height: 1.5;
 }
 
 .scan-caveat {
-  font-size: 0.72rem;
-  color: var(--vui-text-muted);
+  font-size: 0.74rem;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -1199,22 +1138,22 @@ body {
 
 .finding-card {
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 14px;
 }
 
 .finding-path {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--vui-white);
+  font-size: 0.76rem;
+  color: var(--text-main);
   word-break: break-all;
   margin-bottom: 4px;
 }
 
 .finding-meta {
-  font-size: 0.7rem;
-  color: var(--vui-text-muted);
+  font-size: 0.72rem;
+  color: var(--text-muted);
   margin-bottom: 6px;
 }
 
@@ -1224,60 +1163,60 @@ body {
   border-radius: 4px;
   font-size: 0.65rem;
   font-weight: 700;
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
   margin-right: 4px;
 }
 
 .details-json {
-  background: #f4f7fe;
-  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border: 1px solid var(--card-border);
   border-radius: 10px;
-  padding: 12px;
+  padding: 14px;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--vui-white);
+  font-size: 0.74rem;
+  color: var(--text-main);
   overflow-x: auto;
   max-height: 240px;
 }
 
 /* Toast Messages */
 .toast-message {
-  padding: 10px 16px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  padding: 10px 18px;
+  border-radius: var(--radius-btn);
+  font-size: 0.82rem;
   font-weight: 600;
   margin-bottom: 12px;
   animation: slideDown 0.2s ease;
 }
 
 .toast-message.success {
-  background: rgba(1, 181, 116, 0.15);
-  color: var(--vui-success);
-  border: 1px solid rgba(1, 181, 116, 0.35);
+  background: var(--safe-bg);
+  color: var(--safe-green);
+  border: 1px solid var(--safe-border);
 }
 
 .toast-message.error {
-  background: rgba(227, 26, 26, 0.15);
-  color: var(--vui-danger);
-  border: 1px solid rgba(227, 26, 26, 0.35);
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
+  border: 1px solid var(--danger-border);
 }
 
 /* Empty State */
 .empty-state {
   text-align: center;
-  padding: 38px 16px;
-  color: var(--vui-text-muted);
-  font-size: 0.82rem;
+  padding: 40px 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 /* Footer */
 .app-footer {
-  margin: 32px 28px 0 28px;
-  border-top: 1px solid #e2e8f0;
-  padding: 18px 24px;
-  font-size: 0.75rem;
-  color: var(--vui-text-muted);
+  margin: 36px 32px 0 32px;
+  border-top: 1px solid var(--card-border);
+  padding: 20px 24px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
   text-align: center;
 }
 
@@ -1287,7 +1226,7 @@ body {
   gap: 10px;
 }
 
-.footer-sep { opacity: 0.4; }
+.footer-sep { opacity: 0.5; }
 
 /* Responsive Breakpoints */
 @media (max-width: 1200px) {
@@ -1296,11 +1235,10 @@ body {
 }
 
 @media (max-width: 768px) {
-  .topbar { margin: 12px 14px; padding: 12px 16px; }
-  .shell { padding: 0 14px; }
+  .topbar { margin: 12px 16px; padding: 12px 16px; }
+  .shell { padding: 0 16px; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
-  .vision-welcome-banner { flex-direction: column; align-items: flex-start; }
-  .welcome-meta { align-items: flex-start; text-align: left; }
+  .overview-header { flex-direction: column; align-items: flex-start; }
   .table-tools { width: 100%; justify-content: space-between; }
   .search-input { width: 100%; }
 }
