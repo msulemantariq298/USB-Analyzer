@@ -638,7 +638,7 @@ function displayConsolidatedDevices(groups) {
   if (!eventsBody) return;
 
   if (!groups.length) {
-    eventsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No matching device activity found.</td></tr>';
+    eventsBody.innerHTML = '<tr><td colspan="6" class="empty-state">Database reset clean. Connect any USB device to inspect security status in real-time.</td></tr>';
     return;
   }
 

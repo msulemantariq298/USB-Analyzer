@@ -4,11 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0b0f19">
-    <title>USB Analyzer Dashboard — Security Defense & Activity</title>
+    <title>USB Analyzer Dashboard — Endpoint Hardware Defense</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=5.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -99,7 +99,10 @@
       <section class="overview">
         <div class="overview-header">
           <div>
-            <h1 id="page-title" class="page-title">Endpoint Threat Monitor</h1>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h1 id="page-title" class="page-title">Endpoint Threat Monitor</h1>
+              <span class="live-pill">LIVE PROTECTION ACTIVE</span>
+            </div>
             <p class="lede">Continuous hardware bus telemetry, YARA signature inspection, and zero-trust USB containment.</p>
           </div>
           <div class="last-sync">
@@ -337,7 +340,7 @@
             </thead>
             <tbody id="events-body">
               <tr>
-                <td colspan="6" class="empty-state">No device activity yet. Connect a USB device while the monitor is running.</td>
+                <td colspan="6" class="empty-state">Database reset clean. Connect any USB device to inspect security status in real-time.</td>
               </tr>
             </tbody>
           </table>
@@ -354,6 +357,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=5.0"></script>
   </body>
 </html>

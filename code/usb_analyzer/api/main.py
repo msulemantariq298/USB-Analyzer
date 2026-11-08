@@ -29,6 +29,17 @@ policy_engine = PolicyEngine(
 hid_detector = BadUsbDetector(event_sink=event_store, policy_engine=policy_engine)
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
+
+
+@app.middleware("http")
+async def add_cache_control_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 static_directory = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_directory), name="static")
 
