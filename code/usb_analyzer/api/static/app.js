@@ -482,13 +482,13 @@ function filterAndRenderEvents() {
   displayEventRows(filtered);
 }
 
-// Chart.js High-Contrast SOC Theme
+// Chart.js Vision UI Futuristic Theme
 function renderCharts(events) {
   if (typeof Chart === "undefined") return;
 
   const isDark = document.documentElement.dataset.theme === "dark";
-  const textColor = isDark ? "#94a3b8" : "#475569";
-  const gridColor = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
+  const textColor = isDark ? "#a0aec0" : "#64748b";
+  const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
 
   const infoCount = events.filter((e) => e.severity === "info").length;
   const warnCount = events.filter((e) => e.severity === "warning").length;
@@ -504,20 +504,20 @@ function renderCharts(events) {
         labels: ["Info (Safe)", "Warning", "Critical"],
         datasets: [{
           data: [infoCount, warnCount, critCount],
-          backgroundColor: ["#38bdf8", "#fbbf24", "#f87171"],
-          borderColor: isDark ? "#111827" : "#ffffff",
+          backgroundColor: ["#0075FF", "#FFB547", "#E31A1A"],
+          borderColor: isDark ? "#060b26" : "#ffffff",
           borderWidth: 3,
-          hoverOffset: 4,
+          hoverOffset: 6,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: "68%",
+        cutout: "70%",
         plugins: {
           legend: {
             position: "bottom",
-            labels: { color: textColor, boxWidth: 12, padding: 14, font: { family: "var(--font-sans)", size: 11 } },
+            labels: { color: textColor, boxWidth: 12, padding: 14, font: { family: "var(--font-sans)", size: 11, weight: "600" } },
           },
         },
       },
@@ -541,8 +541,9 @@ function renderCharts(events) {
         labels: topTypes.map(([k]) => k.toUpperCase()),
         datasets: [{
           data: topTypes.map(([, v]) => v),
-          backgroundColor: "#38bdf8",
-          borderRadius: 4,
+          backgroundColor: "#0075FF",
+          borderRadius: 8,
+          hoverBackgroundColor: "#00d2ff",
         }],
       },
       options: {
@@ -554,7 +555,7 @@ function renderCharts(events) {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: textColor, font: { family: "var(--font-mono)", size: 10 } },
+            ticks: { color: textColor, font: { family: "var(--font-sans)", size: 10, weight: "600" } },
           },
           y: {
             beginAtZero: true,
@@ -569,13 +570,13 @@ function renderCharts(events) {
 
 function updateChartsTheme(isDark) {
   if (severityChart) {
-    severityChart.data.datasets[0].borderColor = isDark ? "#111827" : "#ffffff";
-    severityChart.options.plugins.legend.labels.color = isDark ? "#94a3b8" : "#475569";
+    severityChart.data.datasets[0].borderColor = isDark ? "#060b26" : "#ffffff";
+    severityChart.options.plugins.legend.labels.color = isDark ? "#a0aec0" : "#64748b";
     severityChart.update();
   }
   if (activityChart) {
-    const textColor = isDark ? "#94a3b8" : "#475569";
-    const gridColor = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
+    const textColor = isDark ? "#a0aec0" : "#64748b";
+    const gridColor = isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.06)";
     activityChart.options.scales.x.ticks.color = textColor;
     activityChart.options.scales.y.ticks.color = textColor;
     activityChart.options.scales.y.grid.color = gridColor;
