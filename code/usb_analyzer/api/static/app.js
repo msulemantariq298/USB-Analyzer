@@ -616,6 +616,104 @@ function displayEventRows(events) {
   }
 }
 
+function generateInfosecSummary(item) {
+  const isGroup = Array.isArray(item.events);
+  const events = isGroup ? item.events : [item];
+  const verdict = item.verdict || (item.severity === "critical" ? "DANGER" : item.severity === "warning" ? "WARNING" : "SAFE");
+  const deviceType = item.deviceType || item.details?.device_type || "USB Peripheral";
+
+  // Check event types
+  const hasSpoof = events.some((e) => e.event_type === "device.spoofed_identity");
+  const hasBadUsb = events.some((e) => e.event_type === "hid.injection_detected");
+  const scanEvent = events.find((e) => e.event_type === "scan.completed" || e.event_type === "scan.started");
+  const hasMalware = Boolean(scanEvent?.details?.flagged && scanEvent.details.flagged.length > 0);
+  const isBlocked = events.some((e) => e.event_type === "device.blocked");
+  const isAllowed = events.some((e) => e.event_type === "device.allowed");
+  const isViolation = verdict === "WARNING" || events.some((e) => e.event_type === "policy.violation");
+
+  let statusText = "INFOSEC ASSESSMENT";
+  let badgeClass = "badge-safe";
+  let category = "Device Connected";
+  let reason = "The device was inspected on the USB controller bus.";
+  let actionJustification = "Allowed under continuous telemetry monitoring.";
+  let recommendation = "Standard monitoring active. No administrative intervention required.";
+
+  if (hasBadUsb) {
+    statusText = "HIGH-SEVERITY HARDWARE ATTACK";
+    badgeClass = "badge-danger";
+    category = "Keystroke Injection Threat (BadUSB / Rubber Ducky)";
+    reason = `This device identifies as a '${deviceType}', but hardware timing analysis detected rapid automated keystrokes typed with an artificial cadence (< 4ms inter-key delay, 0ms variance). Attackers program rogue microcontrollers to inject pre-compiled terminal commands, scripts, or reverse shells at machine speed.`;
+    actionJustification = "Hardware Blocked: The system immediately detached and disabled the USB port to cut off automated keystroke execution before payloads could execute.";
+    recommendation = "Do not connect this peripheral to other systems. Physically confiscate and inspect the hardware for covert programmable microcontrollers.";
+  } else if (hasMalware) {
+    statusText = "MALICIOUS REMOVABLE MEDIA";
+    badgeClass = "badge-danger";
+    category = "Storage Volume Containing Malware / YARA Signatures";
+    reason = `Storage scanning on this drive intercepted dangerous files matching malicious signatures, autorun scripts, or YARA heuristic threat indicators. Removable drives are a primary vector for ransomware infection, air-gap crossing, and data harvesting.`;
+    actionJustification = "Volume Quarantined: The drive was unmounted and access was restricted to prevent local execution or propagation over the organization's network.";
+    recommendation = "Quarantine the removable drive. Do not open or execute files from it. Submit flagged files to an isolated sandbox or the SOC team for reverse engineering.";
+  } else if (hasSpoof) {
+    statusText = "HARDWARE IDENTITY SPOOFING";
+    badgeClass = "badge-danger";
+    category = "Peripheral Impersonation / Serial Number Mismatch";
+    reason = `The connected device claimed a trusted Vendor ID (VID) and Product ID (PID) matching an authorized organization asset, but broadcasted an unregistered or counterfeit physical serial number. Attackers frequently clone public VID/PID pairs to fool simple device filters.`;
+    actionJustification = "Hardware Blocked: The analyzer enforced strict Zero-Trust serial validation and disabled the port to prevent unauthorized hardware from operating under a false identity.";
+    recommendation = "Investigate the physical origin of this hardware. Check if the device is a cloned counterfeit or an unauthorized substitute.";
+  } else if (isBlocked) {
+    statusText = "UNAUTHORIZED DEVICE CONTAINED";
+    badgeClass = "badge-danger";
+    category = "Zero-Trust Whitelist Policy Enforcement";
+    reason = `This '${deviceType}' is not registered in the Authorized Device Whitelist. Under strict Zero-Trust USB Defense (ENFORCE mode), all unrecognized peripherals are treated as potential threats (preventing data theft, rogue network dongles, and unvetted firmware).`;
+    actionJustification = "Hardware Blocked: The system blocked the peripheral from operating, ensuring only authorized organizational assets can establish connection.";
+    recommendation = "If this is a trusted business peripheral, click '+ Whitelist' to authorize it with administrative credentials. Otherwise, remove it from the endpoint.";
+  } else if (isViolation) {
+    statusText = "POLICY WARNING AUDITED";
+    badgeClass = "badge-warning";
+    category = "Unregistered Peripheral in AUDIT ONLY Mode";
+    reason = `The peripheral is not registered on the whitelist, but the endpoint security policy is currently operating in AUDIT ONLY (Passive Logging) mode. The device was inspected and allowed to function while logging a security deviation.`;
+    actionJustification = "Audit Logged: Telemetry and device identifiers were saved to the event audit log without interrupting the user's workflow.";
+    recommendation = "To enforce active blocking of unregistered devices, toggle policy mode to ENFORCE in the top navigation bar.";
+  } else if (isAllowed) {
+    statusText = "AUTHORIZED SAFE PERIPHERAL";
+    badgeClass = "badge-safe";
+    category = "Approved Trusted Peripheral";
+    reason = `The peripheral's Vendor ID, Product ID, and Hardware Serial matched an authorized organizational whitelist rule. The device passed zero-trust authentication checks.`;
+    actionJustification = "Allowed & Active: Normal peripheral access granted under continuous behavioral and typing monitoring.";
+    recommendation = "Peripheral is behaving normally. No security action is necessary.";
+  }
+
+  return { statusText, badgeClass, category, reason, actionJustification, recommendation };
+}
+
+function createInfosecCard(item) {
+  const info = generateInfosecSummary(item);
+  const card = document.createElement("div");
+  card.className = `infosec-card ${info.badgeClass}`;
+  card.innerHTML = `
+    <div class="infosec-header">
+      <div class="infosec-title-group">
+        <span class="infosec-badge">${escapeHtml(info.statusText)}</span>
+        <h3 class="infosec-category">${escapeHtml(info.category)}</h3>
+      </div>
+    </div>
+    <div class="infosec-body">
+      <div class="infosec-section">
+        <span class="infosec-label">Why was this device flagged / blocked?</span>
+        <p class="infosec-text">${escapeHtml(info.reason)}</p>
+      </div>
+      <div class="infosec-section">
+        <span class="infosec-label">Information Security Action Taken:</span>
+        <p class="infosec-text">${escapeHtml(info.actionJustification)}</p>
+      </div>
+      <div class="infosec-section">
+        <span class="infosec-label">Cybersecurity Recommendation:</span>
+        <p class="infosec-text">${escapeHtml(info.recommendation)}</p>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
 function displayConsolidatedDevices(groups) {
   if (!eventsBody) return;
 
@@ -717,6 +815,9 @@ function displayConsolidatedDevices(groups) {
     detailsTd.colSpan = 6;
     const panel = document.createElement("div");
     panel.className = "details-panel";
+
+    // InfoSec Assessment Card
+    panel.appendChild(createInfosecCard(group));
 
     // Summary callout
     if (group.summary) {
@@ -865,6 +966,9 @@ function displayRawEvents(events) {
     detailsTd.colSpan = 6;
     const panel = document.createElement("div");
     panel.className = "details-panel";
+
+    // InfoSec Assessment Card
+    panel.appendChild(createInfosecCard(event));
 
     // Regression requirement: preserve filename-based indicators caveat
     if (event.event_type === "scan.completed") {

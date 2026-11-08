@@ -1014,6 +1014,120 @@ body {
   margin-bottom: 8px;
 }
 
+/* InfoSec Assessment Card in Inspect Panel */
+.infosec-card {
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(112, 144, 176, 0.08);
+}
+
+.infosec-card.badge-danger {
+  border-left: 4px solid var(--vui-danger);
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+  border-color: #fecaca;
+}
+
+.infosec-card.badge-warning {
+  border-left: 4px solid var(--vui-warning);
+  background: linear-gradient(135deg, #fffbf0 0%, #ffffff 100%);
+  border-color: #fed7aa;
+}
+
+.infosec-card.badge-safe {
+  border-left: 4px solid var(--vui-success);
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-color: #bbf7d0;
+}
+
+.infosec-card.badge-info {
+  border-left: 4px solid var(--vui-primary);
+  background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+  border-color: #bfdbfe;
+}
+
+.infosec-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.infosec-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.infosec-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  display: inline-block;
+  width: fit-content;
+}
+
+.infosec-card.badge-danger .infosec-badge {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.infosec-card.badge-warning .infosec-badge {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.infosec-card.badge-safe .infosec-badge {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.infosec-card.badge-info .infosec-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.infosec-category {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--vui-white);
+  margin-top: 2px;
+}
+
+.infosec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.infosec-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.infosec-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vui-text-muted);
+}
+
+.infosec-text {
+  font-size: 0.82rem;
+  color: var(--vui-white);
+  line-height: 1.45;
+}
+
 /* Severity Tag for Raw View */
 .severity {
   display: inline-flex;
