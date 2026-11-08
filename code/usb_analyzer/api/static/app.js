@@ -31,6 +31,7 @@ let searchQuery = "";
 
 // Theme handling
 function updateThemeToggle(isDark) {
+  if (!themeToggle) return;
   const label = `Switch to ${isDark ? "light" : "dark"} mode`;
   themeToggle.setAttribute("aria-label", label);
   themeToggle.setAttribute("title", label);
@@ -40,6 +41,7 @@ function updateThemeToggle(isDark) {
 function setTheme(isDark) {
   const theme = isDark ? "dark" : "light";
   document.documentElement.dataset.theme = theme;
+  document.documentElement.setAttribute("data-theme", theme);
   updateThemeToggle(isDark);
   if (severityChart && activityChart) {
     updateChartsTheme(isDark);
@@ -53,20 +55,22 @@ function getInitialTheme() {
   } catch (error) {
     console.warn("Theme load error:", error);
   }
-  return "dark"; // Default to dark for professional SOC styling
+  return "dark"; // Default to dark for Vision UI styling
 }
 
 setTheme(getInitialTheme() === "dark");
 
-themeToggle.addEventListener("click", () => {
-  const isDark = document.documentElement.dataset.theme !== "dark";
-  setTheme(isDark);
-  try {
-    localStorage.setItem(themeStorageKey, isDark ? "dark" : "light");
-  } catch (error) {
-    console.warn("Theme save error:", error);
-  }
-});
+if (themeToggle) {
+  themeToggle.addEventListener("click", () => {
+    const isDark = document.documentElement.dataset.theme !== "dark";
+    setTheme(isDark);
+    try {
+      localStorage.setItem(themeStorageKey, isDark ? "dark" : "light");
+    } catch (error) {
+      console.warn("Theme save error:", error);
+    }
+  });
+}
 
 function showMessage(text, isError = false) {
   if (!message) return;
@@ -88,7 +92,15 @@ function formatTime(value) {
 // Dismiss alert banner
 if (dismissAlertBtn) {
   dismissAlertBtn.addEventListener("click", () => {
-    alertBanner.hidden = true;
+    if (alertBanner) {
+      alertBanner.hidden = true;
+      alertBanner.style.display = "none";
+    }
+    for (const event of allEventsCache) {
+      if (event.severity === "critical") {
+        dismissedAlertIds.add(event.id);
+      }
+    }
   });
 }
 
@@ -280,6 +292,8 @@ function groupEventsByDevice(events) {
 
   return Array.from(groups.values()).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
 }
+
+if (simulateBadusbBtn) {
   simulateBadusbBtn.addEventListener("click", async () => {
     simulateBadusbBtn.disabled = true;
     simulateBadusbBtn.querySelector("span").textContent = "Simulating...";
@@ -592,8 +606,12 @@ function checkLiveAlerts(events) {
 
   if (criticalEvent) {
     alertBanner.hidden = false;
+    alertBanner.style.display = "flex";
     alertSummary.textContent = `${criticalEvent.event_type.toUpperCase()}: ${criticalEvent.details?.reason || criticalEvent.details?.summary || criticalEvent.details?.threat || "High-risk hardware event intercepted"}`;
     alertDetail.textContent = `Target: ${criticalEvent.device_id} • Telemetry recorded at ${formatTime(criticalEvent.time)}`;
+  } else {
+    alertBanner.hidden = true;
+    alertBanner.style.display = "none";
   }
 }
 
