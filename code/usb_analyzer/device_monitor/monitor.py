@@ -33,6 +33,7 @@ class UsbDevice:
     status: str | None = None
     volume_paths: tuple[str, ...] = ()
     serial_number: str | None = None
+    device_type: str | None = None
 
 
 class DeviceProvider(Protocol):
@@ -60,13 +61,19 @@ def _event_for(device: UsbDevice, connected: bool) -> DeviceEvent:
         hardware_ids=device.hardware_ids,
         pnp_class=device.pnp_class,
         service=device.service,
+        name=device.name,
+        manufacturer=device.manufacturer,
     )
 
     serial = device.serial_number or fingerprint.serial_number
+    dev_type = device.device_type or fingerprint.device_type
+    dev_name = device.name or fingerprint.friendly_name or "USB Peripheral"
 
     details: dict[str, Any] = {
         "pnp_device_id": device.device_id,
-        "name": device.name,
+        "name": dev_name,
+        "friendly_name": dev_name,
+        "device_type": dev_type,
         "manufacturer": device.manufacturer,
         "pnp_class": device.pnp_class,
         "service": device.service,
@@ -76,6 +83,10 @@ def _event_for(device: UsbDevice, connected: bool) -> DeviceEvent:
         "serial_number": serial,
         "device_class": fingerprint.device_class,
         "interfaces": list(fingerprint.interfaces),
+        "verdict": "SAFE" if connected else "INFO",
+        "risk": "None",
+        "action_taken": "Connected" if connected else "Disconnected",
+        "summary": f"{dev_name} ({dev_type}) {'connected to system' if connected else 'disconnected'}",
     }
     if fingerprint.vendor_id:
         details["vendor_id"] = fingerprint.vendor_id
@@ -170,13 +181,22 @@ class DeviceMonitor:
                             hardware_ids=device.hardware_ids if device else (),
                             pnp_class=device.pnp_class if device else None,
                             service=device.service if device else None,
+                            name=device.name if device else None,
+                            manufacturer=device.manufacturer if device else None,
                         )
                         serial = event.details.get("serial_number") or fp.serial_number
+                        dev_label = event.details.get("friendly_name") or event.details.get("name") or "USB Device"
+                        dev_type = event.details.get("device_type") or fp.device_type
 
                         # Check Scenario 5: Spoofed Identity
                         trusted_list = self.policy_engine.store.list()
                         is_spoofed, spoof_reason, spoof_details = detect_spoofed_identity(fp, trusted_list)
                         if is_spoofed:
+                            event.details["verdict"] = "DANGER"
+                            event.details["risk"] = "Identity Spoofing Detected"
+                            event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: Identity spoofing detected ({spoof_reason}). Action taken: Hardware blocked."
+
                             spoof_event = DeviceEvent(
                                 device_id=event.device_id,
                                 source="device-monitor",
@@ -184,6 +204,10 @@ class DeviceMonitor:
                                 event_type="device.spoofed_identity",
                                 details={
                                     "reason": spoof_reason,
+                                    "verdict": "DANGER",
+                                    "risk": "Identity Spoofing Detected",
+                                    "action_taken": "Hardware Blocked (Port Disabled)",
+                                    "summary": event.details["summary"],
                                     **spoof_details,
                                     **event.details,
                                 },
@@ -196,6 +220,10 @@ class DeviceMonitor:
                                 threat_type="spoofed_identity",
                                 details=spoof_details,
                             )
+                            block_event.details["verdict"] = "DANGER"
+                            block_event.details["risk"] = "Identity Spoofing Detected"
+                            block_event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
+                            block_event.details["summary"] = event.details["summary"]
                             self.event_sink.add(block_event)
                             self.blocked_device_ids.add(event.device_id)
                             continue
@@ -208,11 +236,43 @@ class DeviceMonitor:
                             product_id=fp.product_id,
                             details=event.details,
                         )
-                        for pe in policy_events:
-                            self.event_sink.add(pe)
 
-                        if not decision.allowed:
+                        if decision.allowed and decision.action == "allow":
+                            rule_name = decision.matched_entry.name if decision.matched_entry else "Whitelist"
+                            event.details["verdict"] = "SAFE"
+                            event.details["risk"] = "None (Authorized Peripheral)"
+                            event.details["action_taken"] = "Allowed & Active"
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Authorized by whitelist rule '{rule_name}'. Action taken: Allowed."
+                            for pe in policy_events:
+                                pe.details["verdict"] = "SAFE"
+                                pe.details["risk"] = "None (Authorized Peripheral)"
+                                pe.details["action_taken"] = "Allowed & Active"
+                                pe.details["summary"] = event.details["summary"]
+                                self.event_sink.add(pe)
+                        elif not decision.allowed:
+                            event.details["verdict"] = "DANGER"
+                            event.details["risk"] = "Unauthorized Device"
+                            event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: Device is not registered on the whitelist. Action taken: Hardware blocked."
+                            for pe in policy_events:
+                                pe.details["verdict"] = "DANGER"
+                                pe.details["risk"] = "Unauthorized Device"
+                                pe.details["action_taken"] = "Hardware Blocked (Port Disabled)"
+                                pe.details["summary"] = event.details["summary"]
+                                self.event_sink.add(pe)
                             self.blocked_device_ids.add(event.device_id)
+                        else:
+                            # Audit only mode
+                            event.details["verdict"] = "WARNING"
+                            event.details["risk"] = "Unregistered Peripheral (Audit Mode)"
+                            event.details["action_taken"] = "Audit Logged"
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — WARNING: Unregistered peripheral in audit mode. Action taken: Logged for review."
+                            for pe in policy_events:
+                                pe.details["verdict"] = "WARNING"
+                                pe.details["risk"] = "Unregistered Peripheral (Audit Mode)"
+                                pe.details["action_taken"] = "Audit Logged"
+                                pe.details["summary"] = event.details["summary"]
+                                self.event_sink.add(pe)
 
             if self.storage_scan_scheduler is not None:
                 for device_id, device in current.items():

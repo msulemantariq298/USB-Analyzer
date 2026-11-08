@@ -1,4 +1,7 @@
 const eventsBody = document.querySelector("#events-body");
+const eventsTableHead = document.querySelector("#events-table-head");
+const viewModeConsolidated = document.querySelector("#view-mode-consolidated");
+const viewModeRaw = document.querySelector("#view-mode-raw");
 const whitelistBody = document.querySelector("#whitelist-body");
 const message = document.querySelector("#message");
 const apiStatus = document.querySelector("#api-status");
@@ -20,6 +23,7 @@ const themeStorageKey = "usb-analyzer-theme";
 let allEventsCache = [];
 let eventsLoadInProgress = false;
 let currentPolicyMode = "enforce";
+let currentViewMode = "consolidated"; // "consolidated" (recommended) or "raw"
 let severityChart = null;
 let activityChart = null;
 let dismissedAlertIds = new Set();
@@ -88,8 +92,194 @@ if (dismissAlertBtn) {
   });
 }
 
-// BadUSB Simulation
-if (simulateBadusbBtn) {
+// View Mode Switcher
+if (viewModeConsolidated && viewModeRaw) {
+  viewModeConsolidated.addEventListener("click", () => {
+    currentViewMode = "consolidated";
+    viewModeConsolidated.classList.add("active");
+    viewModeConsolidated.setAttribute("aria-selected", "true");
+    viewModeRaw.classList.remove("active");
+    viewModeRaw.setAttribute("aria-selected", "false");
+    updateTableHeaders();
+    filterAndRenderEvents();
+  });
+
+  viewModeRaw.addEventListener("click", () => {
+    currentViewMode = "raw";
+    viewModeRaw.classList.add("active");
+    viewModeRaw.setAttribute("aria-selected", "true");
+    viewModeConsolidated.classList.remove("active");
+    viewModeConsolidated.setAttribute("aria-selected", "false");
+    updateTableHeaders();
+    filterAndRenderEvents();
+  });
+}
+
+function updateTableHeaders() {
+  if (!eventsTableHead) return;
+  if (currentViewMode === "consolidated") {
+    eventsTableHead.innerHTML = `
+      <tr>
+        <th scope="col">Time</th>
+        <th scope="col">Connected Device</th>
+        <th scope="col">Security Status</th>
+        <th scope="col">Risk / Reason</th>
+        <th scope="col">Action Taken</th>
+        <th scope="col" class="text-right">Actions</th>
+      </tr>
+    `;
+  } else {
+    eventsTableHead.innerHTML = `
+      <tr>
+        <th scope="col">Timestamp</th>
+        <th scope="col">Event Activity</th>
+        <th scope="col">Device Identifier & Metadata</th>
+        <th scope="col">Source Engine</th>
+        <th scope="col">Severity</th>
+        <th scope="col" class="text-right">Action</th>
+      </tr>
+    `;
+  }
+}
+
+function extractVid(deviceId) {
+  const m = String(deviceId).match(/VID_([0-9A-Fa-f]{4})/i);
+  return m ? m[1].toUpperCase() : "";
+}
+
+function extractPid(deviceId) {
+  const m = String(deviceId).match(/PID_([0-9A-Fa-f]{4})/i);
+  return m ? m[1].toUpperCase() : "";
+}
+
+function isGenericName(name) {
+  if (!name) return true;
+  const s = String(name).trim().toLowerCase();
+  return (
+    s === "usb composite device" ||
+    s === "usb input device" ||
+    s === "generic usb hub" ||
+    s === "usb root hub" ||
+    s === "usb device" ||
+    s === "unnamed device"
+  );
+}
+
+function inferDeviceTypeFromEvent(event) {
+  if (event.details?.device_type) return event.details.device_type;
+  const str = `${event.device_id} ${event.details?.name || ""} ${event.details?.pnp_class || ""} ${event.details?.service || ""}`.toLowerCase();
+  if (str.includes("keyboard") && str.includes("mouse")) return "Keyboard & Mouse";
+  if (str.includes("keyboard") || str.includes("kbd")) return "Keyboard";
+  if (str.includes("mouse") || str.includes("mou")) return "Mouse";
+  if (str.includes("disk") || str.includes("storage") || str.includes("usbstor") || event.event_type.startsWith("scan.")) return "USB Storage Drive";
+  if (str.includes("audio") || str.includes("headset") || str.includes("sound") || str.includes("media")) return "Audio Device";
+  if (str.includes("camera") || str.includes("webcam") || str.includes("video")) return "Webcam";
+  if (str.includes("bluetooth") || str.includes("bth")) return "Bluetooth Adapter";
+  if (str.includes("yubikey") || str.includes("token") || str.includes("smartcard")) return "Security Token";
+  return "Unrecognized USB Peripheral";
+}
+
+function groupEventsByDevice(events) {
+  const groups = new Map();
+
+  for (const event of events) {
+    let key = event.device_id;
+    if (key.includes("&MI_")) {
+      key = key.replace(/&MI_[0-9A-Fa-f]{2}/i, "");
+    }
+    if (key.toUpperCase().startsWith("USBSTOR\\") && key.endsWith("&0")) {
+      key = key.slice(0, -2);
+    }
+
+    if (!groups.has(key)) {
+      const vid = event.details?.vendor_id || extractVid(event.device_id);
+      const pid = event.details?.product_id || extractPid(event.device_id);
+      const serial = event.details?.serial_number || "";
+      const devType = event.details?.device_type || inferDeviceTypeFromEvent(event);
+      let friendlyName = event.details?.friendly_name || event.details?.name || "";
+      if (isGenericName(friendlyName)) {
+        friendlyName = (devType !== "Unrecognized USB Peripheral") ? `USB ${devType}` : "USB Peripheral";
+      }
+
+      groups.set(key, {
+        groupKey: key,
+        primaryDeviceId: event.device_id,
+        name: friendlyName,
+        deviceType: devType,
+        vendorId: vid,
+        productId: pid,
+        serialNumber: serial,
+        lastTime: event.time,
+        events: [],
+        highestSeverity: "info",
+        verdict: "SAFE",
+        risk: "None (Approved Peripheral)",
+        actionTaken: "Allowed & Active",
+        summary: event.details?.summary || "",
+      });
+    }
+
+    const group = groups.get(key);
+    group.events.push(event);
+
+    if (new Date(event.time) > new Date(group.lastTime)) {
+      group.lastTime = event.time;
+    }
+
+    const evName = event.details?.friendly_name || event.details?.name;
+    if (evName && !isGenericName(evName)) {
+      group.name = evName;
+    }
+    if (event.details?.device_type && event.details.device_type !== "Unrecognized USB Peripheral") {
+      group.deviceType = event.details.device_type;
+    }
+    if (event.details?.serial_number) {
+      group.serialNumber = event.details.serial_number;
+    }
+
+    const sev = (event.severity || "").toLowerCase();
+    const type = event.event_type || "";
+
+    if (sev === "critical" || type === "device.blocked" || type === "device.spoofed_identity" || type === "hid.injection_detected") {
+      group.highestSeverity = "critical";
+      group.verdict = "DANGER";
+      if (type === "device.spoofed_identity") {
+        group.risk = "Identity Spoofing Detected — Serial mismatch";
+        group.actionTaken = "Hardware Blocked (Port Disabled)";
+      } else if (type === "hid.injection_detected") {
+        group.risk = "BadUSB Keystroke Injection (Robotic typing cadence)";
+        group.actionTaken = "Hardware Blocked (Port Disabled)";
+      } else if (type === "scan.completed" || event.details?.flagged?.length) {
+        group.risk = "Malware / YARA Threat Found on storage drive";
+        group.actionTaken = "Volume Quarantined";
+      } else {
+        group.risk = event.details?.reason || "Unauthorized Device — Not on security whitelist";
+        group.actionTaken = "Hardware Blocked (Port Disabled)";
+      }
+      group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — DANGER: ${group.risk}. Action taken: ${group.actionTaken}`;
+    } else if (sev === "warning" && group.highestSeverity !== "critical") {
+      group.highestSeverity = "warning";
+      group.verdict = "WARNING";
+      group.risk = event.details?.reason || "Unregistered Device (Audit Mode Active)";
+      group.actionTaken = "Audit Logged";
+      group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — WARNING: ${group.risk}. Action taken: ${group.actionTaken}`;
+    } else if (group.highestSeverity === "info") {
+      if (type === "device.allowed") {
+        group.verdict = "SAFE";
+        group.risk = "None — Approved by Whitelist";
+        group.actionTaken = "Allowed & Active";
+        group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SAFE: Authorized by whitelist rule.`;
+      } else if (type === "device.disconnected") {
+        group.verdict = "INFO";
+        group.risk = "None";
+        group.actionTaken = "Disconnected";
+        group.summary = `${group.name} (${group.deviceType}) disconnected.`;
+      }
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
+}
   simulateBadusbBtn.addEventListener("click", async () => {
     simulateBadusbBtn.disabled = true;
     simulateBadusbBtn.querySelector("span").textContent = "Simulating...";
@@ -436,6 +626,178 @@ function renderEvents(events) {
 function displayEventRows(events) {
   if (!eventsBody) return;
 
+  if (currentViewMode === "consolidated") {
+    const groups = groupEventsByDevice(events);
+    displayConsolidatedDevices(groups);
+  } else {
+    displayRawEvents(events);
+  }
+}
+
+function displayConsolidatedDevices(groups) {
+  if (!eventsBody) return;
+
+  if (!groups.length) {
+    eventsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No matching device activity found.</td></tr>';
+    return;
+  }
+
+  const rows = [];
+  groups.forEach((group, index) => {
+    const row = document.createElement("tr");
+
+    // 1. Time
+    const timeTd = document.createElement("td");
+    timeTd.className = "font-mono small text-muted";
+    timeTd.textContent = formatTime(group.lastTime);
+
+    // 2. Connected Device & Type
+    const devTd = document.createElement("td");
+    const nameWrap = document.createElement("div");
+    nameWrap.innerHTML = `<strong>${escapeHtml(group.name)}</strong><span class="device-type-badge">${escapeHtml(group.deviceType)}</span>`;
+    devTd.appendChild(nameWrap);
+
+    const vidPid = (group.vendorId || group.productId)
+      ? `VID: ${group.vendorId || "????"} | PID: ${group.productId || "????"}`
+      : "";
+    const snText = group.serialNumber ? ` | SN: ${group.serialNumber}` : "";
+    const metaDiv = document.createElement("div");
+    metaDiv.className = "device-sub-meta font-mono";
+    metaDiv.textContent = `${vidPid}${snText}` || group.primaryDeviceId;
+    devTd.appendChild(metaDiv);
+
+    // 3. Security Status (Verdict)
+    const statusTd = document.createElement("td");
+    const verdictSpan = document.createElement("span");
+    const vClass = (group.verdict || "info").toLowerCase();
+    verdictSpan.className = `verdict-badge verdict-${vClass}`;
+    verdictSpan.textContent = group.verdict;
+    statusTd.appendChild(verdictSpan);
+
+    // 4. Risk / Reason
+    const riskTd = document.createElement("td");
+    riskTd.className = "small";
+    riskTd.textContent = group.risk;
+
+    // 5. Action Taken
+    const actionTd = document.createElement("td");
+    const actionSpan = document.createElement("span");
+    actionSpan.className = "action-badge";
+    actionSpan.textContent = group.actionTaken;
+    actionTd.appendChild(actionSpan);
+
+    // 6. Actions (Inspect + Whitelist)
+    const actActionTd = document.createElement("td");
+    actActionTd.className = "text-right";
+    const btnGroup = document.createElement("div");
+    btnGroup.style.display = "inline-flex";
+    btnGroup.style.gap = "6px";
+
+    const inspectBtn = document.createElement("button");
+    inspectBtn.className = "btn btn-sm btn-secondary";
+    inspectBtn.type = "button";
+    inspectBtn.dataset.detailToggle = "";
+    inspectBtn.setAttribute("aria-expanded", "false");
+    inspectBtn.setAttribute("aria-controls", `device-details-${index}`);
+    inspectBtn.textContent = "Inspect";
+    btnGroup.appendChild(inspectBtn);
+
+    if (group.verdict === "DANGER" || group.verdict === "WARNING") {
+      const wlBtn = document.createElement("button");
+      wlBtn.className = "btn btn-sm btn-ghost";
+      wlBtn.type = "button";
+      wlBtn.textContent = "+ Whitelist";
+      wlBtn.title = "Authorize this peripheral in the whitelist";
+      wlBtn.addEventListener("click", () => {
+        document.querySelector("#wl-name").value = group.name;
+        document.querySelector("#wl-serial").value = group.serialNumber || "";
+        document.querySelector("#wl-vid").value = group.vendorId || "";
+        document.querySelector("#wl-pid").value = group.productId || "";
+        addWlForm.hidden = false;
+        addWlForm.scrollIntoView({ behavior: "smooth" });
+      });
+      btnGroup.appendChild(wlBtn);
+    }
+    actActionTd.appendChild(btnGroup);
+
+    row.append(timeTd, devTd, statusTd, riskTd, actionTd, actActionTd);
+
+    // Detailed Forensic Expandable Row
+    const detailsRow = document.createElement("tr");
+    detailsRow.className = "details-row";
+    detailsRow.id = `device-details-${index}`;
+    detailsRow.hidden = true;
+
+    const detailsTd = document.createElement("td");
+    detailsTd.colSpan = 6;
+    const panel = document.createElement("div");
+    panel.className = "details-panel";
+
+    // Summary callout
+    if (group.summary) {
+      const summaryDiv = document.createElement("div");
+      summaryDiv.className = "summary-callout";
+      summaryDiv.textContent = group.summary;
+      panel.appendChild(summaryDiv);
+    }
+
+    // Check if any event has flagged findings or scan caveats
+    const scanEvent = group.events.find((e) => e.event_type === "scan.completed" || e.event_type === "scan.started");
+    if (scanEvent) {
+      const caveat = document.createElement("div");
+      caveat.className = "scan-caveat";
+      caveat.textContent = "These are filename-based indicators and signature matches.";
+      panel.appendChild(caveat);
+
+      if (scanEvent.details?.flagged && Array.isArray(scanEvent.details.flagged) && scanEvent.details.flagged.length > 0) {
+        const grid = document.createElement("div");
+        grid.className = "findings-grid";
+        for (const finding of scanEvent.details.flagged) {
+          const card = document.createElement("div");
+          card.className = "finding-card";
+          card.innerHTML = `
+            <div class="finding-path">${escapeHtml(finding.path)}</div>
+            <div class="finding-meta">SHA-256: <code>${escapeHtml(finding.sha256)}</code> • ${(finding.size || 0).toLocaleString()} bytes</div>
+            <div class="finding-flags">
+              ${(finding.flags || []).map((f) => `<span class="flag-badge">${escapeHtml(f)}</span>`).join("")}
+            </div>
+          `;
+          grid.appendChild(card);
+        }
+        panel.appendChild(grid);
+      }
+    }
+
+    // Consolidated Sub-Events Audit Trail
+    const eventsSummary = document.createElement("div");
+    eventsSummary.className = "small text-muted font-mono";
+    eventsSummary.style.marginTop = "4px";
+    eventsSummary.textContent = `Consolidated Events (${group.events.length} event${group.events.length === 1 ? "" : "s"}): ` +
+      group.events.map((e) => `${e.event_type} [${e.severity.toUpperCase()}]`).join(" → ");
+    panel.appendChild(eventsSummary);
+
+    // Full JSON Block
+    const pre = document.createElement("pre");
+    pre.className = "details-json";
+    pre.textContent = JSON.stringify(
+      group.events.length === 1 ? group.events[0].details : { summary: group.summary, events: group.events },
+      null,
+      2
+    );
+    panel.appendChild(pre);
+
+    detailsTd.appendChild(panel);
+    detailsRow.appendChild(detailsTd);
+
+    rows.push(row, detailsRow);
+  });
+
+  eventsBody.replaceChildren(...rows);
+}
+
+function displayRawEvents(events) {
+  if (!eventsBody) return;
+
   if (!events.length) {
     eventsBody.innerHTML = '<tr><td colspan="6" class="empty-state">No matching device activity found.</td></tr>';
     return;
@@ -457,7 +819,7 @@ function displayEventRows(events) {
     toggle.type = "button";
     toggle.dataset.detailToggle = "";
     toggle.setAttribute("aria-expanded", "false");
-    toggle.setAttribute("aria-controls", `event-details-${index}`);
+    toggle.setAttribute("aria-controls", `raw-event-details-${index}`);
     toggle.innerHTML = `<strong>${escapeHtml(event.event_type)}</strong><span class="activity-chevron" aria-hidden="true"></span>`;
     actTd.appendChild(toggle);
 
@@ -509,7 +871,7 @@ function displayEventRows(events) {
     // Forensic Details Panel Row
     const detailsRow = document.createElement("tr");
     detailsRow.className = "details-row";
-    detailsRow.id = `event-details-${index}`;
+    detailsRow.id = `raw-event-details-${index}`;
     detailsRow.hidden = true;
 
     const detailsTd = document.createElement("td");

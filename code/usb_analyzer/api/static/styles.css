@@ -916,6 +916,119 @@ html, body {
   border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
+/* View Switch Segmented Controls */
+.view-switch-group {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-tab {
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-tab:hover {
+  color: var(--text);
+}
+
+.btn-tab.active {
+  background: var(--surface-elevated);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* Device Category & Status Badges */
+.device-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--accent-blue);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.verdict-badge.verdict-safe {
+  background: rgba(52, 211, 153, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.verdict-badge.verdict-danger {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.verdict-badge.verdict-warning {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.verdict-badge.verdict-info {
+  background: rgba(56, 189, 248, 0.08);
+  color: var(--accent-blue);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.device-sub-meta {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.summary-callout {
+  padding: 8px 12px;
+  background: var(--surface-elevated);
+  border-left: 3px solid var(--accent-blue);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
 /* Footer */
 .app-footer {
   border-top: 1px solid var(--border);

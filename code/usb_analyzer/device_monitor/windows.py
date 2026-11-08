@@ -1,12 +1,17 @@
 import argparse
 import logging
 import os
+import re
 from threading import Event
 from typing import Any
 
 from usb_analyzer.core.api_client import ApiEventClient
 from usb_analyzer.core.config import get_settings
-from usb_analyzer.device_monitor.fingerprint import extract_serial_number
+from usb_analyzer.device_monitor.fingerprint import (
+    extract_serial_number,
+    infer_device_category,
+    infer_friendly_name,
+)
 from usb_analyzer.device_monitor.monitor import DeviceProvider, UsbDevice, run_monitor
 from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
@@ -38,6 +43,23 @@ class WindowsWmiProvider(DeviceProvider):
         entities = self._connection.query(
             "SELECT * FROM Win32_PnPEntity WHERE Present = TRUE"
         )
+
+        # Collect child HID and interface metadata for role and brand identification
+        hid_info_by_vid_pid: dict[tuple[str, str], dict[str, set[str]]] = {}
+        for entity in entities:
+            pnp_id = _string_value(entity, "PNPDeviceID") or ""
+            name = _string_value(entity, "Name")
+            pnp_class = _string_value(entity, "PNPClass")
+            vid_match = re.search(r"VID_([0-9A-F]{4})", pnp_id, re.IGNORECASE)
+            pid_match = re.search(r"PID_([0-9A-F]{4})", pnp_id, re.IGNORECASE)
+            if vid_match and pid_match:
+                key = (vid_match.group(1).upper(), pid_match.group(1).upper())
+                entry = hid_info_by_vid_pid.setdefault(key, {"names": set(), "classes": set()})
+                if name:
+                    entry["names"].add(name)
+                if pnp_class:
+                    entry["classes"].add(pnp_class)
+
         device_entities = []
         for entity in entities:
             device_id = _string_value(entity, "PNPDeviceID") or _string_value(
@@ -45,26 +67,142 @@ class WindowsWmiProvider(DeviceProvider):
             )
             if not device_id or not device_id.upper().startswith(("USB\\", "USBSTOR\\")):
                 continue
+            # Filter out internal motherboard USB root hubs
+            if "ROOT_HUB" in device_id.upper():
+                continue
             device_entities.append((entity, device_id))
 
         volume_paths_by_device = _usb_volume_paths_by_device(
             self._connection,
             {device_id.casefold() for _, device_id in device_entities},
         )
+
+        parents: dict[tuple[str, str], tuple[Any, str]] = {}
+        children_by_vid_pid: dict[tuple[str, str], list[tuple[Any, str]]] = {}
+        standalone: list[tuple[Any, str]] = []
+
         for entity, device_id in device_entities:
-            volume_paths = volume_paths_by_device.get(device_id.casefold(), ())
-            device = UsbDevice(
+            vid_match = re.search(r"VID_([0-9A-F]{4})", device_id, re.IGNORECASE)
+            pid_match = re.search(r"PID_([0-9A-F]{4})", device_id, re.IGNORECASE)
+            if vid_match and pid_match:
+                key = (vid_match.group(1).upper(), pid_match.group(1).upper())
+                if "&MI_" in device_id.upper():
+                    children_by_vid_pid.setdefault(key, []).append((entity, device_id))
+                else:
+                    parents[key] = (entity, device_id)
+            else:
+                standalone.append((entity, device_id))
+
+        # 1. Consolidate composite devices under their physical parent
+        for key, (entity, device_id) in parents.items():
+            extra_info = hid_info_by_vid_pid.get(key, {"names": set(), "classes": set()})
+            sub_children = children_by_vid_pid.get(key, [])
+
+            vol_set = set(volume_paths_by_device.get(device_id.casefold(), ()))
+            hw_ids = set(_string_sequence(entity, "HardwareID"))
+            for c_entity, c_dev_id in sub_children:
+                vol_set.update(volume_paths_by_device.get(c_dev_id.casefold(), ()))
+                hw_ids.update(_string_sequence(c_entity, "HardwareID"))
+                c_name = _string_value(c_entity, "Name")
+                if c_name:
+                    extra_info["names"].add(c_name)
+                c_class = _string_value(c_entity, "PNPClass")
+                if c_class:
+                    extra_info["classes"].add(c_class)
+
+            category = infer_device_category(
                 device_id=device_id,
                 name=_string_value(entity, "Name"),
+                pnp_class=_string_value(entity, "PNPClass"),
+                service=_string_value(entity, "Service"),
+                hardware_ids=tuple(sorted(hw_ids)),
+                sub_names=extra_info["names"],
+                sub_classes=extra_info["classes"],
+            )
+            friendly = infer_friendly_name(
+                device_id=device_id,
+                name=_string_value(entity, "Name"),
+                manufacturer=_string_value(entity, "Manufacturer"),
+                device_category=category,
+                sub_names=extra_info["names"],
+            )
+
+            device = UsbDevice(
+                device_id=device_id,
+                name=friendly,
+                manufacturer=_string_value(entity, "Manufacturer"),
+                pnp_class=_string_value(entity, "PNPClass") or category,
+                service=_string_value(entity, "Service"),
+                hardware_ids=tuple(sorted(hw_ids)),
+                status=_string_value(entity, "Status"),
+                volume_paths=tuple(sorted(vol_set)),
+                serial_number=extract_serial_number(device_id),
+                device_type=category,
+            )
+            devices[device_id] = device
+
+        # 2. Child interfaces whose parent was not enumerated (e.g. mock test units)
+        for key, child_list in children_by_vid_pid.items():
+            if key not in parents:
+                for entity, device_id in child_list:
+                    vol = volume_paths_by_device.get(device_id.casefold(), ())
+                    category = infer_device_category(
+                        device_id=device_id,
+                        name=_string_value(entity, "Name"),
+                        pnp_class=_string_value(entity, "PNPClass"),
+                        service=_string_value(entity, "Service"),
+                        hardware_ids=_string_sequence(entity, "HardwareID"),
+                    )
+                    friendly = infer_friendly_name(
+                        device_id=device_id,
+                        name=_string_value(entity, "Name"),
+                        manufacturer=_string_value(entity, "Manufacturer"),
+                        device_category=category,
+                    )
+                    device = UsbDevice(
+                        device_id=device_id,
+                        name=friendly,
+                        manufacturer=_string_value(entity, "Manufacturer"),
+                        pnp_class=_string_value(entity, "PNPClass"),
+                        service=_string_value(entity, "Service"),
+                        hardware_ids=_string_sequence(entity, "HardwareID"),
+                        status=_string_value(entity, "Status"),
+                        volume_paths=vol,
+                        serial_number=extract_serial_number(device_id),
+                        device_type=category,
+                    )
+                    devices[device_id] = device
+
+        # 3. Standalone non-composite devices (e.g. USBSTOR mass storage drives)
+        for entity, device_id in standalone:
+            vol = volume_paths_by_device.get(device_id.casefold(), ())
+            category = infer_device_category(
+                device_id=device_id,
+                name=_string_value(entity, "Name"),
+                pnp_class=_string_value(entity, "PNPClass"),
+                service=_string_value(entity, "Service"),
+                hardware_ids=_string_sequence(entity, "HardwareID"),
+            )
+            friendly = infer_friendly_name(
+                device_id=device_id,
+                name=_string_value(entity, "Name"),
+                manufacturer=_string_value(entity, "Manufacturer"),
+                device_category=category,
+            )
+            device = UsbDevice(
+                device_id=device_id,
+                name=friendly,
                 manufacturer=_string_value(entity, "Manufacturer"),
                 pnp_class=_string_value(entity, "PNPClass"),
                 service=_string_value(entity, "Service"),
                 hardware_ids=_string_sequence(entity, "HardwareID"),
                 status=_string_value(entity, "Status"),
-                volume_paths=volume_paths,
+                volume_paths=vol,
                 serial_number=extract_serial_number(device_id),
+                device_type=category,
             )
             devices[device_id] = device
+
         return devices
 
 

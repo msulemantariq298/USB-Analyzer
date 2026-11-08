@@ -297,12 +297,20 @@
             </div>
             <div>
               <h2 id="activity-title" class="panel-title">Real-Time Event Audit Log</h2>
-              <p class="panel-desc">Chronological stream of bus plug events, storage hash inspections, and containment actions.</p>
+              <p class="panel-desc">Continuous hardware inspection, threat analysis, and containment decisions.</p>
             </div>
           </div>
           <div class="table-tools">
+            <div class="view-switch-group" role="tablist" aria-label="Activity view format">
+              <button id="view-mode-consolidated" class="btn btn-sm btn-tab active" type="button" role="tab" aria-selected="true">
+                Connected Devices (Summary)
+              </button>
+              <button id="view-mode-raw" class="btn btn-sm btn-tab" type="button" role="tab" aria-selected="false">
+                All Raw Events
+              </button>
+            </div>
             <div class="search-wrap">
-              <input type="search" id="event-search" class="search-input" placeholder="Filter by device ID, event, serial..." aria-label="Search events">
+              <input type="search" id="event-search" class="search-input" placeholder="Search by device, serial, type, risk..." aria-label="Search events">
             </div>
             <button id="refresh-events" class="btn btn-secondary refresh-btn" type="button" title="Refresh event log">
               <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
@@ -317,14 +325,14 @@
 
         <div class="data-table-container">
           <table class="data-table">
-            <thead>
+            <thead id="events-table-head">
               <tr>
-                <th scope="col">Timestamp</th>
-                <th scope="col">Event Activity</th>
-                <th scope="col">Device Identifier & Metadata</th>
-                <th scope="col">Source Engine</th>
-                <th scope="col">Severity</th>
-                <th scope="col" class="text-right">Action</th>
+                <th scope="col">Time</th>
+                <th scope="col">Connected Device</th>
+                <th scope="col">Security Status</th>
+                <th scope="col">Risk / Reason</th>
+                <th scope="col">Action Taken</th>
+                <th scope="col" class="text-right">Actions</th>
               </tr>
             </thead>
             <tbody id="events-body">
