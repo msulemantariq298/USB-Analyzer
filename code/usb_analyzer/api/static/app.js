@@ -955,6 +955,22 @@ async function loadEvents(showStatus = true) {
 
 document.querySelector("#refresh-events")?.addEventListener("click", () => loadEvents(true));
 
+const clearEventsBtn = document.querySelector("#clear-events-btn");
+if (clearEventsBtn) {
+  clearEventsBtn.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to clear all recorded USB events from the database?")) return;
+    try {
+      const response = await fetch("/api/v1/events", { method: "DELETE" });
+      if (!response.ok) throw new Error(`API returned ${response.status}`);
+      const data = await response.json();
+      showMessage(`Cleared ${data.deleted || 0} event${data.deleted === 1 ? "" : "s"} from database.`);
+      await loadEvents(false);
+    } catch (err) {
+      showMessage(`Failed to clear events: ${err.message}`, true);
+    }
+  });
+}
+
 // Initial bootstrap
 loadPolicyStatus();
 loadWhitelist();

@@ -9,8 +9,8 @@ from usb_analyzer.core.events import DeviceEvent
 class EventStore:
     """SQLite persistence for auditable analyzer events."""
 
-    def __init__(self, database_path: Path) -> None:
-        self.database_path = database_path
+    def __init__(self, database_path: Path | str) -> None:
+        self.database_path = Path(database_path)
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
@@ -97,6 +97,12 @@ class EventStore:
             )
             for row in rows
         ]
+
+    def clear(self) -> int:
+        """Delete all persisted events from the store and return the number of deleted rows."""
+        with self._connect() as connection:
+            cursor = connection.execute("DELETE FROM events")
+            return cursor.rowcount
 
     def add_many(self, events: Iterable[DeviceEvent]) -> None:
         for event in events:

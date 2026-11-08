@@ -74,6 +74,12 @@ def create_event(event: DeviceEvent) -> DeviceEvent:
     return event_store.add(event)
 
 
+@app.delete(f"{settings.api_prefix}/events", status_code=200)
+def clear_all_events() -> dict[str, int]:
+    count = event_store.clear()
+    return {"deleted": count}
+
+
 @app.get(
     f"{settings.api_prefix}/policy/whitelist",
     response_model=list[WhitelistEntry],
