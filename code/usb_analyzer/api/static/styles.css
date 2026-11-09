@@ -1890,3 +1890,90 @@ body {
   .table-tools { width: 100%; justify-content: space-between; }
   .search-input { width: 100%; }
 }
+
+/* ==========================================================================
+   Emil Kowalski & Impeccable Design Enhancements
+   - Custom cubic-bezier easing curves
+   - Tactile feedback (:active scale)
+   - Organic entry animations (no scale(0))
+   - Tabular numbers on telemetry
+   - Crisp Donezo Cobalt Blue & Clean White surfaces
+   ========================================================================== */
+
+.btn, .scenario-pill-btn, .btn-tab, .triage-btn, .sim-menu-item, .alert-close, .modal-close-btn {
+  transition: transform 120ms cubic-bezier(0.23, 1, 0.32, 1), background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  user-select: none;
+}
+
+.btn:active, .scenario-pill-btn:active, .triage-btn:active, .btn-tab:active {
+  transform: scale(0.97) !important;
+}
+
+.btn:focus-visible, .scenario-pill-btn:focus-visible, .btn-tab:focus-visible {
+  outline: 2px solid rgba(29, 78, 216, 0.4);
+  outline-offset: 2px;
+}
+
+.kpi-card {
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1), border-color 180ms ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.kpi-value, .sync-value, .data-table td.font-mono, .data-table td:first-child {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* Organic Modal Animation (Origin-Aware, never from scale(0)) */
+.modal-backdrop {
+  opacity: 0;
+  transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal-backdrop:not([hidden]) {
+  display: flex !important;
+  opacity: 1;
+}
+
+.modal-card {
+  transform: scale(0.96) translateY(6px);
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), opacity 180ms ease-out;
+  opacity: 0;
+}
+
+.modal-backdrop:not([hidden]) .modal-card {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.pill-danger-kpi {
+  color: var(--danger-crimson) !important;
+  background: var(--danger-bg) !important;
+  border-color: var(--danger-border) !important;
+}
+
+.pill-warning-kpi {
+  color: var(--warning-amber) !important;
+  background: var(--warning-bg) !important;
+  border-color: var(--warning-border) !important;
+}
+
+.pill-safe-kpi {
+  color: var(--safe-green) !important;
+  background: var(--safe-bg) !important;
+  border-color: var(--safe-border) !important;
+}
+
+/* Button Icon Text Alignment */
+.btn-icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+

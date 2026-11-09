@@ -44,79 +44,34 @@
 
           <div class="defense-status-pill" title="Automatic real-time threat defense active">
             <span class="defense-dot"></span>
-            <span>AUTO DEFENSE ACTIVE</span>
+            <span>ACTIVE DEFENSE</span>
           </div>
         </div>
 
         <div class="action-buttons">
-          <!-- Multi-Scenario Attack Simulation Dropdown -->
-          <div class="simulation-dropdown-wrapper">
-            <button id="simulate-dropdown-btn" class="btn btn-secondary dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false" title="Simulate safe devices, suspicious warnings, and blocked threats">
-              <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
-                <path d="M13 2L3 14h6l-2 6 10-12h-6l2-6z" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>Simulate Attack / Device ▾</span>
-            </button>
-            <div id="simulation-menu" class="sim-dropdown-menu" role="menu" hidden>
-              <div class="sim-dropdown-header">HARDWARE & ATTACK LAB</div>
-              <button class="sim-menu-item" type="button" data-scenario="safe_usb" role="menuitem">
-                <span class="sim-icon-dot safe-dot">✓</span>
-                <div class="sim-item-text">
-                  <div class="sim-title">Safe Corporate Drive <span class="badge-pill pill-safe">SAFE</span></div>
-                  <div class="sim-desc">Whitelisted storage • Clean scan • Full access</div>
-                </div>
-              </button>
-              <button id="simulate-badusb-btn" class="sim-menu-item" type="button" data-scenario="badusb" role="menuitem">
-                <span class="sim-icon-dot danger-dot">⚡</span>
-                <div class="sim-item-text">
-                  <div class="sim-title">BadUSB Keystroke Injection <span class="badge-pill pill-danger">BLOCKED</span></div>
-                  <div class="sim-desc">Rubber Ducky rapid typing • Blocked & user notified</div>
-                </div>
-              </button>
-              <button class="sim-menu-item" type="button" data-scenario="malware_drive" role="menuitem">
-                <span class="sim-icon-dot danger-dot">☣</span>
-                <div class="sim-item-text">
-                  <div class="sim-title">Malware Infected Flash Drive <span class="badge-pill pill-danger">BLOCKED</span></div>
-                  <div class="sim-desc">Trojan dropper & autorun.inf • Quarantined & user notified</div>
-                </div>
-              </button>
-              <button class="sim-menu-item" type="button" data-scenario="unauthorized_device" role="menuitem">
-                <span class="sim-icon-dot warning-dot">⚠</span>
-                <div class="sim-item-text">
-                  <div class="sim-title">Unregistered USB Device <span class="badge-pill pill-warning">SUSPICIOUS</span></div>
-                  <div class="sim-desc">Unknown peripheral • Flagged & user warned</div>
-                </div>
-              </button>
-              <button class="sim-menu-item" type="button" data-scenario="spoofed_identity" role="menuitem">
-                <span class="sim-icon-dot purple-dot">🎭</span>
-                <div class="sim-item-text">
-                  <div class="sim-title">Spoofed Hardware Identity <span class="badge-pill pill-danger">BLOCKED</span></div>
-                  <div class="sim-desc">Cloned VID/PID with forged serial • Blocked & user notified</div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <button id="sound-toggle-btn" class="btn btn-secondary" type="button" title="Toggle audio alert chime for high-risk threats">
+          <button id="sound-toggle-btn" class="btn btn-secondary btn-icon-text" type="button" title="Toggle audio alert chime for high-risk threats">
             <span id="sound-icon">🔔</span>
             <span id="sound-label">Alerts On</span>
           </button>
 
-          <button id="threat-matrix-btn" class="btn btn-secondary" type="button" title="View 3-Tier Security Architecture and MITRE ATT&CK Mapping">
+          <button id="threat-matrix-btn" class="btn btn-secondary btn-icon-text" type="button" title="View 3-Tier Security Architecture and MITRE ATT&CK Mapping">
             <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
               <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span>MITRE Matrix</span>
           </button>
 
-          <a id="export-pdf" class="btn btn-primary" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf" title="Export forensic incident report (PDF)">
+          <a id="export-pdf" class="btn btn-primary btn-icon-text" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf" title="Export forensic incident report (PDF)">
             <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
               <path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 3v10m-3-3 3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span>Export Report (PDF)</span>
           </a>
 
-          <!-- Hidden Theme Toggle for test suite compatibility -->
+          <!-- Hidden compatibility toggles for test suite -->
+          <button id="simulate-dropdown-btn" hidden style="display:none;"></button>
+          <div id="simulation-menu" hidden style="display:none;"></div>
+          <button id="simulate-badusb-btn" hidden style="display:none;" data-scenario="badusb"></button>
           <button id="theme-toggle" hidden aria-hidden="true" style="display: none;"></button>
         </div>
       </div>
@@ -165,59 +120,54 @@
           <article class="kpi-card kpi-anchor-blue">
             <div class="kpi-top-row">
               <span class="kpi-label">Total Events</span>
-              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
             <strong id="total-events" class="kpi-value">0</strong>
             <div class="kpi-footer">
-              <span class="kpi-pill">Live Telemetry Log</span>
+              <span class="kpi-pill">Live Telemetry</span>
             </div>
           </article>
 
-          <!-- 2. Policy Warnings -->
-          <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Policy Warnings</span>
-              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
-            </div>
-            <strong id="warning-events" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill">Audit Deviations</span>
-            </div>
-          </article>
-
-          <!-- 3. Critical Threats -->
-          <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Critical Threats</span>
-              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
-            </div>
-            <strong id="critical-events" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill" style="color: var(--danger-crimson); background: var(--danger-bg); border-color: var(--danger-border);">Malware & BadUSB</span>
-            </div>
-          </article>
-
-          <!-- 4. Devices Blocked -->
+          <!-- 2. Devices Blocked -->
           <article class="kpi-card">
             <div class="kpi-top-row">
               <span class="kpi-label">Devices Blocked</span>
-              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
             <strong id="blocked-count" class="kpi-value">0</strong>
             <div class="kpi-footer">
-              <span class="kpi-pill">Hardware Isolated</span>
+              <span class="kpi-pill pill-danger-kpi">Port Isolated</span>
+            </div>
+          </article>
+
+          <!-- 3. Policy Warnings -->
+          <article class="kpi-card">
+            <div class="kpi-top-row">
+              <span class="kpi-label">Suspicious Warnings</span>
+            </div>
+            <strong id="warning-events" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill pill-warning-kpi">Audit Review</span>
+            </div>
+          </article>
+
+          <!-- 4. Critical Threats -->
+          <article class="kpi-card">
+            <div class="kpi-top-row">
+              <span class="kpi-label">Critical Threats</span>
+            </div>
+            <strong id="critical-events" class="kpi-value">0</strong>
+            <div class="kpi-footer">
+              <span class="kpi-pill pill-danger-kpi">Malware & BadUSB</span>
             </div>
           </article>
 
           <!-- 5. Active Scans -->
           <article class="kpi-card">
             <div class="kpi-top-row">
-              <span class="kpi-label">Active Scans</span>
-              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
+              <span class="kpi-label">Storage Scans</span>
             </div>
             <strong id="active-scans" class="kpi-value">0</strong>
             <div class="kpi-footer">
-              <span class="kpi-pill">Volumes Monitored</span>
+              <span class="kpi-pill pill-safe-kpi">Volumes Clean</span>
             </div>
           </article>
 
@@ -225,106 +175,12 @@
           <article class="kpi-card">
             <div class="kpi-top-row">
               <span class="kpi-label">Flagged Files</span>
-              <span class="kpi-arrow-btn" aria-hidden="true">↗</span>
             </div>
             <strong id="flagged-files" class="kpi-value">0</strong>
             <div class="kpi-footer">
-              <span class="kpi-pill">YARA Rule Hits</span>
+              <span class="kpi-pill">YARA & Hashes</span>
             </div>
           </article>
-        </div>
-      </section>
-
-      <!-- Analytics Bento Grid -->
-      <section class="charts-bento" aria-label="Security Analytics">
-        <div class="bento-card">
-          <div class="bento-header">
-            <div>
-              <h2 class="bento-title">Threat Severity Distribution</h2>
-              <span class="bento-sub">Proportion of safe vs. high-risk events</span>
-            </div>
-            <span class="bento-tag">REAL-TIME</span>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="severity-chart"></canvas>
-          </div>
-        </div>
-
-        <div class="bento-card">
-          <div class="bento-header">
-            <div>
-              <h2 class="bento-title">Telemetry by Activity Type</h2>
-              <span class="bento-sub">Breakdown of connections, scans, and containment actions</span>
-            </div>
-            <span class="bento-tag">VOLUME</span>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="activity-chart"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <!-- Whitelist Management Panel -->
-      <section class="panel-section" aria-labelledby="whitelist-title">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <div class="panel-icon-badge" aria-hidden="true">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-            <div>
-              <h2 id="whitelist-title" class="panel-title">Authorized Device Whitelist</h2>
-              <p class="panel-desc">Only registered peripherals are permitted in ENFORCE mode. All unknown hardware is isolated.</p>
-            </div>
-          </div>
-          <button id="show-add-whitelist-btn" class="btn btn-secondary" type="button">
-            + Authorize New Device
-          </button>
-        </div>
-
-        <!-- Add Whitelist Form Drawer -->
-        <form id="add-whitelist-form" class="whitelist-form" hidden>
-          <div class="form-title">Register Trusted USB Peripheral</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="wl-name">Device Name *</label>
-              <input type="text" id="wl-name" required placeholder="e.g. Admin Kingston Drive">
-            </div>
-            <div class="form-field">
-              <label for="wl-serial">Physical Serial Number</label>
-              <input type="text" id="wl-serial" placeholder="e.g. 0014D12345678" class="font-mono">
-            </div>
-            <div class="form-field">
-              <label for="wl-vid">Vendor ID (VID)</label>
-              <input type="text" id="wl-vid" placeholder="e.g. 0951" maxlength="4" class="font-mono">
-            </div>
-            <div class="form-field">
-              <label for="wl-pid">Product ID (PID)</label>
-              <input type="text" id="wl-pid" placeholder="e.g. 1666" maxlength="4" class="font-mono">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Save to Whitelist</button>
-            <button type="button" id="cancel-whitelist-btn" class="btn btn-ghost">Cancel</button>
-          </div>
-        </form>
-
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Device Name</th>
-                <th scope="col">Hardware Serial</th>
-                <th scope="col">VID : PID</th>
-                <th scope="col">Authorized Date</th>
-                <th scope="col" class="text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody id="whitelist-body">
-              <tr><td colspan="5" class="empty-state">No authorized devices configured.</td></tr>
-            </tbody>
-          </table>
         </div>
       </section>
 
@@ -431,6 +287,99 @@
               <tr>
                 <td colspan="6" class="empty-state">Database reset clean. Connect any USB device to inspect security status in real-time.</td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Analytics Bento Grid -->
+      <section class="charts-bento" aria-label="Security Analytics">
+        <div class="bento-card">
+          <div class="bento-header">
+            <div>
+              <h2 class="bento-title">Threat Severity Distribution</h2>
+              <span class="bento-sub">Proportion of safe vs. high-risk events</span>
+            </div>
+            <span class="bento-tag">REAL-TIME</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="severity-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-header">
+            <div>
+              <h2 class="bento-title">Telemetry by Activity Type</h2>
+              <span class="bento-sub">Breakdown of connections, scans, and containment actions</span>
+            </div>
+            <span class="bento-tag">VOLUME</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="activity-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Whitelist Management Panel -->
+      <section class="panel-section" aria-labelledby="whitelist-title">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <div class="panel-icon-badge" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M9 12l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <h2 id="whitelist-title" class="panel-title">Authorized Device Whitelist</h2>
+              <p class="panel-desc">Configure trusted USB hardware identities for enterprise access management.</p>
+            </div>
+          </div>
+          <button id="show-add-whitelist-btn" class="btn btn-secondary" type="button">
+            + Authorize New Device
+          </button>
+        </div>
+
+        <!-- Add Whitelist Form Drawer -->
+        <form id="add-whitelist-form" class="whitelist-form" hidden>
+          <div class="form-title">Register Trusted USB Peripheral</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="wl-name">Device Name *</label>
+              <input type="text" id="wl-name" required placeholder="e.g. Admin Kingston Drive">
+            </div>
+            <div class="form-field">
+              <label for="wl-serial">Physical Serial Number</label>
+              <input type="text" id="wl-serial" placeholder="e.g. 0014D12345678" class="font-mono">
+            </div>
+            <div class="form-field">
+              <label for="wl-vid">Vendor ID (VID)</label>
+              <input type="text" id="wl-vid" placeholder="e.g. 0951" maxlength="4" class="font-mono">
+            </div>
+            <div class="form-field">
+              <label for="wl-pid">Product ID (PID)</label>
+              <input type="text" id="wl-pid" placeholder="e.g. 1666" maxlength="4" class="font-mono">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save to Whitelist</button>
+            <button type="button" id="cancel-whitelist-btn" class="btn btn-ghost">Cancel</button>
+          </div>
+        </form>
+
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Device Name</th>
+                <th scope="col">Hardware Serial</th>
+                <th scope="col">VID : PID</th>
+                <th scope="col">Authorized Date</th>
+                <th scope="col" class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="whitelist-body">
+              <tr><td colspan="5" class="empty-state">No authorized devices configured.</td></tr>
             </tbody>
           </table>
         </div>
