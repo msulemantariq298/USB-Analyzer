@@ -47,3 +47,4 @@ def send_desktop_notification(title: str, message: str, severity: str = "info") 
         args=(title, message, is_critical),
         daemon=True,
     ).start()
+

@@ -65,20 +65,23 @@ python -m usb_analyzer.demo_runner
 
 ## Quick Start (One-Click Launchers on Windows)
 
-From the repository root, you can quickly launch the system using the bundled batch scripts:
+From the repository root, you can operate the system using the dedicated batch scripts:
 
-- **Launch Full System (Web Dashboard + Device Monitor)**:
-  Double-click `run_usb_analyzer.bat` or run:
-  ```powershell
-  .\run_usb_analyzer.bat
-  ```
-  This starts the API server, opens `http://127.0.0.1:8000/` in your browser, and starts the live USB monitor.
+1. **Start Protection in Background**:
+   Double-click `start_usb_analyzer.bat` (or run `.\start_usb_analyzer.bat`).
+   * Silently starts the Web API and hardware device monitor in the background like Windows Defender.
+   * Fires a native Windows desktop notification confirming real-time protection is active.
+   * Automatically closes its terminal after 2 seconds—no command prompt clutter.
 
-- **Run 5-Scenario Attack Defense Demo**:
-  Double-click `run_demo.bat` or run:
-  ```powershell
-  .\run_demo.bat
-  ```
+2. **Open Security Dashboard**:
+   Double-click `open_dashboard.bat` (or run `.\open_dashboard.bat`).
+   * Opens the Donezo-themed Web Dashboard at `http://127.0.0.1:8000/`.
+   * If the service is not yet running, it automatically boots the background service first.
+
+3. **Stop Protection**:
+   Double-click `stop_usb_analyzer.bat` (or run `.\stop_usb_analyzer.bat`).
+   * Instantly terminates all background monitoring processes and frees port 8000.
+
 
 ## Running the Application Manually on Windows
 
