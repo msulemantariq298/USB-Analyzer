@@ -95,3 +95,17 @@ def test_export_events_json_endpoint() -> None:
     assert "application/json" in response.headers["content-type"]
     assert isinstance(response.json(), list)
 
+
+def test_manual_block_device_endpoint() -> None:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/devices/block",
+        json={"device_id": "USB\\VID_9999&PID_8888\\TEST_MANUAL", "reason": "Untrusted accessory"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "blocked"
+    assert data["device_id"] == "USB\\VID_9999&PID_8888\\TEST_MANUAL"
+    assert "isolated" in data["summary"].lower()
+
+

@@ -77,6 +77,122 @@ if (threatMatrixBtn && threatMatrixModal) {
   });
 }
 
+// Suspicious Hardware Triage Prompt (Windows Defender Style)
+const suspiciousTriageModal = document.querySelector("#suspicious-triage-modal");
+const closeTriageModalBtn = document.querySelector("#close-triage-modal-btn");
+const triageDeviceName = document.querySelector("#triage-device-name");
+const triageDeviceId = document.querySelector("#triage-device-id");
+const triageReasonText = document.querySelector("#triage-reason-text");
+const triageBlockBtn = document.querySelector("#triage-block-btn");
+const triageTrustBtn = document.querySelector("#triage-trust-btn");
+const triageLeaveBtn = document.querySelector("#triage-leave-btn");
+
+let currentTriageDevice = null;
+let notifiedEventIds = new Set();
+
+// Request Web Notification permission
+if ("Notification" in window && Notification.permission === "default") {
+  Notification.requestPermission().catch(() => {});
+}
+
+function sendWindowsWebNotification(title, body, onClick = null) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      const notif = new Notification(title, {
+        body: body,
+        requireInteraction: true,
+      });
+      if (onClick) {
+        notif.onclick = () => {
+          window.focus();
+          onClick();
+        };
+      }
+    } catch (e) {}
+  }
+}
+
+function openSuspiciousTriageModal(deviceData) {
+  currentTriageDevice = deviceData;
+  if (!suspiciousTriageModal) return;
+  const details = deviceData.details || {};
+  triageDeviceName.textContent = deviceData.name || details.name || "Unregistered USB Peripheral";
+  triageDeviceId.textContent = deviceData.device_id || deviceData.id || "USB\\UNREGISTERED";
+  triageReasonText.textContent = details.reason || details.summary || "This device is not on your authorized whitelist. Unverified USB hardware can introduce firmware risks or unauthorized data access.";
+  suspiciousTriageModal.hidden = false;
+}
+
+if (closeTriageModalBtn && suspiciousTriageModal) {
+  closeTriageModalBtn.addEventListener("click", () => {
+    suspiciousTriageModal.hidden = true;
+  });
+  triageLeaveBtn?.addEventListener("click", () => {
+    suspiciousTriageModal.hidden = true;
+    showMessage("Device left active under audit warning.", "warning");
+  });
+  triageBlockBtn?.addEventListener("click", async () => {
+    if (!currentTriageDevice) return;
+    triageBlockBtn.disabled = true;
+    try {
+      const devId = currentTriageDevice.device_id || currentTriageDevice.id;
+      const res = await fetch("/api/v1/devices/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: devId,
+          reason: "Blocked by user following suspicious device notification prompt",
+        }),
+      });
+      if (!res.ok) throw new Error("Block command failed");
+      suspiciousTriageModal.hidden = true;
+      playCyberThreatAlert();
+      showMessage(`Device ${devId} disabled and blocked at OS port!`, "error");
+      await loadEvents(false);
+    } catch (err) {
+      showMessage(`Failed to block device: ${err.message}`, true);
+    } finally {
+      triageBlockBtn.disabled = false;
+    }
+  });
+
+  triageTrustBtn?.addEventListener("click", async () => {
+    if (!currentTriageDevice) return;
+    triageTrustBtn.disabled = true;
+    try {
+      const details = currentTriageDevice.details || {};
+      const devId = currentTriageDevice.device_id || currentTriageDevice.id;
+      const name = currentTriageDevice.name || details.name || "Approved Corporate Peripheral";
+      const res = await fetch("/api/v1/policy/whitelist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name,
+          device_id: devId,
+          vendor_id: currentTriageDevice.vendorId || details.vendor_id || null,
+          product_id: currentTriageDevice.productId || details.product_id || null,
+          serial_number: currentTriageDevice.serialNumber || details.serial_number || null,
+          notes: "Approved via Defender-style user triage dialog",
+        }),
+      });
+      if (!res.ok) throw new Error("Whitelist command failed");
+      suspiciousTriageModal.hidden = true;
+      showMessage(`Device '${name}' added to Whitelist and marked SAFE!`, false);
+      await loadWhitelist();
+      await loadEvents(false);
+    } catch (err) {
+      showMessage(`Failed to trust device: ${err.message}`, true);
+    } finally {
+      triageTrustBtn.disabled = false;
+    }
+  });
+
+  suspiciousTriageModal.addEventListener("click", (e) => {
+    if (e.target === suspiciousTriageModal) {
+      suspiciousTriageModal.hidden = true;
+    }
+  });
+}
+
 const themeStorageKey = "usb-analyzer-theme";
 let allEventsCache = [];
 let eventsLoadInProgress = false;
@@ -637,6 +753,14 @@ function checkLiveAlerts(events) {
     : null;
 
   if (criticalEvent) {
+    if (!notifiedEventIds.has(criticalEvent.id)) {
+      notifiedEventIds.add(criticalEvent.id);
+      playCyberThreatAlert();
+      sendWindowsWebNotification(
+        "🛡️ USB Analyzer: Threat Blocked",
+        `Action taken: Port disabled.\n${criticalEvent.details?.summary || criticalEvent.details?.reason || "High-risk threat intercepted."}`
+      );
+    }
     alertBanner.hidden = false;
     alertBanner.style.display = "flex";
     alertBanner.classList.remove("alert-warning");
@@ -645,17 +769,37 @@ function checkLiveAlerts(events) {
     alertSummary.textContent = `THREAT BLOCKED: ${summary}`;
     alertDetail.textContent = `Target: ${criticalEvent.device_id} • Hardware port isolated to protect endpoint.`;
   } else if (warningEvent) {
+    if (!notifiedEventIds.has(warningEvent.id)) {
+      notifiedEventIds.add(warningEvent.id);
+      sendWindowsWebNotification(
+        "⚠️ USB Analyzer: Suspicious Device Alert",
+        `Problem: Unregistered USB hardware connected.\nClick to choose action: Trust or Block device.`,
+        () => openSuspiciousTriageModal(warningEvent)
+      );
+      openSuspiciousTriageModal(warningEvent);
+    }
     alertBanner.hidden = false;
     alertBanner.style.display = "flex";
     alertBanner.classList.remove("alert-critical");
     alertBanner.classList.add("alert-warning");
     const summary = warningEvent.details?.reason || warningEvent.details?.summary || "Suspicious unverified hardware attached";
     alertSummary.textContent = `SUSPICIOUS DEVICE WARNING: ${summary}`;
-    alertDetail.textContent = `Target: ${warningEvent.device_id} • Device is not on your trusted whitelist. Verify before opening files.`;
+    alertDetail.textContent = `Target: ${warningEvent.device_id} • Device is not on your trusted whitelist. Click banner to decide action.`;
   } else {
     alertBanner.hidden = true;
     alertBanner.style.display = "none";
   }
+}
+
+// Click banner to open triage modal if warning
+if (alertBanner) {
+  alertBanner.addEventListener("click", (e) => {
+    if (e.target.closest("#dismiss-alert-btn")) return;
+    if (alertBanner.classList.contains("alert-warning")) {
+      const warningEvent = allEventsCache.find((ev) => ev.severity === "warning");
+      if (warningEvent) openSuspiciousTriageModal(warningEvent);
+    }
+  });
 }
 
 function renderEvents(events) {

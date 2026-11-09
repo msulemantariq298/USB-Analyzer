@@ -486,6 +486,61 @@
       </div>
     </div>
 
+    <!-- Suspicious Device Action Modal (Windows Defender Style) -->
+    <div id="suspicious-triage-modal" class="modal-backdrop" hidden>
+      <div class="modal-card modal-triage-card">
+        <div class="modal-header triage-header">
+          <div class="modal-title-group">
+            <span class="triage-badge">ENDPOINT DEFENSE PROMPT</span>
+            <h3 class="modal-title">Suspicious USB Device Connected</h3>
+          </div>
+          <button id="close-triage-modal-btn" class="modal-close-btn" type="button" aria-label="Dismiss prompt">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="triage-alert-box">
+            <div class="triage-icon">⚠️</div>
+            <div class="triage-info">
+              <strong id="triage-device-name">Unknown USB Peripheral</strong>
+              <div id="triage-device-id" class="font-mono small text-muted">USB\VID_????&amp;PID_????\...</div>
+            </div>
+          </div>
+
+          <div class="triage-explanation">
+            <strong>Identified Problem:</strong>
+            <p id="triage-reason-text">This device is not registered on your authorized corporate whitelist. Unverified USB hardware can carry malicious payloads, hidden storage partitions, or firmware exploits.</p>
+          </div>
+
+          <div class="triage-prompt-title">What action would you like to take?</div>
+
+          <div class="triage-actions-grid">
+            <button id="triage-block-btn" class="triage-btn triage-btn-block" type="button">
+              <div class="triage-btn-icon">🛑</div>
+              <div class="triage-btn-content">
+                <strong>Block Device Now</strong>
+                <span>Disables hardware port at OS level to neutralize potential threats immediately</span>
+              </div>
+            </button>
+
+            <button id="triage-trust-btn" class="triage-btn triage-btn-trust" type="button">
+              <div class="triage-btn-icon">🛡️</div>
+              <div class="triage-btn-content">
+                <strong>Trust &amp; Whitelist Device</strong>
+                <span>Marks this device as Safe and saves it to your trusted hardware whitelist</span>
+              </div>
+            </button>
+
+            <button id="triage-leave-btn" class="triage-btn triage-btn-leave" type="button">
+              <div class="triage-btn-icon">👁️</div>
+              <div class="triage-btn-content">
+                <strong>Leave Active (Warning Only)</strong>
+                <span>Dismisses this prompt, keeps device plugged in while preserving audit warning</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-inner">

@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from usb_analyzer.core.config import get_settings
 from usb_analyzer.core.database import EventStore
 from usb_analyzer.core.events import DeviceEvent, EventSeverity
+from usb_analyzer.core.windows_notifier import send_desktop_notification
 from usb_analyzer.device_monitor.fingerprint import DeviceFingerprint, detect_spoofed_identity
 from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
@@ -75,7 +76,41 @@ def list_events(
     status_code=201,
 )
 def create_event(event: DeviceEvent) -> DeviceEvent:
-    return event_store.add(event)
+    added = event_store.add(event)
+    if event.severity == EventSeverity.CRITICAL:
+        summary = event.details.get("summary") or event.details.get("reason") or "Critical hardware threat intercepted"
+        send_desktop_notification("USB Analyzer — Threat Neutralized", f"Action taken: Port disabled. {summary}", severity="critical")
+    elif event.severity == EventSeverity.WARNING:
+        summary = event.details.get("summary") or event.details.get("reason") or "Unregistered device connected"
+        send_desktop_notification("USB Analyzer — Suspicious Device Alert", f"Problem: {summary}. Open dashboard to Leave or Block.", severity="warning")
+    return added
+
+
+class DeviceBlockRequest(BaseModel):
+    device_id: str
+    reason: str = "Blocked by user decision following suspicious hardware alert"
+
+
+@app.post(f"{settings.api_prefix}/devices/block")
+def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
+    decision, block_event = policy_engine.block_threat(
+        device_id=req.device_id,
+        reason=req.reason,
+        threat_type="user_containment_action",
+        details={"action": "blocked_by_user"},
+    )
+    event_store.add(block_event)
+    send_desktop_notification(
+        "USB Analyzer — Device Blocked",
+        f"Action taken: Port disabled for {req.device_id}.",
+        severity="critical",
+    )
+    return {
+        "status": "blocked",
+        "device_id": req.device_id,
+        "blocked": decision.blocked_successfully,
+        "summary": f"Device {req.device_id} has been disabled and isolated at the hardware port.",
+    }
 
 
 @app.delete(f"{settings.api_prefix}/events", status_code=200)
@@ -305,6 +340,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
         )
         hid_detector.register_hid_device(device_id, "Digispark BadUSB Attacker")
         alert = hid_detector.simulate_injection(char_count=35, delay_per_char_seconds=0.003)
+        send_desktop_notification("USB Analyzer — Threat Neutralized", "BadUSB keystroke injection intercepted. Action taken: Hardware port disabled.", severity="critical")
         return {
             "status": "simulated",
             "scenario": "badusb",
@@ -367,6 +403,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
             details={"action": "quarantine_and_block", "volume": "E:\\"},
         )
         event_store.add(block_ev)
+        send_desktop_notification("USB Analyzer — Threat Neutralized", "Malware trojan dropper intercepted. Action taken: Storage volume quarantined & blocked.", severity="critical")
         return {
             "status": "simulated",
             "scenario": "malware_drive",
@@ -406,6 +443,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 },
             )
         )
+        send_desktop_notification("USB Analyzer — Suspicious Device Alert", "Problem: Unregistered USB hardware connected. Choose whether to Trust or Block.", severity="warning")
         return {
             "status": "simulated",
             "scenario": "unauthorized_device",
@@ -469,6 +507,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 threat_type="spoofed_identity",
             )
             event_store.add(block_ev)
+            send_desktop_notification("USB Analyzer — Threat Neutralized", "Hardware identity spoofing detected. Action taken: Hardware port isolated.", severity="critical")
             summary = f"Identity Spoofing detected! Cloned VID 1050:PID 0407 with unauthorized serial '{cloned_serial}'. Hardware completely blocked."
         else:
             summary = "Spoof check did not trigger."
