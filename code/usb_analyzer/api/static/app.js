@@ -11,8 +11,6 @@ const alertBanner = document.querySelector("#security-alert-banner");
 const alertSummary = document.querySelector("#alert-summary");
 const alertDetail = document.querySelector("#alert-detail");
 const dismissAlertBtn = document.querySelector("#dismiss-alert-btn");
-const policyToggleBtn = document.querySelector("#policy-toggle-btn");
-const policyModeText = document.querySelector("#policy-mode-text");
 const showAddWlBtn = document.querySelector("#show-add-whitelist-btn");
 const addWlForm = document.querySelector("#add-whitelist-form");
 const cancelWlBtn = document.querySelector("#cancel-whitelist-btn");
@@ -51,14 +49,20 @@ function isEventsDataEqual(a, b) {
   return true;
 }
 
-function showMessage(text, isError = false) {
+function showMessage(text, variant = false) {
   if (!message) return;
   message.textContent = text;
-  message.className = `toast-message ${isError ? "error" : "success"}`;
+  let statusClass = "success";
+  if (variant === true || variant === "error" || variant === "danger" || variant === "blocked") {
+    statusClass = "error";
+  } else if (variant === "warning" || variant === "suspicious") {
+    statusClass = "warning";
+  }
+  message.className = `toast-message ${statusClass}`;
   message.hidden = false;
   setTimeout(() => {
     message.hidden = true;
-  }, 4500);
+  }, 5000);
 }
 
 function formatTime(value) {
@@ -233,7 +237,7 @@ function groupEventsByDevice(events) {
 
     if (sev === "critical" || type === "device.blocked" || type === "device.spoofed_identity" || type === "hid.injection_detected") {
       group.highestSeverity = "critical";
-      group.verdict = "DANGER";
+      group.verdict = "BLOCKED";
       if (type === "device.spoofed_identity") {
         group.risk = "Identity Spoofing Detected — Serial mismatch";
         group.actionTaken = "Hardware Blocked (Port Disabled)";
@@ -244,22 +248,22 @@ function groupEventsByDevice(events) {
         group.risk = "Malware / YARA Threat Found on storage drive";
         group.actionTaken = "Volume Quarantined";
       } else {
-        group.risk = event.details?.reason || "Unauthorized Device — Not on security whitelist";
+        group.risk = event.details?.reason || "Security Threat — Hardware Attack Intercepted";
         group.actionTaken = "Hardware Blocked (Port Disabled)";
       }
-      group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — DANGER: ${group.risk}. Action taken: ${group.actionTaken}`;
+      group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — THREAT BLOCKED: ${group.risk}. Action taken: ${group.actionTaken}`;
     } else if (sev === "warning" && group.highestSeverity !== "critical") {
       group.highestSeverity = "warning";
-      group.verdict = "WARNING";
-      group.risk = event.details?.reason || "Unregistered Device (Audit Mode Active)";
-      group.actionTaken = "Audit Logged";
-      group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — WARNING: ${group.risk}. Action taken: ${group.actionTaken}`;
+      group.verdict = "SUSPICIOUS";
+      group.risk = event.details?.reason || "Unregistered Device — Not recognized on whitelist";
+      group.actionTaken = "User Warned";
+      group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SUSPICIOUS WARNING: ${group.risk}. Action taken: ${group.actionTaken}`;
     } else if (group.highestSeverity === "info") {
       if (type === "device.allowed") {
         group.verdict = "SAFE";
         group.risk = "None — Approved by Whitelist";
         group.actionTaken = "Allowed & Active";
-        group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SAFE: Authorized by whitelist rule.`;
+        group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SAFE: Authorized clean device.`;
       } else if (type === "device.disconnected") {
         group.verdict = "INFO";
         group.risk = "None";
@@ -293,8 +297,13 @@ async function triggerScenarioSimulation(scenarioName, buttonEl = null) {
       throw new Error(errData.detail || `Server returned status ${res.status}`);
     }
     const data = await res.json();
-    const isBlock = data.outcome === "blocked";
-    showMessage(data.summary, isBlock);
+    let variant = "success";
+    if (data.outcome === "blocked") {
+      variant = "error";
+    } else if (data.outcome === "warning") {
+      variant = "warning";
+    }
+    showMessage(data.summary, variant);
     await loadEvents(false);
   } catch (err) {
     showMessage(`Simulation failed: ${err.message}`, true);
@@ -388,52 +397,6 @@ if (addWlForm) {
       showMessage(`Failed to save whitelist entry: ${err.message}`, true);
     }
   });
-}
-
-// Policy Mode Toggle
-if (policyToggleBtn) {
-  policyToggleBtn.addEventListener("click", async () => {
-    const targetMode = currentPolicyMode === "enforce" ? "audit_only" : "enforce";
-    try {
-      const res = await fetch("/api/v1/policy/mode", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: targetMode }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      currentPolicyMode = data.mode;
-      updatePolicyUI();
-      showMessage(`Security Policy Mode: ${currentPolicyMode.toUpperCase()}`);
-    } catch (err) {
-      showMessage(`Policy mode update failed: ${err.message}`, true);
-    }
-  });
-}
-
-function updatePolicyUI() {
-  if (!policyModeText || !policyToggleBtn) return;
-  if (currentPolicyMode === "enforce") {
-    policyModeText.textContent = "ENFORCE";
-    policyToggleBtn.className = "policy-toggle-btn badge-enforce";
-    policyToggleBtn.title = "Current: ENFORCE (Active Blocking). Click to switch to AUDIT ONLY.";
-  } else {
-    policyModeText.textContent = "AUDIT ONLY";
-    policyToggleBtn.className = "policy-toggle-btn badge-audit";
-    policyToggleBtn.title = "Current: AUDIT ONLY (Passive Logging). Click to switch to ENFORCE.";
-  }
-}
-
-async function loadPolicyStatus() {
-  try {
-    const res = await fetch("/api/v1/policy/status");
-    if (!res.ok) return;
-    const data = await res.json();
-    currentPolicyMode = data.mode;
-    updatePolicyUI();
-  } catch (err) {
-    console.debug("Policy status fetch failed:", err);
-  }
 }
 
 async function loadWhitelist() {
@@ -611,12 +574,26 @@ function checkLiveAlerts(events) {
   const criticalEvent = events.find(
     (e) => e.severity === "critical" && !dismissedAlertIds.has(e.id)
   );
+  const warningEvent = !criticalEvent
+    ? events.find((e) => e.severity === "warning" && !dismissedAlertIds.has(e.id))
+    : null;
 
   if (criticalEvent) {
     alertBanner.hidden = false;
     alertBanner.style.display = "flex";
-    alertSummary.textContent = `${criticalEvent.event_type.toUpperCase()}: ${criticalEvent.details?.reason || criticalEvent.details?.summary || criticalEvent.details?.threat || "High-risk hardware event intercepted"}`;
-    alertDetail.textContent = `Target: ${criticalEvent.device_id} • Telemetry recorded at ${formatTime(criticalEvent.time)}`;
+    alertBanner.classList.remove("alert-warning");
+    alertBanner.classList.add("alert-critical");
+    const summary = criticalEvent.details?.reason || criticalEvent.details?.summary || criticalEvent.details?.threat || "High-risk hardware attack intercepted";
+    alertSummary.textContent = `THREAT BLOCKED: ${summary}`;
+    alertDetail.textContent = `Target: ${criticalEvent.device_id} • Hardware port isolated to protect endpoint.`;
+  } else if (warningEvent) {
+    alertBanner.hidden = false;
+    alertBanner.style.display = "flex";
+    alertBanner.classList.remove("alert-critical");
+    alertBanner.classList.add("alert-warning");
+    const summary = warningEvent.details?.reason || warningEvent.details?.summary || "Suspicious unverified hardware attached";
+    alertSummary.textContent = `SUSPICIOUS DEVICE WARNING: ${summary}`;
+    alertDetail.textContent = `Target: ${warningEvent.device_id} • Device is not on your trusted whitelist. Verify before opening files.`;
   } else {
     alertBanner.hidden = true;
     alertBanner.style.display = "none";
@@ -708,19 +685,19 @@ function generateInfosecSummary(item) {
     actionJustification = "Hardware Blocked: The analyzer enforced strict Zero-Trust serial validation and disabled the port to prevent unauthorized hardware from operating under a false identity.";
     recommendation = "Investigate the physical origin of this hardware. Check if the device is a cloned counterfeit or an unauthorized substitute.";
   } else if (isBlocked) {
-    statusText = "UNAUTHORIZED DEVICE CONTAINED";
+    statusText = "HARDWARE THREAT BLOCKED";
     badgeClass = "badge-danger";
-    category = "Zero-Trust Whitelist Policy Enforcement";
-    reason = `This '${deviceType}' is not registered in the Authorized Device Whitelist. Under strict Zero-Trust USB Defense (ENFORCE mode), all unrecognized peripherals are treated as potential threats (preventing data theft, rogue network dongles, and unvetted firmware).`;
-    actionJustification = "Hardware Blocked: The system blocked the peripheral from operating, ensuring only authorized organizational assets can establish connection.";
-    recommendation = "If this is a trusted business peripheral, click '+ Whitelist' to authorize it with administrative credentials. Otherwise, remove it from the endpoint.";
+    category = "Threat Containment & Device Isolation";
+    reason = `This '${deviceType}' was identified as a hardware threat or dangerous peripheral. The analyzer automatically isolated the device to protect endpoint data and bus integrity.`;
+    actionJustification = "Hardware Blocked: The system disabled the USB port, cutting off bus communication immediately.";
+    recommendation = "Do not connect this peripheral to other computers. Submit for security evaluation.";
   } else if (isViolation) {
-    statusText = "POLICY WARNING AUDITED";
+    statusText = "SUSPICIOUS DEVICE WARNING";
     badgeClass = "badge-warning";
-    category = "Unregistered Peripheral in AUDIT ONLY Mode";
-    reason = `The peripheral is not registered on the whitelist, but the endpoint security policy is currently operating in AUDIT ONLY (Passive Logging) mode. The device was inspected and allowed to function while logging a security deviation.`;
-    actionJustification = "Audit Logged: Telemetry and device identifiers were saved to the event audit log without interrupting the user's workflow.";
-    recommendation = "To enforce active blocking of unregistered devices, toggle policy mode to ENFORCE in the top navigation bar.";
+    category = "Unrecognized Hardware — User Warned";
+    reason = `The connected peripheral is not registered on the trusted device whitelist. Unrecognized devices can carry firmware risks or unapproved hardware functions.`;
+    actionJustification = "User Warned: A high-visibility security alert was generated to notify the user of unverified hardware.";
+    recommendation = "Verify the physical origin of this device. If this is a trusted device, click '+ Authorize New Device' to whitelist it as Safe.";
   } else if (isAllowed) {
     statusText = "AUTHORIZED SAFE PERIPHERAL";
     badgeClass = "badge-safe";
@@ -1127,7 +1104,6 @@ if (clearEventsBtn) {
 }
 
 // Initial bootstrap
-loadPolicyStatus();
 loadWhitelist();
 loadEvents(false);
 

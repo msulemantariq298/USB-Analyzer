@@ -215,47 +215,35 @@ body {
   box-shadow: 0 0 6px rgba(225, 29, 72, 0.4);
 }
 
-/* Policy Badge / Toggle */
-.policy-toggle-btn {
+/* Real-Time Defense Status Pill */
+.defense-status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   padding: 6px 14px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   border-radius: var(--radius-btn);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.policy-toggle-btn.badge-enforce {
   background: var(--safe-bg);
   color: var(--safe-green);
-  border-color: var(--safe-border);
+  border: 1px solid var(--safe-border);
+  box-shadow: 0 1px 3px rgba(5, 150, 105, 0.1);
 }
 
-.policy-toggle-btn.badge-enforce:hover {
-  background: #d1fae5;
-}
-
-.policy-toggle-btn.badge-audit {
-  background: var(--warning-bg);
-  color: var(--warning-amber);
-  border-color: var(--warning-border);
-}
-
-.policy-toggle-btn.badge-audit:hover {
-  background: #fef3c7;
-}
-
-.mode-dot {
-  width: 6px;
-  height: 6px;
+.defense-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--safe-green);
+  box-shadow: 0 0 6px rgba(5, 150, 105, 0.6);
+  animation: defensePulse 2s infinite;
+}
+
+@keyframes defensePulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
 }
 
 /* Action Buttons */
@@ -713,6 +701,28 @@ body {
 .alert-close:hover {
   color: var(--danger-crimson);
   background: var(--danger-bg);
+}
+
+.alert-banner.alert-warning {
+  border-color: var(--warning-border);
+  border-left-color: var(--warning-amber);
+  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.08);
+}
+
+.alert-banner.alert-warning .alert-icon-wrap {
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
+  color: var(--warning-amber);
+}
+
+.alert-banner.alert-warning .alert-badge {
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+}
+
+.alert-banner.alert-warning .alert-close:hover {
+  color: var(--warning-amber);
+  background: var(--warning-bg);
 }
 
 /* ==========================================================================
@@ -1203,13 +1213,15 @@ body {
   border: 1px solid var(--safe-border);
 }
 
-.verdict-badge.verdict-danger {
+.verdict-badge.verdict-danger,
+.verdict-badge.verdict-blocked {
   background: var(--danger-bg);
   color: var(--danger-crimson);
   border: 1px solid var(--danger-border);
 }
 
-.verdict-badge.verdict-warning {
+.verdict-badge.verdict-warning,
+.verdict-badge.verdict-suspicious {
   background: var(--warning-bg);
   color: var(--warning-amber);
   border: 1px solid var(--warning-border);
@@ -1501,6 +1513,12 @@ body {
   background: var(--danger-bg);
   color: var(--danger-crimson);
   border: 1px solid var(--danger-border);
+}
+
+.toast-message.warning {
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+  border: 1px solid var(--warning-border);
 }
 
 /* Empty State */

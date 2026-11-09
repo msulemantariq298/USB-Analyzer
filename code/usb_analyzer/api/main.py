@@ -261,7 +261,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
         }
 
     elif scenario == "malware_drive":
-        # 3. Infected Storage Drive (Trojan Dropper & autorun.inf)
+        # 3. Infected Storage Drive (Trojan Dropper & autorun.inf) -> Blocked
         device_id = "USBSTOR\\DISK&VEN_EVIL&PROD_USB\\INFECTED_SN_001&0"
         event_store.add(
             DeviceEvent(
@@ -308,42 +308,22 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 },
             )
         )
-        if current_policy_mode == PolicyMode.ENFORCE:
-            _, block_ev = policy_engine.block_threat(
-                device_id=device_id,
-                reason="Malware infection: Trojan dropper & unauthorized autorun script present on storage volume",
-                threat_type="malware_infection",
-                details={"action": "quarantine_and_block", "volume": "E:\\"},
-            )
-            event_store.add(block_ev)
-            outcome = "blocked"
-            summary = "Infected drive detected! Trojan dropper and autorun.inf found. Hardware blocked & volume quarantined."
-        else:
-            event_store.add(
-                DeviceEvent(
-                    device_id=device_id,
-                    source="storage-scanner",
-                    severity=EventSeverity.WARNING,
-                    event_type="policy.audit_violation",
-                    details={
-                        "violation": "infected_media_detected",
-                        "mode": "audit_only",
-                        "summary": "Storage volume flagged as infected, but drive left active due to audit-only mode.",
-                    },
-                )
-            )
-            outcome = "audit_warning"
-            summary = "Infected drive detected (audit-only mode): Malware flagged and logged. Hardware left active."
-
+        _, block_ev = policy_engine.block_threat(
+            device_id=device_id,
+            reason="Malware infection: Trojan dropper & unauthorized autorun script present on storage volume",
+            threat_type="malware_infection",
+            details={"action": "quarantine_and_block", "volume": "E:\\"},
+        )
+        event_store.add(block_ev)
         return {
             "status": "simulated",
             "scenario": "malware_drive",
-            "outcome": outcome,
-            "summary": summary,
+            "outcome": "blocked",
+            "summary": "Infected drive detected! Trojan dropper and autorun.inf found. Hardware blocked & volume quarantined.",
         }
 
     elif scenario == "unauthorized_device":
-        # 4. Unknown / Rogue USB Device (Not Whitelisted)
+        # 4. Unknown / Rogue USB Device (Suspicious Warning)
         device_id = "USB\\VID_9999&PID_8888\\UNAUTHORIZED_SN_999"
         event_store.add(
             DeviceEvent(
@@ -360,31 +340,29 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 },
             )
         )
-        decision, events = policy_engine.evaluate_device(
-            device_id=device_id,
-            serial_number="UNAUTHORIZED_SN_999",
-            vendor_id="9999",
-            product_id="8888",
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="policy-engine",
+                severity=EventSeverity.WARNING,
+                event_type="device.suspicious",
+                details={
+                    "action": "warn_user",
+                    "reason": "Suspicious hardware connected: Device ID is not on the trusted whitelist.",
+                    "violation": "unregistered_hardware_detected",
+                    "summary": "Suspicious USB peripheral connected (unregistered hardware). User notified with warning.",
+                },
+            )
         )
-        for ev in events:
-            event_store.add(ev)
-
-        if current_policy_mode == PolicyMode.ENFORCE:
-            outcome = "blocked"
-            summary = "Unauthorized USB device detected: Not found on whitelist. Hardware blocked at once."
-        else:
-            outcome = "audit_warning"
-            summary = "Unauthorized USB device detected: Logged as policy violation (audit-only mode, allowed to run)."
-
         return {
             "status": "simulated",
             "scenario": "unauthorized_device",
-            "outcome": outcome,
-            "summary": summary,
+            "outcome": "warning",
+            "summary": "Suspicious device detected: Unregistered USB hardware flagged. User notified with a warning to verify the peripheral.",
         }
 
     elif scenario == "spoofed_identity":
-        # 5. Spoofed Identity Attack (VID/PID Clone)
+        # 5. Spoofed Identity Attack (VID/PID Clone) -> Blocked
         if not whitelist_store.find_match(vendor_id="1050", product_id="0407"):
             whitelist_store.add(
                 WhitelistEntry(
@@ -433,39 +411,20 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                     details=details,
                 )
             )
-            if current_policy_mode == PolicyMode.ENFORCE:
-                _, block_ev = policy_engine.block_threat(
-                    device_id=device_id,
-                    reason=reason or "Spoofed hardware identity",
-                    threat_type="spoofed_identity",
-                )
-                event_store.add(block_ev)
-                outcome = "blocked"
-                summary = f"Identity Spoofing detected! Cloned VID 1050:PID 0407 with unauthorized serial '{cloned_serial}'. Device blocked."
-            else:
-                event_store.add(
-                    DeviceEvent(
-                        device_id=device_id,
-                        source="policy-engine",
-                        severity=EventSeverity.WARNING,
-                        event_type="policy.audit_violation",
-                        details={
-                            "violation": "spoofed_identity_detected",
-                            "mode": "audit_only",
-                            "summary": "Spoofed identity detected, but device left active due to audit-only mode.",
-                        },
-                    )
-                )
-                outcome = "audit_warning"
-                summary = f"Identity Spoofing detected (audit-only mode): Cloned VID/PID flagged and logged. Hardware left active."
+            _, block_ev = policy_engine.block_threat(
+                device_id=device_id,
+                reason=reason or "Spoofed hardware identity",
+                threat_type="spoofed_identity",
+            )
+            event_store.add(block_ev)
+            summary = f"Identity Spoofing detected! Cloned VID 1050:PID 0407 with unauthorized serial '{cloned_serial}'. Hardware completely blocked."
         else:
-            outcome = "unknown"
             summary = "Spoof check did not trigger."
 
         return {
             "status": "simulated",
             "scenario": "spoofed_identity",
-            "outcome": outcome,
+            "outcome": "blocked",
             "summary": summary,
         }
 

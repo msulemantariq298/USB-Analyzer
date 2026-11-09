@@ -60,7 +60,7 @@ def test_simulate_scenario_unauthorized_device() -> None:
     data = response.json()
     assert data["status"] == "simulated"
     assert data["scenario"] == "unauthorized_device"
-    assert data["outcome"] in ("blocked", "audit_warning")
+    assert data["outcome"] in ("blocked", "warning", "audit_warning")
 
 
 def test_simulate_scenario_spoofed_identity() -> None:

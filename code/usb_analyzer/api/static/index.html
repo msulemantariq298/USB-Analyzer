@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=9.2">
+    <link rel="stylesheet" href="/static/styles.css?v=9.3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -42,18 +42,16 @@
             <span id="api-status">Connecting...</span>
           </div>
 
-          <div class="policy-badge-container">
-            <button id="policy-toggle-btn" class="policy-toggle-btn badge-enforce" type="button" title="Click to toggle between ENFORCE and AUDIT ONLY policy modes">
-              <span class="mode-dot"></span>
-              <span id="policy-mode-text">ENFORCE</span>
-            </button>
+          <div class="defense-status-pill" title="Automatic real-time threat defense active">
+            <span class="defense-dot"></span>
+            <span>AUTO DEFENSE ACTIVE</span>
           </div>
         </div>
 
         <div class="action-buttons">
           <!-- Multi-Scenario Attack Simulation Dropdown -->
           <div class="simulation-dropdown-wrapper">
-            <button id="simulate-dropdown-btn" class="btn btn-secondary dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false" title="Simulate different USB scenarios, safe devices, and attacks">
+            <button id="simulate-dropdown-btn" class="btn btn-secondary dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false" title="Simulate safe devices, suspicious warnings, and blocked threats">
               <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
                 <path d="M13 2L3 14h6l-2 6 10-12h-6l2-6z" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -64,7 +62,7 @@
               <button class="sim-menu-item" type="button" data-scenario="safe_usb" role="menuitem">
                 <span class="sim-icon-dot safe-dot">✓</span>
                 <div class="sim-item-text">
-                  <div class="sim-title">Safe Corporate Drive <span class="badge-pill pill-safe">ALLOWED</span></div>
+                  <div class="sim-title">Safe Corporate Drive <span class="badge-pill pill-safe">SAFE</span></div>
                   <div class="sim-desc">Whitelisted storage • Clean scan • Full access</div>
                 </div>
               </button>
@@ -72,28 +70,28 @@
                 <span class="sim-icon-dot danger-dot">⚡</span>
                 <div class="sim-item-text">
                   <div class="sim-title">BadUSB Keystroke Injection <span class="badge-pill pill-danger">BLOCKED</span></div>
-                  <div class="sim-desc">Rubber Ducky rapid keystroke burst • Hardware disabled</div>
+                  <div class="sim-desc">Rubber Ducky rapid typing • Blocked & user notified</div>
                 </div>
               </button>
               <button class="sim-menu-item" type="button" data-scenario="malware_drive" role="menuitem">
                 <span class="sim-icon-dot danger-dot">☣</span>
                 <div class="sim-item-text">
                   <div class="sim-title">Malware Infected Flash Drive <span class="badge-pill pill-danger">BLOCKED</span></div>
-                  <div class="sim-desc">Trojan dropper & autorun.inf • Scanned & quarantined</div>
+                  <div class="sim-desc">Trojan dropper & autorun.inf • Quarantined & user notified</div>
                 </div>
               </button>
               <button class="sim-menu-item" type="button" data-scenario="unauthorized_device" role="menuitem">
-                <span class="sim-icon-dot warning-dot">🚫</span>
+                <span class="sim-icon-dot warning-dot">⚠</span>
                 <div class="sim-item-text">
-                  <div class="sim-title">Unauthorized Rogue Peripheral <span class="badge-pill pill-warning">POLICY VIOLATION</span></div>
-                  <div class="sim-desc">Unregistered device ID • Disabled in Enforce mode</div>
+                  <div class="sim-title">Unregistered USB Device <span class="badge-pill pill-warning">SUSPICIOUS</span></div>
+                  <div class="sim-desc">Unknown peripheral • Flagged & user warned</div>
                 </div>
               </button>
               <button class="sim-menu-item" type="button" data-scenario="spoofed_identity" role="menuitem">
                 <span class="sim-icon-dot purple-dot">🎭</span>
                 <div class="sim-item-text">
-                  <div class="sim-title">Spoofed Hardware Identity <span class="badge-pill pill-purple">BLOCKED</span></div>
-                  <div class="sim-desc">Cloned VID/PID with forged hardware serial number</div>
+                  <div class="sim-title">Spoofed Hardware Identity <span class="badge-pill pill-danger">BLOCKED</span></div>
+                  <div class="sim-desc">Cloned VID/PID with forged serial • Blocked & user notified</div>
                 </div>
               </button>
             </div>
@@ -384,10 +382,10 @@
               <span class="pill-name">Infected Media</span>
               <span class="pill-tag">Blocked</span>
             </button>
-            <button class="scenario-pill-btn pill-warning" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device (Policy Violation)">
-              <span class="pill-icon">🚫</span>
-              <span class="pill-name">Rogue Peripheral</span>
-              <span class="pill-tag">Policy Block</span>
+            <button class="scenario-pill-btn pill-warning" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device (Suspicious Warning)">
+              <span class="pill-icon">⚠</span>
+              <span class="pill-name">Unregistered USB</span>
+              <span class="pill-tag">Suspicious</span>
             </button>
             <button class="scenario-pill-btn pill-purple" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
               <span class="pill-icon">🎭</span>
@@ -430,6 +428,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=9.2"></script>
+    <script src="/static/app.js?v=9.3"></script>
   </body>
 </html>
