@@ -78,3 +78,20 @@ def test_simulate_scenario_invalid() -> None:
     response = client.post("/api/v1/simulate/scenario", json={"scenario": "invalid_attack"})
     assert response.status_code == 400
 
+
+def test_export_events_csv_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/reports/events.csv")
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+    assert "Event ID" in response.text
+    assert "Device ID" in response.text
+
+
+def test_export_events_json_endpoint() -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/reports/events.json")
+    assert response.status_code == 200
+    assert "application/json" in response.headers["content-type"]
+    assert isinstance(response.json(), list)
+

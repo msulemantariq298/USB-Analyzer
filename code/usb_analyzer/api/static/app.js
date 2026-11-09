@@ -18,6 +18,64 @@ const simulateDropdownBtn = document.querySelector("#simulate-dropdown-btn");
 const simulationMenu = document.querySelector("#simulation-menu");
 const simulateBadusbBtn = document.querySelector("#simulate-badusb-btn");
 const eventSearchInput = document.querySelector("#event-search");
+const soundToggleBtn = document.querySelector("#sound-toggle-btn");
+const soundIcon = document.querySelector("#sound-icon");
+const soundLabel = document.querySelector("#sound-label");
+const threatMatrixBtn = document.querySelector("#threat-matrix-btn");
+const threatMatrixModal = document.querySelector("#threat-matrix-modal");
+const closeMatrixModalBtn = document.querySelector("#close-matrix-modal-btn");
+
+let soundAlertsEnabled = localStorage.getItem("usb-sound-alerts") !== "false";
+
+function updateSoundUI() {
+  if (!soundIcon || !soundLabel) return;
+  soundIcon.textContent = soundAlertsEnabled ? "🔔" : "🔕";
+  soundLabel.textContent = soundAlertsEnabled ? "Alerts On" : "Muted";
+}
+
+if (soundToggleBtn) {
+  updateSoundUI();
+  soundToggleBtn.addEventListener("click", () => {
+    soundAlertsEnabled = !soundAlertsEnabled;
+    localStorage.setItem("usb-sound-alerts", String(soundAlertsEnabled));
+    updateSoundUI();
+    showMessage(soundAlertsEnabled ? "Audio threat alerts enabled" : "Audio threat alerts muted");
+  });
+}
+
+function playCyberThreatAlert() {
+  if (!soundAlertsEnabled) return;
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    const now = audioCtx.currentTime;
+    osc.frequency.setValueAtTime(587.33, now); // D5
+    osc.frequency.exponentialRampToValueAtTime(880.0, now + 0.12); // A5
+    osc.frequency.exponentialRampToValueAtTime(440.0, now + 0.28); // A4
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.36);
+  } catch (e) {}
+}
+
+if (threatMatrixBtn && threatMatrixModal) {
+  threatMatrixBtn.addEventListener("click", () => {
+    threatMatrixModal.hidden = false;
+  });
+  closeMatrixModalBtn?.addEventListener("click", () => {
+    threatMatrixModal.hidden = true;
+  });
+  threatMatrixModal.addEventListener("click", (e) => {
+    if (e.target === threatMatrixModal) {
+      threatMatrixModal.hidden = true;
+    }
+  });
+}
 
 const themeStorageKey = "usb-analyzer-theme";
 let allEventsCache = [];
@@ -662,11 +720,13 @@ function generateInfosecSummary(item) {
   let reason = "The device was inspected on the USB controller bus.";
   let actionJustification = "Allowed under continuous telemetry monitoring.";
   let recommendation = "Standard monitoring active. No administrative intervention required.";
+  let mitreFramework = "Physical Bus Access Control Baseline Verified";
 
   if (hasBadUsb) {
     statusText = "HIGH-SEVERITY HARDWARE ATTACK";
     badgeClass = "badge-danger";
     category = "Keystroke Injection Threat (BadUSB / Rubber Ducky)";
+    mitreFramework = "T1200 (Hardware Additions) • T1059 (Command & Scripting Interpreter)";
     reason = `This device identifies as a '${deviceType}', but hardware timing analysis detected rapid automated keystrokes typed with an artificial cadence (< 4ms inter-key delay, 0ms variance). Attackers program rogue microcontrollers to inject pre-compiled terminal commands, scripts, or reverse shells at machine speed.`;
     actionJustification = "Hardware Blocked: The system immediately detached and disabled the USB port to cut off automated keystroke execution before payloads could execute.";
     recommendation = "Do not connect this peripheral to other systems. Physically confiscate and inspect the hardware for covert programmable microcontrollers.";
@@ -674,6 +734,7 @@ function generateInfosecSummary(item) {
     statusText = "MALICIOUS REMOVABLE MEDIA";
     badgeClass = "badge-danger";
     category = "Storage Volume Containing Malware / YARA Signatures";
+    mitreFramework = "T1091 (Replication via Removable Media) • T1547.001 (Autorun Execution)";
     reason = `Storage scanning on this drive intercepted dangerous files matching malicious signatures, autorun scripts, or YARA heuristic threat indicators. Removable drives are a primary vector for ransomware infection, air-gap crossing, and data harvesting.`;
     actionJustification = "Volume Quarantined: The drive was unmounted and access was restricted to prevent local execution or propagation over the organization's network.";
     recommendation = "Quarantine the removable drive. Do not open or execute files from it. Submit flagged files to an isolated sandbox or the SOC team for reverse engineering.";
@@ -681,6 +742,7 @@ function generateInfosecSummary(item) {
     statusText = "HARDWARE IDENTITY SPOOFING";
     badgeClass = "badge-danger";
     category = "Peripheral Impersonation / Serial Number Mismatch";
+    mitreFramework = "T1036 (Masquerading / Hardware Descriptor Spoofing)";
     reason = `The connected device claimed a trusted Vendor ID (VID) and Product ID (PID) matching an authorized organization asset, but broadcasted an unregistered or counterfeit physical serial number. Attackers frequently clone public VID/PID pairs to fool simple device filters.`;
     actionJustification = "Hardware Blocked: The analyzer enforced strict Zero-Trust serial validation and disabled the port to prevent unauthorized hardware from operating under a false identity.";
     recommendation = "Investigate the physical origin of this hardware. Check if the device is a cloned counterfeit or an unauthorized substitute.";
@@ -688,30 +750,34 @@ function generateInfosecSummary(item) {
     statusText = "HARDWARE THREAT BLOCKED";
     badgeClass = "badge-danger";
     category = "Threat Containment & Device Isolation";
+    mitreFramework = "T1200 (Unauthorized Peripheral Insertion Blocked)";
     reason = `This '${deviceType}' was identified as a hardware threat or dangerous peripheral. The analyzer automatically isolated the device to protect endpoint data and bus integrity.`;
     actionJustification = "Hardware Blocked: The system disabled the USB port, cutting off bus communication immediately.";
     recommendation = "Do not connect this peripheral to other computers. Submit for security evaluation.";
-  } else if (isViolation) {
+  } else if (isViolation || verdict === "SUSPICIOUS" || verdict === "WARNING") {
     statusText = "SUSPICIOUS DEVICE WARNING";
     badgeClass = "badge-warning";
     category = "Unrecognized Hardware — User Warned";
+    mitreFramework = "T1200 (Unapproved Physical Peripheral Insertion)";
     reason = `The connected peripheral is not registered on the trusted device whitelist. Unrecognized devices can carry firmware risks or unapproved hardware functions.`;
     actionJustification = "User Warned: A high-visibility security alert was generated to notify the user of unverified hardware.";
-    recommendation = "Verify the physical origin of this device. If this is a trusted device, click '+ Authorize New Device' to whitelist it as Safe.";
+    recommendation = "Verify the physical origin of this device. If this is a trusted device, click '+ Trust & Add to Whitelist' below to authorize it as Safe.";
   } else if (isAllowed) {
     statusText = "AUTHORIZED SAFE PERIPHERAL";
     badgeClass = "badge-safe";
     category = "Approved Trusted Peripheral";
+    mitreFramework = "T1052 Physical Medium Access Control Compliant";
     reason = `The peripheral's Vendor ID, Product ID, and Hardware Serial matched an authorized organizational whitelist rule. The device passed zero-trust authentication checks.`;
     actionJustification = "Allowed & Active: Normal peripheral access granted under continuous behavioral and typing monitoring.";
     recommendation = "Peripheral is behaving normally. No security action is necessary.";
   }
 
-  return { statusText, badgeClass, category, reason, actionJustification, recommendation };
+  return { statusText, badgeClass, category, reason, actionJustification, recommendation, mitreFramework };
 }
 
 function createInfosecCard(item) {
   const info = generateInfosecSummary(item);
+  const isSuspicious = info.badgeClass === "badge-warning" || item.verdict === "SUSPICIOUS" || item.verdict === "WARNING";
   const card = document.createElement("div");
   card.className = `infosec-card ${info.badgeClass}`;
   card.innerHTML = `
@@ -719,11 +785,12 @@ function createInfosecCard(item) {
       <div class="infosec-title-group">
         <span class="infosec-badge">${escapeHtml(info.statusText)}</span>
         <h3 class="infosec-category">${escapeHtml(info.category)}</h3>
+        <div class="mitre-banner-pill">🛡 MITRE ATT&amp;CK: ${escapeHtml(info.mitreFramework)}</div>
       </div>
     </div>
     <div class="infosec-body">
       <div class="infosec-section">
-        <span class="infosec-label">Why was this device flagged / blocked?</span>
+        <span class="infosec-label">Why was this device flagged / evaluated?</span>
         <p class="infosec-text">${escapeHtml(info.reason)}</p>
       </div>
       <div class="infosec-section">
@@ -734,6 +801,12 @@ function createInfosecCard(item) {
         <span class="infosec-label">Cybersecurity Recommendation:</span>
         <p class="infosec-text">${escapeHtml(info.recommendation)}</p>
       </div>
+      ${isSuspicious ? `
+      <div class="infosec-section" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0;">
+        <button class="btn btn-primary btn-sm quick-whitelist-btn" type="button" data-name="${escapeHtml(item.name || 'Approved Peripheral')}" data-vid="${escapeHtml(item.vendorId || '')}" data-pid="${escapeHtml(item.productId || '')}" data-serial="${escapeHtml(item.serialNumber || '')}" data-device-id="${escapeHtml(item.deviceId || item.id || '')}">
+          + Trust &amp; Add to Whitelist
+        </button>
+      </div>` : ''}
     </div>
   `;
   return card;
@@ -1102,6 +1175,36 @@ if (clearEventsBtn) {
     }
   });
 }
+
+// Quick Authorize directly from inspection drawer
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".quick-whitelist-btn");
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = "Authorizing...";
+  try {
+    const res = await fetch("/api/v1/policy/whitelist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: btn.dataset.name || "Approved Corporate Peripheral",
+        vendor_id: btn.dataset.vid || null,
+        product_id: btn.dataset.pid || null,
+        serial_number: btn.dataset.serial || null,
+        device_id: btn.dataset.deviceId || null,
+        notes: "Approved via one-click SOC audit triage",
+      }),
+    });
+    if (!res.ok) throw new Error("Could not add to whitelist");
+    showMessage(`Device '${btn.dataset.name}' added to Whitelist and marked SAFE!`, false);
+    await loadWhitelist();
+    await loadEvents(false);
+  } catch (err) {
+    showMessage(`Failed to authorize: ${err.message}`, true);
+    btn.disabled = false;
+    btn.textContent = "+ Trust & Add to Whitelist";
+  }
+});
 
 // Initial bootstrap
 loadWhitelist();

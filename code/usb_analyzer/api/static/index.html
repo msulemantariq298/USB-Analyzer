@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=9.3">
+    <link rel="stylesheet" href="/static/styles.css?v=9.4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -96,6 +96,18 @@
               </button>
             </div>
           </div>
+
+          <button id="sound-toggle-btn" class="btn btn-secondary" type="button" title="Toggle audio alert chime for high-risk threats">
+            <span id="sound-icon">🔔</span>
+            <span id="sound-label">Alerts On</span>
+          </button>
+
+          <button id="threat-matrix-btn" class="btn btn-secondary" type="button" title="View 3-Tier Security Architecture and MITRE ATT&CK Mapping">
+            <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>MITRE Matrix</span>
+          </button>
 
           <a id="export-pdf" class="btn btn-primary" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf" title="Export forensic incident report (PDF)">
             <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
@@ -354,6 +366,12 @@
               </svg>
               <span>Refresh</span>
             </button>
+            <a id="export-csv-btn" class="btn btn-secondary" href="/api/v1/reports/events.csv" download="usb_forensic_audit_events.csv" title="Download raw forensic event log in CSV format">
+              <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 3v10m-3-3 3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>CSV Log</span>
+            </a>
           </div>
         </div>
 
@@ -419,6 +437,55 @@
       </section>
     </main>
 
+    <!-- MITRE ATT&CK & Architecture Modal -->
+    <div id="threat-matrix-modal" class="modal-backdrop" hidden>
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-badge">SECURITY ARCHITECTURE</span>
+            <h3 class="modal-title">3-Tier Defense &amp; MITRE ATT&amp;CK Mapping</h3>
+          </div>
+          <button id="close-matrix-modal-btn" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-intro">
+            Comprehensive defense taxonomy aligning endpoint hardware controls, behavioral cadence tracking, and storage threat scanning with the global MITRE ATT&amp;CK Enterprise matrix:
+          </p>
+          <div class="matrix-grid">
+            <div class="matrix-tier-card">
+              <div class="tier-badge tier-1">LAYER 1: HARDWARE &amp; IDENTITY</div>
+              <h4 class="tier-title">Bus Descriptor &amp; Whitelist Verification</h4>
+              <p class="tier-desc">Continuous PnP / WMI bus interception validating Vendor ID, Product ID, and physical serial against the cryptographic zero-trust whitelist.</p>
+              <div class="mitre-tags">
+                <span class="mitre-tag">MITRE T1200 (Hardware Additions)</span>
+                <span class="mitre-tag">MITRE T1036 (Masquerading / Spoofed Serial)</span>
+              </div>
+            </div>
+
+            <div class="matrix-tier-card">
+              <div class="tier-badge tier-2">LAYER 2: BEHAVIORAL CADENCE</div>
+              <h4 class="tier-title">Keystroke Dynamics (BadUSB / Rubber Ducky)</h4>
+              <p class="tier-desc">High-frequency sliding window statistical tracker calculating Inter-Key Intervals (IKIs), CPS throughput, and robotic variance to truncate injection attacks.</p>
+              <div class="mitre-tags">
+                <span class="mitre-tag">MITRE T1059 (Command &amp; Scripting Interpreter)</span>
+                <span class="mitre-tag">MITRE T1052.001 (Exfiltration via Physical Medium)</span>
+              </div>
+            </div>
+
+            <div class="matrix-tier-card">
+              <div class="tier-badge tier-3">LAYER 3: STORAGE &amp; CONTENT</div>
+              <h4 class="tier-title">YARA Signatures &amp; Autorun Quarantine</h4>
+              <p class="tier-desc">Multithreaded storage volume worker crawling file trees, executing YARA pattern searches, verifying SHA-256 hashes, and neutralizing malicious autoruns.</p>
+              <div class="mitre-tags">
+                <span class="mitre-tag">MITRE T1091 (Replication Through Removable Media)</span>
+                <span class="mitre-tag">MITRE T1547.001 (Boot/Logon Autostart: Autorun)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <footer class="app-footer">
       <div class="footer-inner">
@@ -428,6 +495,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=9.3"></script>
+    <script src="/static/app.js?v=9.4"></script>
   </body>
 </html>

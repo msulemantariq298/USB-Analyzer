@@ -1,3 +1,6 @@
+import csv
+import io
+import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -130,6 +133,55 @@ def export_incident_report_pdf() -> Response:
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="usb_analyzer_incident_report.pdf"'},
+    )
+
+
+@app.get(f"{settings.api_prefix}/reports/events.csv")
+def export_events_csv() -> Response:
+    events = event_store.list(limit=500)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Event ID",
+        "Timestamp (UTC)",
+        "Device ID",
+        "Subsystem Source",
+        "Severity",
+        "Event Type",
+        "Reason / Risk",
+        "Action Taken",
+        "Details JSON",
+    ])
+    for ev in events:
+        details = ev.details or {}
+        reason = details.get("reason") or details.get("summary") or details.get("threat") or ""
+        action = details.get("action") or ("blocked" if ev.event_type == "device.blocked" else "logged")
+        writer.writerow([
+            str(ev.id),
+            ev.time.isoformat(),
+            ev.device_id,
+            ev.source,
+            ev.severity.value,
+            ev.event_type,
+            reason,
+            action,
+            json.dumps(details),
+        ])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="usb_forensic_audit_events.csv"'},
+    )
+
+
+@app.get(f"{settings.api_prefix}/reports/events.json")
+def export_events_json() -> Response:
+    events = event_store.list(limit=500)
+    data = [ev.model_dump(mode="json") for ev in events]
+    return Response(
+        content=json.dumps(data, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="usb_forensic_audit_events.json"'},
     )
 
 
