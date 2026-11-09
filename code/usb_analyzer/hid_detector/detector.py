@@ -108,6 +108,7 @@ class BadUsbDetector:
         key_label: str = "A",
     ) -> InjectionAlert | None:
         """Simulate high-speed hardware keystroke injection for testing and demos."""
+        self.tracker.reset()
         start = time.monotonic()
         alert = None
         for i in range(char_count):

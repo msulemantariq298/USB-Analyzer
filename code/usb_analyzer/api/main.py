@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from usb_analyzer.core.config import get_settings
 from usb_analyzer.core.database import EventStore
 from usb_analyzer.core.events import DeviceEvent, EventSeverity
+from usb_analyzer.device_monitor.fingerprint import DeviceFingerprint, detect_spoofed_identity
 from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
 from usb_analyzer.policy.enforcement import get_platform_blocker
@@ -159,5 +160,319 @@ def simulate_badusb(req: BadUsbSimulationRequest) -> dict[str, Any]:
         "detected": alert is not None,
         "summary": alert.summary if alert else "Typing speed did not trigger threshold",
     }
+
+
+class ScenarioSimulationRequest(BaseModel):
+    scenario: str  # "safe_usb", "badusb", "malware_drive", "unauthorized_device", "spoofed_identity"
+
+
+@app.post(f"{settings.api_prefix}/simulate/scenario")
+def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
+    scenario = req.scenario.strip().lower()
+
+    if scenario == "safe_usb":
+        # 1. Trusted Drive -> Allowed & Logged
+        serial = "CORP_DRIVE_001"
+        vid = "0951"
+        pid = "1666"
+        device_id = f"USB\\VID_{vid}&PID_{pid}\\{serial}"
+
+        if not whitelist_store.find_match(serial_number=serial):
+            whitelist_store.add(
+                WhitelistEntry(
+                    name="Corporate Secure Flash Drive",
+                    serial_number=serial,
+                    vendor_id=vid,
+                    product_id=pid,
+                    notes="Pre-approved corporate USB storage",
+                )
+            )
+
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="device-monitor",
+                severity=EventSeverity.INFO,
+                event_type="device.connected",
+                details={
+                    "name": "Kingston DataTraveler (Corporate Whitelisted)",
+                    "vendor_id": vid,
+                    "product_id": pid,
+                    "serial_number": serial,
+                    "device_type": "Mass Storage (Storage)",
+                },
+            )
+        )
+
+        decision, events = policy_engine.evaluate_device(
+            device_id=device_id,
+            serial_number=serial,
+            vendor_id=vid,
+            product_id=pid,
+        )
+        for ev in events:
+            event_store.add(ev)
+
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="storage-scanner",
+                severity=EventSeverity.INFO,
+                event_type="scan.completed",
+                details={
+                    "summary": "Storage integrity verified clean. 0 threats detected across 16 files.",
+                    "clean_files": 16,
+                    "threat_count": 0,
+                    "status": "clean",
+                },
+            )
+        )
+        return {
+            "status": "simulated",
+            "scenario": "safe_usb",
+            "outcome": "allowed",
+            "summary": "Safe USB Drive connected and verified against corporate whitelist. Integrity clean — full access granted.",
+        }
+
+    elif scenario == "badusb":
+        # 2. BadUSB Keystroke Injection (Rubber Ducky)
+        device_id = "USB\\VID_16C0&PID_05DF\\DIGISPARK_ATTACKER_001"
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="device-monitor",
+                severity=EventSeverity.INFO,
+                event_type="device.connected",
+                details={
+                    "name": "Digispark USB HID Keyboard (Disguised BadUSB)",
+                    "vendor_id": "16C0",
+                    "product_id": "05DF",
+                    "device_type": "Human Interface Device (HID)",
+                },
+            )
+        )
+        hid_detector.register_hid_device(device_id, "Digispark BadUSB Attacker")
+        alert = hid_detector.simulate_injection(char_count=35, delay_per_char_seconds=0.003)
+        return {
+            "status": "simulated",
+            "scenario": "badusb",
+            "outcome": "blocked" if current_policy_mode == PolicyMode.ENFORCE else "audit_warning",
+            "summary": alert.summary if alert else "BadUSB keystroke injection simulated.",
+        }
+
+    elif scenario == "malware_drive":
+        # 3. Infected Storage Drive (Trojan Dropper & autorun.inf)
+        device_id = "USBSTOR\\DISK&VEN_EVIL&PROD_USB\\INFECTED_SN_001&0"
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="device-monitor",
+                severity=EventSeverity.INFO,
+                event_type="device.connected",
+                details={
+                    "name": "SanDisk Cruzer (Malware Infected Media)",
+                    "vendor_id": "0781",
+                    "product_id": "5567",
+                    "device_type": "Mass Storage (Storage)",
+                },
+            )
+        )
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="storage-scanner",
+                severity=EventSeverity.INFO,
+                event_type="scan.started",
+                details={
+                    "device_id": device_id,
+                    "mount_point": "E:\\",
+                    "summary": "Storage scan initiated for newly attached volume E:\\",
+                },
+            )
+        )
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="storage-scanner",
+                severity=EventSeverity.CRITICAL,
+                event_type="scan.threat_detected",
+                details={
+                    "device_id": device_id,
+                    "mount_point": "E:\\",
+                    "threat_type": "trojan_autorun",
+                    "flagged_files": [
+                        "E:\\autorun.inf (Suspicious Autorun.inf)",
+                        "E:\\svchost_trojan.exe (Trojan_Dropper.exe)",
+                    ],
+                    "summary": "High-severity malware signature and malicious autorun detected on storage volume.",
+                },
+            )
+        )
+        if current_policy_mode == PolicyMode.ENFORCE:
+            _, block_ev = policy_engine.block_threat(
+                device_id=device_id,
+                reason="Malware infection: Trojan dropper & unauthorized autorun script present on storage volume",
+                threat_type="malware_infection",
+                details={"action": "quarantine_and_block", "volume": "E:\\"},
+            )
+            event_store.add(block_ev)
+            outcome = "blocked"
+            summary = "Infected drive detected! Trojan dropper and autorun.inf found. Hardware blocked & volume quarantined."
+        else:
+            event_store.add(
+                DeviceEvent(
+                    device_id=device_id,
+                    source="storage-scanner",
+                    severity=EventSeverity.WARNING,
+                    event_type="policy.audit_violation",
+                    details={
+                        "violation": "infected_media_detected",
+                        "mode": "audit_only",
+                        "summary": "Storage volume flagged as infected, but drive left active due to audit-only mode.",
+                    },
+                )
+            )
+            outcome = "audit_warning"
+            summary = "Infected drive detected (audit-only mode): Malware flagged and logged. Hardware left active."
+
+        return {
+            "status": "simulated",
+            "scenario": "malware_drive",
+            "outcome": outcome,
+            "summary": summary,
+        }
+
+    elif scenario == "unauthorized_device":
+        # 4. Unknown / Rogue USB Device (Not Whitelisted)
+        device_id = "USB\\VID_9999&PID_8888\\UNAUTHORIZED_SN_999"
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="device-monitor",
+                severity=EventSeverity.INFO,
+                event_type="device.connected",
+                details={
+                    "name": "Rogue USB Peripheral (Unknown Hardware)",
+                    "vendor_id": "9999",
+                    "product_id": "8888",
+                    "serial_number": "UNAUTHORIZED_SN_999",
+                    "device_type": "Unrecognized USB Peripheral",
+                },
+            )
+        )
+        decision, events = policy_engine.evaluate_device(
+            device_id=device_id,
+            serial_number="UNAUTHORIZED_SN_999",
+            vendor_id="9999",
+            product_id="8888",
+        )
+        for ev in events:
+            event_store.add(ev)
+
+        if current_policy_mode == PolicyMode.ENFORCE:
+            outcome = "blocked"
+            summary = "Unauthorized USB device detected: Not found on whitelist. Hardware blocked at once."
+        else:
+            outcome = "audit_warning"
+            summary = "Unauthorized USB device detected: Logged as policy violation (audit-only mode, allowed to run)."
+
+        return {
+            "status": "simulated",
+            "scenario": "unauthorized_device",
+            "outcome": outcome,
+            "summary": summary,
+        }
+
+    elif scenario == "spoofed_identity":
+        # 5. Spoofed Identity Attack (VID/PID Clone)
+        if not whitelist_store.find_match(vendor_id="1050", product_id="0407"):
+            whitelist_store.add(
+                WhitelistEntry(
+                    name="Security Admin YubiKey 5 NFC",
+                    vendor_id="1050",
+                    product_id="0407",
+                    serial_number="AUTHENTIC_YUBI_7701",
+                    notes="Registered IT Security Hardware Token",
+                )
+            )
+
+        cloned_serial = "CLONED_MALICIOUS_SN_99"
+        device_id = f"USB\\VID_1050&PID_0407\\{cloned_serial}"
+
+        event_store.add(
+            DeviceEvent(
+                device_id=device_id,
+                source="device-monitor",
+                severity=EventSeverity.INFO,
+                event_type="device.connected",
+                details={
+                    "name": "YubiKey 5 NFC (Cloned Attacker Hardware)",
+                    "vendor_id": "1050",
+                    "product_id": "0407",
+                    "serial_number": cloned_serial,
+                    "device_type": "Smart Card / Security Key",
+                },
+            )
+        )
+
+        spoofed_fp = DeviceFingerprint(
+            vendor_id="1050",
+            product_id="0407",
+            serial_number=cloned_serial,
+            friendly_name="YubiKey 5 NFC (Cloned Attacker Hardware)",
+        )
+        is_spoofed, reason, details = detect_spoofed_identity(spoofed_fp, whitelist_store.list())
+
+        if is_spoofed:
+            event_store.add(
+                DeviceEvent(
+                    device_id=device_id,
+                    source="device-monitor",
+                    severity=EventSeverity.CRITICAL,
+                    event_type="device.spoofed_identity",
+                    details=details,
+                )
+            )
+            if current_policy_mode == PolicyMode.ENFORCE:
+                _, block_ev = policy_engine.block_threat(
+                    device_id=device_id,
+                    reason=reason or "Spoofed hardware identity",
+                    threat_type="spoofed_identity",
+                )
+                event_store.add(block_ev)
+                outcome = "blocked"
+                summary = f"Identity Spoofing detected! Cloned VID 1050:PID 0407 with unauthorized serial '{cloned_serial}'. Device blocked."
+            else:
+                event_store.add(
+                    DeviceEvent(
+                        device_id=device_id,
+                        source="policy-engine",
+                        severity=EventSeverity.WARNING,
+                        event_type="policy.audit_violation",
+                        details={
+                            "violation": "spoofed_identity_detected",
+                            "mode": "audit_only",
+                            "summary": "Spoofed identity detected, but device left active due to audit-only mode.",
+                        },
+                    )
+                )
+                outcome = "audit_warning"
+                summary = f"Identity Spoofing detected (audit-only mode): Cloned VID/PID flagged and logged. Hardware left active."
+        else:
+            outcome = "unknown"
+            summary = "Spoof check did not trigger."
+
+        return {
+            "status": "simulated",
+            "scenario": "spoofed_identity",
+            "outcome": outcome,
+            "summary": summary,
+        }
+
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown simulation scenario: {scenario}. Available: safe_usb, badusb, malware_drive, unauthorized_device, spoofed_identity",
+        )
 
 

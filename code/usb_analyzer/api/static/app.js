@@ -16,6 +16,8 @@ const policyModeText = document.querySelector("#policy-mode-text");
 const showAddWlBtn = document.querySelector("#show-add-whitelist-btn");
 const addWlForm = document.querySelector("#add-whitelist-form");
 const cancelWlBtn = document.querySelector("#cancel-whitelist-btn");
+const simulateDropdownBtn = document.querySelector("#simulate-dropdown-btn");
+const simulationMenu = document.querySelector("#simulation-menu");
 const simulateBadusbBtn = document.querySelector("#simulate-badusb-btn");
 const eventSearchInput = document.querySelector("#event-search");
 
@@ -270,32 +272,78 @@ function groupEventsByDevice(events) {
   return Array.from(groups.values()).sort((a, b) => new Date(b.lastTime) - new Date(a.lastTime));
 }
 
-if (simulateBadusbBtn) {
-  simulateBadusbBtn.addEventListener("click", async () => {
-    simulateBadusbBtn.disabled = true;
-    simulateBadusbBtn.querySelector("span").textContent = "Simulating...";
-    try {
-      const res = await fetch("/api/v1/simulate/badusb", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          device_id: "USB\\VID_16C0&PID_05DF\\DIGISPARK_DEMO",
-          device_name: "Digispark BadUSB (Live Simulation)",
-          char_count: 35,
-          delay_ms: 3.0,
-        }),
-      });
-      const data = await res.json();
-      showMessage(data.summary, false);
-      await loadEvents(false);
-    } catch (err) {
-      showMessage(`Simulation failed: ${err.message}`, true);
-    } finally {
-      simulateBadusbBtn.disabled = false;
-      simulateBadusbBtn.querySelector("span").textContent = "Simulate BadUSB";
+// Multi-Scenario Simulation Handler
+async function triggerScenarioSimulation(scenarioName, buttonEl = null) {
+  let originalContent = "";
+  if (buttonEl) {
+    buttonEl.disabled = true;
+    originalContent = buttonEl.innerHTML;
+    buttonEl.innerHTML = buttonEl.classList.contains("scenario-pill-btn")
+      ? `<span class="pill-name">Simulating...</span>`
+      : `<span>Simulating...</span>`;
+  }
+  try {
+    const res = await fetch("/api/v1/simulate/scenario", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario: scenarioName }),
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || `Server returned status ${res.status}`);
+    }
+    const data = await res.json();
+    const isBlock = data.outcome === "blocked";
+    showMessage(data.summary, isBlock);
+    await loadEvents(false);
+  } catch (err) {
+    showMessage(`Simulation failed: ${err.message}`, true);
+  } finally {
+    if (buttonEl) {
+      buttonEl.disabled = false;
+      buttonEl.innerHTML = originalContent;
+    }
+    if (simulationMenu) {
+      simulationMenu.hidden = true;
+      if (simulateDropdownBtn) {
+        simulateDropdownBtn.setAttribute("aria-expanded", "false");
+      }
+    }
+  }
+}
+
+// Dropdown Toggle
+if (simulateDropdownBtn && simulationMenu) {
+  simulateDropdownBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = simulationMenu.hidden;
+    simulationMenu.hidden = !isHidden;
+    simulateDropdownBtn.setAttribute("aria-expanded", String(!isHidden));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (
+      !simulationMenu.hidden &&
+      !simulationMenu.contains(e.target) &&
+      e.target !== simulateDropdownBtn &&
+      !simulateDropdownBtn.contains(e.target)
+    ) {
+      simulationMenu.hidden = true;
+      simulateDropdownBtn.setAttribute("aria-expanded", "false");
     }
   });
 }
+
+// Attach simulation handler to all scenario trigger buttons
+document.querySelectorAll("[data-scenario]").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const scenario = btn.getAttribute("data-scenario");
+    if (scenario) {
+      triggerScenarioSimulation(scenario, btn);
+    }
+  });
+});
 
 // Toggle Whitelist Form
 if (showAddWlBtn && addWlForm) {

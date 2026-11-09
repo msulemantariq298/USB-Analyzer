@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=9.1">
+    <link rel="stylesheet" href="/static/styles.css?v=9.2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -51,12 +51,53 @@
         </div>
 
         <div class="action-buttons">
-          <button id="simulate-badusb-btn" class="btn btn-secondary" type="button" title="Simulate rapid keystroke injection (BadUSB Scenario 3)">
-            <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
-              <path d="M13 2L3 14h6l-2 6 10-12h-6l2-6z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>Simulate BadUSB</span>
-          </button>
+          <!-- Multi-Scenario Attack Simulation Dropdown -->
+          <div class="simulation-dropdown-wrapper">
+            <button id="simulate-dropdown-btn" class="btn btn-secondary dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false" title="Simulate different USB scenarios, safe devices, and attacks">
+              <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+                <path d="M13 2L3 14h6l-2 6 10-12h-6l2-6z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>Simulate Attack / Device ▾</span>
+            </button>
+            <div id="simulation-menu" class="sim-dropdown-menu" role="menu" hidden>
+              <div class="sim-dropdown-header">HARDWARE & ATTACK LAB</div>
+              <button class="sim-menu-item" type="button" data-scenario="safe_usb" role="menuitem">
+                <span class="sim-icon-dot safe-dot">✓</span>
+                <div class="sim-item-text">
+                  <div class="sim-title">Safe Corporate Drive <span class="badge-pill pill-safe">ALLOWED</span></div>
+                  <div class="sim-desc">Whitelisted storage • Clean scan • Full access</div>
+                </div>
+              </button>
+              <button id="simulate-badusb-btn" class="sim-menu-item" type="button" data-scenario="badusb" role="menuitem">
+                <span class="sim-icon-dot danger-dot">⚡</span>
+                <div class="sim-item-text">
+                  <div class="sim-title">BadUSB Keystroke Injection <span class="badge-pill pill-danger">BLOCKED</span></div>
+                  <div class="sim-desc">Rubber Ducky rapid keystroke burst • Hardware disabled</div>
+                </div>
+              </button>
+              <button class="sim-menu-item" type="button" data-scenario="malware_drive" role="menuitem">
+                <span class="sim-icon-dot danger-dot">☣</span>
+                <div class="sim-item-text">
+                  <div class="sim-title">Malware Infected Flash Drive <span class="badge-pill pill-danger">BLOCKED</span></div>
+                  <div class="sim-desc">Trojan dropper & autorun.inf • Scanned & quarantined</div>
+                </div>
+              </button>
+              <button class="sim-menu-item" type="button" data-scenario="unauthorized_device" role="menuitem">
+                <span class="sim-icon-dot warning-dot">🚫</span>
+                <div class="sim-item-text">
+                  <div class="sim-title">Unauthorized Rogue Peripheral <span class="badge-pill pill-warning">POLICY VIOLATION</span></div>
+                  <div class="sim-desc">Unregistered device ID • Disabled in Enforce mode</div>
+                </div>
+              </button>
+              <button class="sim-menu-item" type="button" data-scenario="spoofed_identity" role="menuitem">
+                <span class="sim-icon-dot purple-dot">🎭</span>
+                <div class="sim-item-text">
+                  <div class="sim-title">Spoofed Hardware Identity <span class="badge-pill pill-purple">BLOCKED</span></div>
+                  <div class="sim-desc">Cloned VID/PID with forged hardware serial number</div>
+                </div>
+              </button>
+            </div>
+          </div>
 
           <a id="export-pdf" class="btn btn-primary" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf" title="Export forensic incident report (PDF)">
             <svg viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
@@ -318,6 +359,44 @@
           </div>
         </div>
 
+        <!-- Interactive Attack & Defense Scenario Quick-Launcher -->
+        <div class="scenario-simulator-bar">
+          <div class="scenario-sim-label">
+            <span class="pulse-indicator"></span>
+            <div class="scenario-sim-text-group">
+              <span class="scenario-sim-title">Live Hardware Attack &amp; Defense Lab</span>
+              <span class="scenario-sim-caption">Simulate real-world USB attacks to test active defense &amp; policy containment:</span>
+            </div>
+          </div>
+          <div class="scenario-buttons">
+            <button class="scenario-pill-btn pill-safe" type="button" data-scenario="safe_usb" title="Simulate whitelisted corporate drive (Allowed & Clean)">
+              <span class="pill-icon">✓</span>
+              <span class="pill-name">Safe USB Drive</span>
+              <span class="pill-tag">Allowed</span>
+            </button>
+            <button class="scenario-pill-btn pill-danger" type="button" data-scenario="badusb" title="Simulate BadUSB rapid keystroke injection (Hardware Blocked)">
+              <span class="pill-icon">⚡</span>
+              <span class="pill-name">BadUSB Injection</span>
+              <span class="pill-tag">Blocked</span>
+            </button>
+            <button class="scenario-pill-btn pill-danger" type="button" data-scenario="malware_drive" title="Simulate infected flash drive with Trojan dropper and autorun.inf">
+              <span class="pill-icon">☣</span>
+              <span class="pill-name">Infected Media</span>
+              <span class="pill-tag">Blocked</span>
+            </button>
+            <button class="scenario-pill-btn pill-warning" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device (Policy Violation)">
+              <span class="pill-icon">🚫</span>
+              <span class="pill-name">Rogue Peripheral</span>
+              <span class="pill-tag">Policy Block</span>
+            </button>
+            <button class="scenario-pill-btn pill-purple" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
+              <span class="pill-icon">🎭</span>
+              <span class="pill-name">Spoofed Identity</span>
+              <span class="pill-tag">Blocked</span>
+            </button>
+          </div>
+        </div>
+
         <div id="message" class="toast-message" role="status" aria-live="polite"></div>
 
         <div class="data-table-container">
@@ -351,6 +430,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=9.0"></script>
+    <script src="/static/app.js?v=9.2"></script>
   </body>
 </html>

@@ -265,6 +265,299 @@ body {
   gap: 10px;
 }
 
+/* Multi-Scenario Simulation Dropdown */
+.simulation-dropdown-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.sim-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 330px;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
+  padding: 8px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-dropdown-menu[hidden] {
+  display: none !important;
+}
+
+.sim-dropdown-header {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  padding: 6px 10px 4px 10px;
+  text-transform: uppercase;
+}
+
+.sim-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.sim-menu-item:hover {
+  background: var(--surface-subtle);
+  border-color: #e2e8f0;
+}
+
+.sim-icon-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.safe-dot {
+  background: var(--safe-bg);
+  color: var(--safe-green);
+  border: 1px solid var(--safe-border);
+}
+
+.danger-dot {
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
+  border: 1px solid var(--danger-border);
+}
+
+.warning-dot {
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+  border: 1px solid var(--warning-border);
+}
+
+.purple-dot {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+
+.sim-item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sim-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sim-desc {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.badge-pill {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.pill-safe {
+  background: var(--safe-bg);
+  color: var(--safe-green);
+}
+
+.pill-danger {
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
+}
+
+.pill-warning {
+  background: var(--warning-bg);
+  color: var(--warning-amber);
+}
+
+.pill-purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+/* ==========================================================================
+   Interactive Attack & Defense Scenario Bar
+   ========================================================================== */
+.scenario-simulator-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  flex-wrap: wrap;
+}
+
+.scenario-sim-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scenario-sim-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.scenario-sim-title {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.scenario-sim-caption {
+  font-size: 0.71rem;
+  color: var(--text-dim);
+}
+
+.pulse-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--blue-primary);
+  box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.5);
+  animation: pulseBlue 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseBlue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(29, 78, 216, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0);
+  }
+}
+
+.scenario-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scenario-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: #ffffff;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.scenario-pill-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.1);
+}
+
+.scenario-pill-btn.pill-safe {
+  border-color: var(--safe-border);
+  color: var(--safe-green);
+  background: var(--safe-bg);
+}
+
+.scenario-pill-btn.pill-safe:hover {
+  background: #d1fae5;
+}
+
+.scenario-pill-btn.pill-danger {
+  border-color: var(--danger-border);
+  color: var(--danger-crimson);
+  background: var(--danger-bg);
+}
+
+.scenario-pill-btn.pill-danger:hover {
+  background: #ffe4e6;
+}
+
+.scenario-pill-btn.pill-warning {
+  border-color: var(--warning-border);
+  color: var(--warning-amber);
+  background: var(--warning-bg);
+}
+
+.scenario-pill-btn.pill-warning:hover {
+  background: #fef3c7;
+}
+
+.scenario-pill-btn.pill-purple {
+  border-color: #ddd6fe;
+  color: #7c3aed;
+  background: #f5f3ff;
+}
+
+.scenario-pill-btn.pill-purple:hover {
+  background: #ede9fe;
+}
+
+.pill-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.pill-name {
+  font-weight: 700;
+}
+
+.pill-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.06);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* Modern Pill Button System */
 .btn {
   display: inline-flex;
