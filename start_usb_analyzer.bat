@@ -13,3 +13,4 @@ if not exist "venv\Scripts\python.exe" (
 
 set PYTHONPATH=%~dp0code
 "%~dp0venv\Scripts\python.exe" -m usb_analyzer.service start
+

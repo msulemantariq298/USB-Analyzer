@@ -160,3 +160,34 @@ def test_scan_service_runs_scan_outside_calling_thread() -> None:
 
     assert not scheduling_thread.is_alive()
     assert event_sink.events[-1].event_type == "scan.completed"
+
+
+def test_storage_scan_service_deletes_malware_file(tmp_path: Path) -> None:
+    # Create a simulated infected USB volume
+    malware_file = tmp_path / "eicar.com"
+    malware_file.write_bytes(b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+
+    event_sink = CollectingEventSink()
+    result = ScanResult(
+        root=str(tmp_path),
+        files=[
+            FileFinding(
+                path="eicar.com",
+                size=malware_file.stat().st_size,
+                sha256="275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                flags=("eicar_test_file",),
+            )
+        ],
+    )
+
+    with StorageScanService(event_sink, scanner=lambda root: result) as service:
+        service.schedule("usb:test_drive", str(tmp_path))
+
+    # The file must be deleted from the disk automatically
+    assert not malware_file.exists()
+    completed = [e for e in event_sink.events if e.event_type == "scan.completed"][0]
+    assert completed.severity is EventSeverity.CRITICAL
+    assert completed.details["verdict"] == "DANGER"
+    assert "deleted" in completed.details["action_taken"].lower()
+    assert "eicar.com" in completed.details["deleted_threats"]
+

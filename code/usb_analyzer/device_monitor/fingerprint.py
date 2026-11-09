@@ -297,3 +297,42 @@ def detect_spoofed_identity(
 
     return False, None, {}
 
+
+KNOWN_ATTACKER_SIGNATURES: dict[tuple[str, str], str] = {
+    ("03EB", "2042"): "Hak5 USB Rubber Ducky (LUFA HID keystroke injector)",
+    ("16C0", "0486"): "MalDuino / Teensy HID injection hardware",
+    ("16C0", "05DF"): "Digispark ATTiny85 BadUSB board",
+    ("0525", "A4A2"): "Hak5 Bash Bunny multi-vector attack hardware",
+    ("1D50", "6089"): "GreatFET / FaceDancer USB attack framework",
+}
+
+STANDARD_PERIPHERAL_CATEGORIES = frozenset({
+    "Keyboard",
+    "Mouse",
+    "Keyboard & Mouse",
+    "Human Interface Device (HID)",
+    "USB Storage Drive",
+    "Audio Device",
+    "Webcam",
+    "Bluetooth Adapter",
+    "Security Token",
+    "Network Adapter",
+})
+
+
+def is_known_attacker_hardware(fingerprint: DeviceFingerprint) -> tuple[bool, str | None]:
+    """Check if the device matches known physical penetration testing / BadUSB hardware signatures."""
+    if not fingerprint.vendor_id or not fingerprint.product_id:
+        return False, None
+    key = (fingerprint.vendor_id.upper(), fingerprint.product_id.upper())
+    desc = KNOWN_ATTACKER_SIGNATURES.get(key)
+    if desc:
+        return True, f"Known attack hardware signature matched: {desc} (VID_{key[0]}&PID_{key[1]})"
+    return False, None
+
+
+def is_standard_peripheral(category: str) -> bool:
+    """Return True if the category represents a standard, legitimate everyday peripheral."""
+    return category in STANDARD_PERIPHERAL_CATEGORIES
+
+

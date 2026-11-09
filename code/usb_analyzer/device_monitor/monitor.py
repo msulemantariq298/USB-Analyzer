@@ -10,6 +10,8 @@ from usb_analyzer.device_monitor.fingerprint import (
     DeviceFingerprint,
     detect_spoofed_identity,
     extract_fingerprint,
+    is_known_attacker_hardware,
+    is_standard_peripheral,
 )
 from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
@@ -228,7 +230,44 @@ class DeviceMonitor:
                             self.blocked_device_ids.add(event.device_id)
                             continue
 
-                        # Evaluate Policy Engine Whitelist
+                        # 2. Check Known Attacker Hardware Signatures (Hak5 / MalDuino / BadUSB)
+                        is_attacker, attacker_reason = is_known_attacker_hardware(fp)
+                        if is_attacker:
+                            event.details["verdict"] = "DANGER"
+                            event.details["risk"] = "Malicious Attacker Hardware"
+                            event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: {attacker_reason}. Action taken: Hardware blocked."
+
+                            attacker_event = DeviceEvent(
+                                device_id=event.device_id,
+                                source="device-monitor",
+                                severity=EventSeverity.CRITICAL,
+                                event_type="device.attack_hardware",
+                                details={
+                                    "reason": attacker_reason,
+                                    "verdict": "DANGER",
+                                    "risk": "Malicious Attacker Hardware",
+                                    "action_taken": "Hardware Blocked (Port Disabled)",
+                                    "summary": event.details["summary"],
+                                    **event.details,
+                                },
+                            )
+                            self.event_sink.add(attacker_event)
+                            _, block_event = self.policy_engine.block_threat(
+                                device_id=event.device_id,
+                                reason=attacker_reason or "Known attack hardware detected",
+                                threat_type="attack_hardware",
+                                details=event.details,
+                            )
+                            block_event.details["verdict"] = "DANGER"
+                            block_event.details["risk"] = "Malicious Attacker Hardware"
+                            block_event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
+                            block_event.details["summary"] = event.details["summary"]
+                            self.event_sink.add(block_event)
+                            self.blocked_device_ids.add(event.device_id)
+                            continue
+
+                        # 3. Whitelist check (if explicit whitelist entry exists)
                         decision, policy_events = self.policy_engine.evaluate_device(
                             device_id=event.device_id,
                             serial_number=serial,
@@ -249,27 +288,22 @@ class DeviceMonitor:
                                 pe.details["action_taken"] = "Allowed & Active"
                                 pe.details["summary"] = event.details["summary"]
                                 self.event_sink.add(pe)
-                        elif not decision.allowed:
-                            event.details["verdict"] = "DANGER"
-                            event.details["risk"] = "Unauthorized Device"
-                            event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
-                            event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: Device is not registered on the whitelist. Action taken: Hardware blocked."
-                            for pe in policy_events:
-                                pe.details["verdict"] = "DANGER"
-                                pe.details["risk"] = "Unauthorized Device"
-                                pe.details["action_taken"] = "Hardware Blocked (Port Disabled)"
-                                pe.details["summary"] = event.details["summary"]
-                                self.event_sink.add(pe)
-                            self.blocked_device_ids.add(event.device_id)
+                        elif is_standard_peripheral(dev_type):
+                            # Standard Everyday Peripherals (Keyboard, Mouse, Storage Drive, Audio, Webcam)
+                            # Safe by default! Monitored dynamically by BadUSB detector and storage scanner.
+                            event.details["verdict"] = "SAFE"
+                            event.details["risk"] = "None"
+                            event.details["action_taken"] = "Allowed & Monitored"
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Standard desktop peripheral connected and active."
                         else:
-                            # Audit only mode
+                            # Truly Unrecognized / Unknown Raw Hardware -> Warning for user review
                             event.details["verdict"] = "WARNING"
-                            event.details["risk"] = "Unregistered Peripheral (Audit Mode)"
+                            event.details["risk"] = "Unrecognized Hardware"
                             event.details["action_taken"] = "Audit Logged"
-                            event.details["summary"] = f"{dev_label} ({dev_type}) — WARNING: Unregistered peripheral in audit mode. Action taken: Logged for review."
+                            event.details["summary"] = f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware connected. Open dashboard to review or block."
                             for pe in policy_events:
                                 pe.details["verdict"] = "WARNING"
-                                pe.details["risk"] = "Unregistered Peripheral (Audit Mode)"
+                                pe.details["risk"] = "Unrecognized Hardware"
                                 pe.details["action_taken"] = "Audit Logged"
                                 pe.details["summary"] = event.details["summary"]
                                 self.event_sink.add(pe)
@@ -286,6 +320,11 @@ class DeviceMonitor:
                     for volume_path in device.volume_paths:
                         if volume_path.casefold() not in previous_paths:
                             self.storage_scan_scheduler.schedule(
+                                device_id,
+                                volume_path,
+                            )
+                        elif hasattr(self.storage_scan_scheduler, "check_and_reschedule"):
+                            self.storage_scan_scheduler.check_and_reschedule(
                                 device_id,
                                 volume_path,
                             )

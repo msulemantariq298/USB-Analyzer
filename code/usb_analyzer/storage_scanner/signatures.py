@@ -48,6 +48,15 @@ class YaraRule:
                 if self.condition == "any":
                     return True
 
+        # Also check against filename if provided
+        if filename:
+            fn_bytes = filename.encode("utf-8", errors="ignore")
+            for regex in self.regexes:
+                if regex.search(fn_bytes):
+                    matches += 1
+                    if self.condition == "any":
+                        return True
+
         return matches == total_checks if self.condition == "all" else False
 
 
@@ -80,6 +89,33 @@ def _build_default_rules() -> list[YaraRule]:
                 re.compile(rb"(?i)DownloadFile\s*\(", re.IGNORECASE),
                 re.compile(rb"(?i)Invoke-Expression.*(http|https)", re.IGNORECASE),
                 re.compile(rb"(?i)IEX\s*\(.*(http|https)", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="Ransomware_Keywords",
+            description="Known ransomware extortion and encryption indicators",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)(all your files have been encrypted|decrypt_files|send bitcoin to|your personal files are encrypted)", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="Malicious_Script_Commands",
+            description="Shadow copy deletion, credential dumping, or execution bypass primitives",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)(vssadmin\s+delete\s+shadows|wmic\s+shadowcopy\s+delete|Set-ExecutionPolicy\s+Bypass|Invoke-Mimikatz)", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="Malware_Explicit_Indicator",
+            description="File or content explicitly identified as malware, trojan, ransomware, or virus",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)\b(malware|trojan|ransomware|eicar|virus|keylogger)\b", re.IGNORECASE),
             ],
             condition="any",
         ),
