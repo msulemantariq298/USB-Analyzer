@@ -28,9 +28,13 @@ const closeMatrixModalBtn = document.querySelector("#close-matrix-modal-btn");
 let soundAlertsEnabled = localStorage.getItem("usb-sound-alerts") !== "false";
 
 function updateSoundUI() {
-  if (!soundIcon || !soundLabel) return;
-  soundIcon.textContent = soundAlertsEnabled ? "🔔" : "🔕";
-  soundLabel.textContent = soundAlertsEnabled ? "Alerts On" : "Muted";
+  if (soundLabel) {
+    soundLabel.textContent = soundAlertsEnabled ? "Alerts On" : "Muted";
+  }
+  const soundSvg = document.querySelector("#sound-icon-svg");
+  if (soundSvg) {
+    soundSvg.style.opacity = soundAlertsEnabled ? "1" : "0.35";
+  }
 }
 
 if (soundToggleBtn) {
@@ -679,7 +683,7 @@ function renderCharts(events) {
         labels: ["Info (Safe)", "Warning", "Critical"],
         datasets: [{
           data: [infoCount, warnCount, critCount],
-          backgroundColor: ["#0075FF", "#FFB547", "#E31A1A"],
+          backgroundColor: ["#2563eb", "#b45309", "#be123c"],
           borderColor: "#ffffff",
           borderWidth: 3,
           hoverOffset: 6,
@@ -716,9 +720,9 @@ function renderCharts(events) {
         labels: topTypes.map(([k]) => k.toUpperCase()),
         datasets: [{
           data: topTypes.map(([, v]) => v),
-          backgroundColor: "#0075FF",
-          borderRadius: 8,
-          hoverBackgroundColor: "#00d2ff",
+          backgroundColor: "#1e3a8a",
+          borderRadius: 6,
+          hoverBackgroundColor: "#2563eb",
         }],
       },
       options: {

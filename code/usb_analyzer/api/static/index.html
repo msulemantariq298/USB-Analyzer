@@ -8,27 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=9.4">
+    <link rel="stylesheet" href="/static/styles.css?v=9.5">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <!-- Topbar Navigation (Donezo Floating White Style) -->
+    <!-- Topbar Navigation -->
     <header class="topbar">
       <div class="topbar-left">
         <a class="brand" href="/" aria-label="USB Analyzer Dashboard Home">
-          <div class="brand-shield" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" class="shield-svg" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L4 5.5v5.8c0 5.2 3.4 10.1 8 11.2 4.6-1.1 8-6 8-11.2V5.5L12 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 17v-6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              <rect x="10.5" y="7.5" width="3" height="3" rx="0.5" fill="currentColor"/>
-              <path d="M12 14.5l-2.8-2.2v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              <circle cx="9.2" cy="9.2" r="1.3" fill="currentColor"/>
-              <path d="M12 14.5l2.8-2.2v-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              <polygon points="14.8,7.8 13.5,10.2 16.1,10.2" fill="currentColor"/>
-            </svg>
-          </div>
           <div class="brand-breadcrumb">
-            <span class="breadcrumb-path">System / Defense</span>
+            <span class="breadcrumb-path">Endpoint Hardware Defense</span>
             <span class="brand-name">USB Analyzer Dashboard</span>
           </div>
         </a>
@@ -50,7 +39,9 @@
 
         <div class="action-buttons">
           <button id="sound-toggle-btn" class="btn btn-secondary btn-icon-text" type="button" title="Toggle audio alert chime for high-risk threats">
-            <span id="sound-icon">🔔</span>
+            <svg id="sound-icon-svg" viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8">
+              <path d="M10 2a6 6 0 0 0-6 6v3.586l-.707.707A1 1 0 0 0 4 14h12a1 1 0 0 0 .707-1.707L16 11.586V8a6 6 0 0 0-6-6zM10 18a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 10 18z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
             <span id="sound-label">Alerts On</span>
           </button>
 
@@ -114,72 +105,48 @@
           </div>
         </div>
 
-        <!-- Donezo-Style KPI Metrics Grid (With Deep Cobalt Anchor) -->
+        <!-- Telemetry KPI Metrics Grid -->
         <div class="kpi-grid" aria-label="Telemetry KPI summary">
           <!-- 1. The Deep Cobalt Anchor Card -->
           <article class="kpi-card kpi-anchor-blue">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Total Events</span>
-            </div>
+            <span class="kpi-label">Total Events</span>
             <strong id="total-events" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill">Live Telemetry</span>
-            </div>
+            <span class="kpi-subtext">Continuous telemetry stream</span>
           </article>
 
           <!-- 2. Devices Blocked -->
           <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Devices Blocked</span>
-            </div>
-            <strong id="blocked-count" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill pill-danger-kpi">Port Isolated</span>
-            </div>
+            <span class="kpi-label">Devices Blocked</span>
+            <strong id="blocked-count" class="kpi-value kpi-val-threat">0</strong>
+            <span class="kpi-subtext">Hardware ports isolated</span>
           </article>
 
           <!-- 3. Policy Warnings -->
           <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Suspicious Warnings</span>
-            </div>
-            <strong id="warning-events" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill pill-warning-kpi">Audit Review</span>
-            </div>
+            <span class="kpi-label">Suspicious Warnings</span>
+            <strong id="warning-events" class="kpi-value kpi-val-warning">0</strong>
+            <span class="kpi-subtext">Unregistered / triage review</span>
           </article>
 
           <!-- 4. Critical Threats -->
           <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Critical Threats</span>
-            </div>
-            <strong id="critical-events" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill pill-danger-kpi">Malware & BadUSB</span>
-            </div>
+            <span class="kpi-label">Critical Threats</span>
+            <strong id="critical-events" class="kpi-value kpi-val-threat">0</strong>
+            <span class="kpi-subtext">BadUSB &amp; malware threats</span>
           </article>
 
           <!-- 5. Active Scans -->
           <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Storage Scans</span>
-            </div>
-            <strong id="active-scans" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill pill-safe-kpi">Volumes Clean</span>
-            </div>
+            <span class="kpi-label">Storage Scans</span>
+            <strong id="active-scans" class="kpi-value kpi-val-blue">0</strong>
+            <span class="kpi-subtext">Volumes inspected</span>
           </article>
 
           <!-- 6. Flagged Files -->
           <article class="kpi-card">
-            <div class="kpi-top-row">
-              <span class="kpi-label">Flagged Files</span>
-            </div>
-            <strong id="flagged-files" class="kpi-value">0</strong>
-            <div class="kpi-footer">
-              <span class="kpi-pill">YARA & Hashes</span>
-            </div>
+            <span class="kpi-label">Flagged Files</span>
+            <strong id="flagged-files" class="kpi-value kpi-val-threat">0</strong>
+            <span class="kpi-subtext">Signatures &amp; SHA-256 matches</span>
           </article>
         </div>
       </section>
@@ -231,40 +198,40 @@
           </div>
         </div>
 
-        <!-- Interactive Attack & Defense Scenario Quick-Launcher -->
+        <!-- Hardware Attack & Defense Diagnostics Bar -->
         <div class="scenario-simulator-bar">
           <div class="scenario-sim-label">
             <span class="pulse-indicator"></span>
             <div class="scenario-sim-text-group">
-              <span class="scenario-sim-title">Live Hardware Attack &amp; Defense Lab</span>
-              <span class="scenario-sim-caption">Simulate real-world USB attacks to test active defense &amp; policy containment:</span>
+              <span class="scenario-sim-title">Defense Diagnostics Lab</span>
+              <span class="scenario-sim-caption">Inject simulated hardware vectors to verify zero-trust containment policy:</span>
             </div>
           </div>
           <div class="scenario-buttons">
             <button class="scenario-pill-btn pill-safe" type="button" data-scenario="safe_usb" title="Simulate whitelisted corporate drive (Allowed & Clean)">
-              <span class="pill-icon">✓</span>
-              <span class="pill-name">Safe USB Drive</span>
-              <span class="pill-tag">Allowed</span>
+              <span class="pill-dot pill-dot-safe"></span>
+              <span class="pill-name">Safe Storage</span>
+              <span class="pill-tag">Allow</span>
             </button>
             <button class="scenario-pill-btn pill-danger" type="button" data-scenario="badusb" title="Simulate BadUSB rapid keystroke injection (Hardware Blocked)">
-              <span class="pill-icon">⚡</span>
+              <span class="pill-dot pill-dot-danger"></span>
               <span class="pill-name">BadUSB Injection</span>
-              <span class="pill-tag">Blocked</span>
+              <span class="pill-tag">Block</span>
             </button>
             <button class="scenario-pill-btn pill-danger" type="button" data-scenario="malware_drive" title="Simulate infected flash drive with Trojan dropper and autorun.inf">
-              <span class="pill-icon">☣</span>
+              <span class="pill-dot pill-dot-danger"></span>
               <span class="pill-name">Infected Media</span>
-              <span class="pill-tag">Blocked</span>
+              <span class="pill-tag">Block</span>
             </button>
             <button class="scenario-pill-btn pill-warning" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device (Suspicious Warning)">
-              <span class="pill-icon">⚠</span>
-              <span class="pill-name">Unregistered USB</span>
-              <span class="pill-tag">Suspicious</span>
+              <span class="pill-dot pill-dot-warning"></span>
+              <span class="pill-name">Unknown Peripheral</span>
+              <span class="pill-tag">Audit</span>
             </button>
-            <button class="scenario-pill-btn pill-purple" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
-              <span class="pill-icon">🎭</span>
-              <span class="pill-name">Spoofed Identity</span>
-              <span class="pill-tag">Blocked</span>
+            <button class="scenario-pill-btn pill-danger" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
+              <span class="pill-dot pill-dot-danger"></span>
+              <span class="pill-name">Spoofed Hardware</span>
+              <span class="pill-tag">Block</span>
             </button>
           </div>
         </div>
@@ -447,7 +414,11 @@
         </div>
         <div class="modal-body">
           <div class="triage-alert-box">
-            <div class="triage-icon">⚠️</div>
+            <div class="triage-icon-wrap" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="none" width="22" height="22" stroke="currentColor" stroke-width="1.8">
+                <path d="M10 2L2 17h16L10 2zM10 7v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
             <div class="triage-info">
               <strong id="triage-device-name">Unknown USB Peripheral</strong>
               <div id="triage-device-id" class="font-mono small text-muted">USB\VID_????&amp;PID_????\...</div>
@@ -463,7 +434,12 @@
 
           <div class="triage-actions-grid">
             <button id="triage-block-btn" class="triage-btn triage-btn-block" type="button">
-              <div class="triage-btn-icon">🛑</div>
+              <div class="triage-btn-icon-wrap action-icon-block" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2">
+                  <circle cx="10" cy="10" r="8"/>
+                  <path d="M5 15L15 5"/>
+                </svg>
+              </div>
               <div class="triage-btn-content">
                 <strong>Block Device Now</strong>
                 <span>Disables hardware port at OS level to neutralize potential threats immediately</span>
@@ -471,7 +447,12 @@
             </button>
 
             <button id="triage-trust-btn" class="triage-btn triage-btn-trust" type="button">
-              <div class="triage-btn-icon">🛡️</div>
+              <div class="triage-btn-icon-wrap action-icon-trust" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2">
+                  <path d="M10 2L3 5.5v5.8c0 5.2 3.4 9.1 7 10.2 3.6-1.1 7-5 7-10.2V5.5L10 2z"/>
+                  <path d="M7 10.5l2 2 4-4"/>
+                </svg>
+              </div>
               <div class="triage-btn-content">
                 <strong>Trust &amp; Whitelist Device</strong>
                 <span>Marks this device as Safe and saves it to your trusted hardware whitelist</span>
@@ -479,7 +460,12 @@
             </button>
 
             <button id="triage-leave-btn" class="triage-btn triage-btn-leave" type="button">
-              <div class="triage-btn-icon">👁️</div>
+              <div class="triage-btn-icon-wrap action-icon-leave" aria-hidden="true">
+                <svg viewBox="0 0 20 20" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2">
+                  <circle cx="10" cy="10" r="3"/>
+                  <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z"/>
+                </svg>
+              </div>
               <div class="triage-btn-content">
                 <strong>Leave Active (Warning Only)</strong>
                 <span>Dismisses this prompt, keeps device plugged in while preserving audit warning</span>
@@ -499,6 +485,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=9.4"></script>
+    <script src="/static/app.js?v=9.5"></script>
   </body>
 </html>
