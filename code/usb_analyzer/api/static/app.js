@@ -660,9 +660,10 @@ function filterAndRenderEvents() {
   displayEventRows(filtered);
 }
 
-// Chart.js Vision UI Light Theme
+// Chart.js Configuration with Montserrat Font
 function renderCharts(events) {
   if (typeof Chart === "undefined") return;
+  Chart.defaults.font.family = "'Montserrat', sans-serif";
 
   const textColor = "#707eae";
   const gridColor = "rgba(0, 0, 0, 0.05)";
