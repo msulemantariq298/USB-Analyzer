@@ -460,9 +460,7 @@ async function triggerScenarioSimulation(scenarioName, buttonEl = null) {
   if (buttonEl) {
     buttonEl.disabled = true;
     originalContent = buttonEl.innerHTML;
-    buttonEl.innerHTML = buttonEl.classList.contains("scenario-pill-btn")
-      ? `<span class="pill-name">Simulating...</span>`
-      : `<span>Simulating...</span>`;
+    buttonEl.innerHTML = "<span>Simulating...</span>";
   }
   try {
     const res = await fetch("/api/v1/simulate/scenario", {

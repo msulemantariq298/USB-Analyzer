@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=9.5">
+    <link rel="stylesheet" href="/static/styles.css?v=9.6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -117,35 +117,35 @@
           <!-- 2. Devices Blocked -->
           <article class="kpi-card">
             <span class="kpi-label">Devices Blocked</span>
-            <strong id="blocked-count" class="kpi-value kpi-val-threat">0</strong>
+            <strong id="blocked-count" class="kpi-value">0</strong>
             <span class="kpi-subtext">Hardware ports isolated</span>
           </article>
 
           <!-- 3. Policy Warnings -->
           <article class="kpi-card">
             <span class="kpi-label">Suspicious Warnings</span>
-            <strong id="warning-events" class="kpi-value kpi-val-warning">0</strong>
+            <strong id="warning-events" class="kpi-value">0</strong>
             <span class="kpi-subtext">Unregistered / triage review</span>
           </article>
 
           <!-- 4. Critical Threats -->
           <article class="kpi-card">
             <span class="kpi-label">Critical Threats</span>
-            <strong id="critical-events" class="kpi-value kpi-val-threat">0</strong>
+            <strong id="critical-events" class="kpi-value">0</strong>
             <span class="kpi-subtext">BadUSB &amp; malware threats</span>
           </article>
 
           <!-- 5. Active Scans -->
           <article class="kpi-card">
             <span class="kpi-label">Storage Scans</span>
-            <strong id="active-scans" class="kpi-value kpi-val-blue">0</strong>
+            <strong id="active-scans" class="kpi-value">0</strong>
             <span class="kpi-subtext">Volumes inspected</span>
           </article>
 
           <!-- 6. Flagged Files -->
           <article class="kpi-card">
             <span class="kpi-label">Flagged Files</span>
-            <strong id="flagged-files" class="kpi-value kpi-val-threat">0</strong>
+            <strong id="flagged-files" class="kpi-value">0</strong>
             <span class="kpi-subtext">Signatures &amp; SHA-256 matches</span>
           </article>
         </div>
@@ -208,30 +208,20 @@
             </div>
           </div>
           <div class="scenario-buttons">
-            <button class="scenario-pill-btn pill-safe" type="button" data-scenario="safe_usb" title="Simulate whitelisted corporate drive (Allowed & Clean)">
-              <span class="pill-dot pill-dot-safe"></span>
-              <span class="pill-name">Safe Storage</span>
-              <span class="pill-tag">Allow</span>
+            <button class="btn btn-secondary scenario-btn" type="button" data-scenario="safe_usb" title="Simulate whitelisted corporate drive">
+              <span>Safe Storage</span>
             </button>
-            <button class="scenario-pill-btn pill-danger" type="button" data-scenario="badusb" title="Simulate BadUSB rapid keystroke injection (Hardware Blocked)">
-              <span class="pill-dot pill-dot-danger"></span>
-              <span class="pill-name">BadUSB Injection</span>
-              <span class="pill-tag">Block</span>
+            <button class="btn btn-secondary scenario-btn" type="button" data-scenario="badusb" title="Simulate BadUSB rapid keystroke injection">
+              <span>BadUSB Injection</span>
             </button>
-            <button class="scenario-pill-btn pill-danger" type="button" data-scenario="malware_drive" title="Simulate infected flash drive with Trojan dropper and autorun.inf">
-              <span class="pill-dot pill-dot-danger"></span>
-              <span class="pill-name">Infected Media</span>
-              <span class="pill-tag">Block</span>
+            <button class="btn btn-secondary scenario-btn" type="button" data-scenario="malware_drive" title="Simulate infected flash drive with Trojan dropper and autorun.inf">
+              <span>Infected Media</span>
             </button>
-            <button class="scenario-pill-btn pill-warning" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device (Suspicious Warning)">
-              <span class="pill-dot pill-dot-warning"></span>
-              <span class="pill-name">Unknown Peripheral</span>
-              <span class="pill-tag">Audit</span>
+            <button class="btn btn-secondary scenario-btn" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device">
+              <span>Unknown Peripheral</span>
             </button>
-            <button class="scenario-pill-btn pill-danger" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
-              <span class="pill-dot pill-dot-danger"></span>
-              <span class="pill-name">Spoofed Hardware</span>
-              <span class="pill-tag">Block</span>
+            <button class="btn btn-secondary scenario-btn" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
+              <span>Spoofed Hardware</span>
             </button>
           </div>
         </div>
@@ -485,6 +475,6 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=9.5"></script>
+    <script src="/static/app.js?v=9.6"></script>
   </body>
 </html>
