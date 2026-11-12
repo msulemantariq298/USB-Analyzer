@@ -74,9 +74,9 @@
   --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.28);
   --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.45), 0 16px 34px rgba(0, 0, 0, 0.38);
 
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
   --text-light: #ffffff;
 
   --blue-anchor: #0f2b5c;
@@ -280,7 +280,7 @@ body {
   top: calc(100% + 8px);
   right: 0;
   min-width: 330px;
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid var(--card-border);
   border-radius: 16px;
   box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12);
@@ -321,7 +321,7 @@ body {
 
 .sim-menu-item:hover {
   background: var(--surface-subtle);
-  border-color: #e2e8f0;
+  border-color: var(--card-border);
 }
 
 .sim-icon-dot {
@@ -624,7 +624,7 @@ body {
 
 /* Security Alert Banner */
 .alert-banner {
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid var(--danger-border);
   border-left: 5px solid var(--danger-crimson);
   border-radius: 16px;
@@ -1006,7 +1006,7 @@ body {
 }
 
 .btn-tab.active {
-  background: #ffffff;
+  background: var(--surface-card);
   color: var(--blue-primary);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   font-weight: 700;
@@ -1033,7 +1033,7 @@ body {
 
 .search-input:focus {
   outline: none;
-  background: #ffffff;
+  background: var(--surface-card);
   border-color: var(--blue-primary);
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
 }
@@ -1081,7 +1081,7 @@ body {
 }
 
 .form-field input {
-  background: #ffffff;
+  background: var(--surface-card);
   border: 1px solid var(--card-border);
   border-radius: 10px;
   padding: 9px 14px;
@@ -1110,7 +1110,7 @@ body {
   overflow-x: auto;
   border-radius: 16px;
   border: 1px solid var(--card-border);
-  background: #ffffff;
+  background: var(--surface-card);
 }
 
 .data-table {
@@ -1120,7 +1120,7 @@ body {
 }
 
 .data-table thead th {
-  background: #fafbfc;
+  background: var(--surface-subtle);
   color: var(--text-muted);
   font-size: 0.7rem;
   font-weight: 700;
@@ -1132,12 +1132,12 @@ body {
 }
 
 .data-table tbody tr {
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--card-border-subtle);
   transition: background 0.15s ease;
 }
 
 .data-table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--surface-hover);
 }
 
 .data-table tbody tr:last-child {
@@ -1270,7 +1270,7 @@ body {
 
 /* Details Panel Row */
 .details-row {
-  background: #fbfcfe !important;
+  background: var(--surface-subtle) !important;
 }
 
 .details-panel {
@@ -1608,7 +1608,7 @@ body {
   padding: 16px 20px;
   border-radius: 14px;
   border: 1px solid var(--card-border);
-  background: #ffffff;
+  background: var(--surface-card);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
 }
 
@@ -1628,13 +1628,13 @@ body {
 }
 
 .tier-badge.tier-2 {
-  background: #fdf2f8;
-  color: #be185d;
+  background: var(--danger-bg);
+  color: var(--danger-crimson);
 }
 
 .tier-badge.tier-3 {
-  background: #f0fdf4;
-  color: #15803d;
+  background: var(--safe-bg);
+  color: var(--safe-green);
 }
 
 .tier-title {
@@ -2012,7 +2012,7 @@ body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-[data-theme="dark"] .search-box,
+[data-theme="dark"] .search-input,
 [data-theme="dark"] .whitelist-form input,
 [data-theme="dark"] .form-field input {
   background: var(--surface-subtle);
@@ -2020,19 +2020,37 @@ body {
   border-color: var(--card-border);
 }
 
-[data-theme="dark"] .events-table tbody tr {
+[data-theme="dark"] .data-table-container,
+[data-theme="dark"] .data-table tbody tr {
   background: var(--surface-card);
   border-bottom-color: var(--card-border-subtle);
 }
 
-[data-theme="dark"] .events-table tbody tr:hover {
+[data-theme="dark"] .data-table tbody tr:hover {
   background: var(--surface-hover);
 }
 
-[data-theme="dark"] .events-table thead th,
+[data-theme="dark"] .data-table thead th,
 [data-theme="dark"] .details-row,
 [data-theme="dark"] .details-panel {
   background: var(--surface-subtle);
+}
+
+[data-theme="dark"] .btn-ghost {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .btn-ghost:hover {
+  background: var(--surface-hover);
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .triage-btn strong {
+  color: var(--text-main);
+}
+
+[data-theme="dark"] .triage-btn span {
+  color: var(--text-muted);
 }
 
 [data-theme="dark"] .infosec-card {

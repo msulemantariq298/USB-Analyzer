@@ -1208,7 +1208,7 @@ function createInfosecCard(item) {
         <p class="infosec-text">${escapeHtml(info.recommendation)}</p>
       </div>
       ${isSuspicious ? `
-      <div class="infosec-section" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+      <div class="infosec-section" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--card-border); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
         <button class="btn btn-danger btn-sm quick-block-btn" type="button" data-device-id="${escapeHtml(resolvedDeviceId)}">
           Block Device
         </button>
