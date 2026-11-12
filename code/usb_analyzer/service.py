@@ -218,6 +218,7 @@ def stop_service() -> None:
         "USB Analyzer Stopped",
         "Endpoint defense has been paused.",
         severity="warning",
+        interactive=False,
     )
 
     print("\n" + "=" * 72)

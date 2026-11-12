@@ -109,3 +109,27 @@ def test_manual_block_device_endpoint() -> None:
     assert "isolated" in data["summary"].lower()
 
 
+def test_manual_allow_device_endpoint() -> None:
+    client = TestClient(app)
+    device_id = "USB\\VID_9999&PID_8888\\TEST_ALLOW"
+    response = client.post(
+        "/api/v1/devices/allow",
+        json={"device_id": device_id, "reason": "User clicked Let It Run"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "allowed"
+    assert data["device_id"] == device_id
+    assert "permitted" in data["summary"].lower()
+
+    events_resp = client.get("/api/v1/events")
+    assert events_resp.status_code == 200
+    matching = [
+        ev for ev in events_resp.json()
+        if ev["device_id"] == device_id and ev["event_type"] == "device.allowed"
+    ]
+    assert len(matching) >= 1
+    assert matching[0]["details"]["decision"] == "let_run"
+    assert matching[0]["details"]["action"] == "allowed_by_user"
+
+

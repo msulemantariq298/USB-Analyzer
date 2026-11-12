@@ -79,16 +79,31 @@ def create_event(event: DeviceEvent) -> DeviceEvent:
     added = event_store.add(event)
     if event.severity == EventSeverity.CRITICAL:
         summary = event.details.get("summary") or event.details.get("reason") or "Critical hardware threat intercepted"
-        send_desktop_notification("USB Analyzer — Threat Neutralized", f"Action taken: Port disabled. {summary}", severity="critical")
+        send_desktop_notification(
+            "USB Analyzer — Threat Neutralized",
+            f"Action taken: Port disabled. {summary}",
+            severity="critical",
+            device_id=event.device_id,
+        )
     elif event.severity == EventSeverity.WARNING:
         summary = event.details.get("summary") or event.details.get("reason") or "Unregistered device connected"
-        send_desktop_notification("USB Analyzer — Suspicious Device Alert", f"Problem: {summary}. Open dashboard to Leave or Block.", severity="warning")
+        send_desktop_notification(
+            "USB Analyzer — Suspicious Device Alert",
+            f"Problem: {summary}",
+            severity="warning",
+            device_id=event.device_id,
+        )
     return added
 
 
 class DeviceBlockRequest(BaseModel):
     device_id: str
     reason: str = "Blocked by user decision following suspicious hardware alert"
+
+
+class DeviceAllowRequest(BaseModel):
+    device_id: str
+    reason: str = "User chose to let device run following suspicious hardware alert"
 
 
 @app.post(f"{settings.api_prefix}/devices/block")
@@ -104,12 +119,35 @@ def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
         "USB Analyzer — Device Blocked",
         f"Action taken: Port disabled for {req.device_id}.",
         severity="critical",
+        device_id=req.device_id,
     )
     return {
         "status": "blocked",
         "device_id": req.device_id,
         "blocked": decision.blocked_successfully,
         "summary": f"Device {req.device_id} has been disabled and isolated at the hardware port.",
+    }
+
+
+@app.post(f"{settings.api_prefix}/devices/allow")
+def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
+    allow_event = DeviceEvent(
+        device_id=req.device_id,
+        source="user-decision",
+        severity=EventSeverity.INFO,
+        event_type="device.allowed",
+        details={
+            "action": "allowed_by_user",
+            "decision": "let_run",
+            "reason": req.reason,
+            "summary": f"User permitted {req.device_id} to run.",
+        },
+    )
+    event_store.add(allow_event)
+    return {
+        "status": "allowed",
+        "device_id": req.device_id,
+        "summary": f"Device {req.device_id} was permitted to run by user.",
     }
 
 
@@ -340,7 +378,12 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
         )
         hid_detector.register_hid_device(device_id, "Digispark BadUSB Attacker")
         alert = hid_detector.simulate_injection(char_count=35, delay_per_char_seconds=0.003)
-        send_desktop_notification("USB Analyzer — Threat Neutralized", "BadUSB keystroke injection intercepted. Action taken: Hardware port disabled.", severity="critical")
+        send_desktop_notification(
+            "USB Analyzer — Threat Neutralized",
+            "BadUSB keystroke injection intercepted. Action taken: Hardware port disabled.",
+            severity="critical",
+            device_id=device_id,
+        )
         return {
             "status": "simulated",
             "scenario": "badusb",
@@ -403,7 +446,12 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
             details={"action": "quarantine_and_block", "volume": "E:\\"},
         )
         event_store.add(block_ev)
-        send_desktop_notification("USB Analyzer — Threat Neutralized", "Malware trojan dropper intercepted. Action taken: Storage volume quarantined & blocked.", severity="critical")
+        send_desktop_notification(
+            "USB Analyzer — Threat Neutralized",
+            "Malware trojan dropper intercepted. Action taken: Storage volume quarantined & blocked.",
+            severity="critical",
+            device_id=device_id,
+        )
         return {
             "status": "simulated",
             "scenario": "malware_drive",
@@ -443,7 +491,12 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 },
             )
         )
-        send_desktop_notification("USB Analyzer — Suspicious Device Alert", "Problem: Unregistered USB hardware connected. Choose whether to Trust or Block.", severity="warning")
+        send_desktop_notification(
+            "USB Analyzer — Suspicious Device Alert",
+            "Problem: Unregistered USB hardware connected. Choose Block Device or Let It Run.",
+            severity="warning",
+            device_id=device_id,
+        )
         return {
             "status": "simulated",
             "scenario": "unauthorized_device",
@@ -507,7 +560,12 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 threat_type="spoofed_identity",
             )
             event_store.add(block_ev)
-            send_desktop_notification("USB Analyzer — Threat Neutralized", "Hardware identity spoofing detected. Action taken: Hardware port isolated.", severity="critical")
+            send_desktop_notification(
+                "USB Analyzer — Threat Neutralized",
+                "Hardware identity spoofing detected. Action taken: Hardware port isolated.",
+                severity="critical",
+                device_id=device_id,
+            )
             summary = f"Identity Spoofing detected! Cloned VID 1050:PID 0407 with unauthorized serial '{cloned_serial}'. Hardware completely blocked."
         else:
             summary = "Spoof check did not trigger."

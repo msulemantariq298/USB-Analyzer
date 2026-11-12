@@ -1924,3 +1924,8 @@ body {
   gap: 7px;
 }
 
+.notification-focus-row {
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  transition: background-color 0.4s ease;
+}
+

@@ -126,32 +126,133 @@ function openSuspiciousTriageModal(deviceData) {
   suspiciousTriageModal.hidden = false;
 }
 
+function normalizeDeviceGroupKey(deviceId) {
+  if (!deviceId) return "";
+  let key = String(deviceId).trim();
+  if (key.includes("&MI_")) {
+    key = key.replace(/&MI_[0-9A-Fa-f]{2}/i, "");
+  }
+  if (key.toUpperCase().startsWith("USBSTOR\\") && key.endsWith("&0")) {
+    key = key.slice(0, -2);
+  }
+  return key;
+}
+
+async function executeBlockDevice(deviceId, reason = "Blocked by user decision") {
+  if (!deviceId) return null;
+  const res = await fetch("/api/v1/devices/block", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ device_id: deviceId, reason }),
+  });
+  if (!res.ok) {
+    let errMsg = "Block command failed";
+    try {
+      const errBody = await res.json();
+      if (errBody?.detail) errMsg = errBody.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  const data = await res.json();
+  playCyberThreatAlert();
+  showMessage(`Device ${deviceId} disabled and blocked at OS port!`, "error");
+  await loadEvents(false);
+  return data;
+}
+
+async function executeAllowDevice(deviceId, reason = "Permitted to run by user from notification prompt") {
+  if (!deviceId) return null;
+  const res = await fetch("/api/v1/devices/allow", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ device_id: deviceId, reason }),
+  });
+  if (!res.ok) {
+    let errMsg = "Allow command failed";
+    try {
+      const errBody = await res.json();
+      if (errBody?.detail) errMsg = errBody.detail;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  const data = await res.json();
+  showMessage(`Device ${deviceId} permitted to run under monitoring.`, false);
+  await loadEvents(false);
+  return data;
+}
+
+function focusDeviceDetails(deviceId) {
+  if (!deviceId) return;
+  const normTarget = normalizeDeviceGroupKey(deviceId);
+  if (currentViewMode !== "consolidated") {
+    currentViewMode = "consolidated";
+    viewModeConsolidated?.classList.add("active");
+    viewModeRaw?.classList.remove("active");
+  }
+
+  expandedInspectionKeys.add(deviceId);
+  if (normTarget) expandedInspectionKeys.add(normTarget);
+
+  for (const ev of allEventsCache) {
+    const evNorm = normalizeDeviceGroupKey(ev.device_id);
+    if (ev.device_id === deviceId || (normTarget && evNorm === normTarget)) {
+      expandedInspectionKeys.add(ev.device_id);
+      if (evNorm) expandedInspectionKeys.add(evNorm);
+    }
+  }
+
+  if (allEventsCache.length > 0) {
+    renderEvents(allEventsCache);
+  }
+
+  window.requestAnimationFrame(() => {
+    const rows = document.querySelectorAll("#events-body tr[data-device-key]");
+    for (const row of rows) {
+      const rowKey = row.dataset.deviceKey || "";
+      const rowPrimary = row.dataset.primaryDeviceId || "";
+      if (
+        rowPrimary === deviceId ||
+        rowKey === deviceId ||
+        (normTarget && (rowKey === normTarget || normalizeDeviceGroupKey(rowPrimary) === normTarget))
+      ) {
+        row.scrollIntoView({ behavior: "smooth", block: "center" });
+        row.classList.add("notification-focus-row");
+        window.setTimeout(() => row.classList.remove("notification-focus-row"), 2400);
+        break;
+      }
+    }
+  });
+}
+
 if (closeTriageModalBtn && suspiciousTriageModal) {
   closeTriageModalBtn.addEventListener("click", () => {
     suspiciousTriageModal.hidden = true;
   });
-  triageLeaveBtn?.addEventListener("click", () => {
-    suspiciousTriageModal.hidden = true;
-    showMessage("Device left active under audit warning.", "warning");
+  triageLeaveBtn?.addEventListener("click", async () => {
+    if (!currentTriageDevice) {
+      suspiciousTriageModal.hidden = true;
+      return;
+    }
+    triageLeaveBtn.disabled = true;
+    try {
+      const devId = currentTriageDevice.device_id || currentTriageDevice.id;
+      suspiciousTriageModal.hidden = true;
+      await executeAllowDevice(devId, "User clicked Let It Run from dashboard triage modal");
+      focusDeviceDetails(devId);
+    } catch (err) {
+      showMessage(`Failed to allow device: ${err.message}`, true);
+    } finally {
+      triageLeaveBtn.disabled = false;
+    }
   });
   triageBlockBtn?.addEventListener("click", async () => {
     if (!currentTriageDevice) return;
     triageBlockBtn.disabled = true;
     try {
       const devId = currentTriageDevice.device_id || currentTriageDevice.id;
-      const res = await fetch("/api/v1/devices/block", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          device_id: devId,
-          reason: "Blocked by user following suspicious device notification prompt",
-        }),
-      });
-      if (!res.ok) throw new Error("Block command failed");
       suspiciousTriageModal.hidden = true;
-      playCyberThreatAlert();
-      showMessage(`Device ${devId} disabled and blocked at OS port!`, "error");
-      await loadEvents(false);
+      await executeBlockDevice(devId, "Blocked by user following suspicious device notification prompt");
+      focusDeviceDetails(devId);
     } catch (err) {
       showMessage(`Failed to block device: ${err.message}`, true);
     } finally {
@@ -354,15 +455,11 @@ function inferDeviceTypeFromEvent(event) {
 
 function groupEventsByDevice(events) {
   const groups = new Map();
+  // Evaluate chronologically (oldest -> newest) so user decisions (e.g. Let It Run / Block) resolve earlier warnings
+  const orderedEvents = [...events].sort((a, b) => new Date(a.time) - new Date(b.time));
 
-  for (const event of events) {
-    let key = event.device_id;
-    if (key.includes("&MI_")) {
-      key = key.replace(/&MI_[0-9A-Fa-f]{2}/i, "");
-    }
-    if (key.toUpperCase().startsWith("USBSTOR\\") && key.endsWith("&0")) {
-      key = key.slice(0, -2);
-    }
+  for (const event of orderedEvents) {
+    const key = normalizeDeviceGroupKey(event.device_id);
 
     if (!groups.has(key)) {
       const vid = event.details?.vendor_id || extractVid(event.device_id);
@@ -395,7 +492,7 @@ function groupEventsByDevice(events) {
     const group = groups.get(key);
     group.events.push(event);
 
-    if (new Date(event.time) > new Date(group.lastTime)) {
+    if (new Date(event.time) >= new Date(group.lastTime)) {
       group.lastTime = event.time;
     }
 
@@ -430,24 +527,29 @@ function groupEventsByDevice(events) {
         group.actionTaken = "Hardware Blocked (Port Disabled)";
       }
       group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — THREAT BLOCKED: ${group.risk}. Action taken: ${group.actionTaken}`;
+    } else if (type === "device.allowed" && group.highestSeverity !== "critical") {
+      group.highestSeverity = "info";
+      group.verdict = "SAFE";
+      if (event.details?.decision === "let_run" || event.details?.action === "allowed_by_user") {
+        group.risk = "None — Permitted to run by user";
+        group.actionTaken = "Permitted by User (Let Run)";
+        group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SAFE: Permitted to run by user decision.`;
+      } else {
+        group.risk = "None — Approved by Whitelist";
+        group.actionTaken = "Allowed & Active";
+        group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SAFE: Authorized clean device.`;
+      }
     } else if (sev === "warning" && group.highestSeverity !== "critical") {
       group.highestSeverity = "warning";
       group.verdict = "SUSPICIOUS";
       group.risk = event.details?.reason || "Unregistered Device — Not recognized on whitelist";
       group.actionTaken = "User Warned";
       group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SUSPICIOUS WARNING: ${group.risk}. Action taken: ${group.actionTaken}`;
-    } else if (group.highestSeverity === "info") {
-      if (type === "device.allowed") {
-        group.verdict = "SAFE";
-        group.risk = "None — Approved by Whitelist";
-        group.actionTaken = "Allowed & Active";
-        group.summary = event.details?.summary || `${group.name} (${group.deviceType}) — SAFE: Authorized clean device.`;
-      } else if (type === "device.disconnected") {
-        group.verdict = "INFO";
-        group.risk = "None";
-        group.actionTaken = "Disconnected";
-        group.summary = `${group.name} (${group.deviceType}) disconnected.`;
-      }
+    } else if (group.highestSeverity === "info" && type === "device.disconnected") {
+      group.verdict = "INFO";
+      group.risk = "None";
+      group.actionTaken = "Disconnected";
+      group.summary = `${group.name} (${group.deviceType}) disconnected.`;
     }
   }
 
@@ -746,14 +848,34 @@ function renderCharts(events) {
   }
 }
 
+function findLatestUnresolvedWarning(events) {
+  const latestDecisionTimeByKey = new Map();
+  for (const e of events) {
+    if (e.event_type === "device.allowed" || e.event_type === "device.blocked") {
+      const k = normalizeDeviceGroupKey(e.device_id);
+      const t = new Date(e.time).getTime();
+      if (!latestDecisionTimeByKey.has(k) || t > latestDecisionTimeByKey.get(k)) {
+        latestDecisionTimeByKey.set(k, t);
+      }
+    }
+  }
+  return events.find((e) => {
+    if (e.severity !== "warning" || dismissedAlertIds.has(e.id)) return false;
+    const k = normalizeDeviceGroupKey(e.device_id);
+    const resolvedAt = latestDecisionTimeByKey.get(k);
+    if (resolvedAt && resolvedAt >= new Date(e.time).getTime()) {
+      return false;
+    }
+    return true;
+  }) || null;
+}
+
 function checkLiveAlerts(events) {
   if (!alertBanner) return;
   const criticalEvent = events.find(
     (e) => e.severity === "critical" && !dismissedAlertIds.has(e.id)
   );
-  const warningEvent = !criticalEvent
-    ? events.find((e) => e.severity === "warning" && !dismissedAlertIds.has(e.id))
-    : null;
+  const warningEvent = !criticalEvent ? findLatestUnresolvedWarning(events) : null;
 
   if (criticalEvent) {
     if (!notifiedEventIds.has(criticalEvent.id)) {
@@ -761,7 +883,8 @@ function checkLiveAlerts(events) {
       playCyberThreatAlert();
       sendWindowsWebNotification(
         "🛡️ USB Analyzer: Threat Blocked",
-        `Action taken: Port disabled.\n${criticalEvent.details?.summary || criticalEvent.details?.reason || "High-risk threat intercepted."}`
+        `Action taken: Port disabled.\n${criticalEvent.details?.summary || criticalEvent.details?.reason || "High-risk threat intercepted."}`,
+        () => focusDeviceDetails(criticalEvent.device_id)
       );
     }
     alertBanner.hidden = false;
@@ -776,8 +899,11 @@ function checkLiveAlerts(events) {
       notifiedEventIds.add(warningEvent.id);
       sendWindowsWebNotification(
         "⚠️ USB Analyzer: Suspicious Device Alert",
-        `Problem: Unregistered USB hardware connected.\nClick to choose action: Trust or Block device.`,
-        () => openSuspiciousTriageModal(warningEvent)
+        `Problem: Unregistered USB hardware connected.\nClick to inspect details or choose Block Device / Let It Run.`,
+        () => {
+          focusDeviceDetails(warningEvent.device_id);
+          openSuspiciousTriageModal(warningEvent);
+        }
       );
       openSuspiciousTriageModal(warningEvent);
     }
@@ -787,7 +913,7 @@ function checkLiveAlerts(events) {
     alertBanner.classList.add("alert-warning");
     const summary = warningEvent.details?.reason || warningEvent.details?.summary || "Suspicious unverified hardware attached";
     alertSummary.textContent = `SUSPICIOUS DEVICE WARNING: ${summary}`;
-    alertDetail.textContent = `Target: ${warningEvent.device_id} • Device is not on your trusted whitelist. Click banner to decide action.`;
+    alertDetail.textContent = `Target: ${warningEvent.device_id} • Click banner to Block Device or Let It Run.`;
   } else {
     alertBanner.hidden = true;
     alertBanner.style.display = "none";
@@ -799,7 +925,7 @@ if (alertBanner) {
   alertBanner.addEventListener("click", (e) => {
     if (e.target.closest("#dismiss-alert-btn")) return;
     if (alertBanner.classList.contains("alert-warning")) {
-      const warningEvent = allEventsCache.find((ev) => ev.severity === "warning");
+      const warningEvent = findLatestUnresolvedWarning(allEventsCache);
       if (warningEvent) openSuspiciousTriageModal(warningEvent);
     }
   });
@@ -925,6 +1051,7 @@ function generateInfosecSummary(item) {
 function createInfosecCard(item) {
   const info = generateInfosecSummary(item);
   const isSuspicious = info.badgeClass === "badge-warning" || item.verdict === "SUSPICIOUS" || item.verdict === "WARNING";
+  const resolvedDeviceId = item.primaryDeviceId || item.device_id || item.deviceId || item.id || "";
   const card = document.createElement("div");
   card.className = `infosec-card ${info.badgeClass}`;
   card.innerHTML = `
@@ -949,8 +1076,14 @@ function createInfosecCard(item) {
         <p class="infosec-text">${escapeHtml(info.recommendation)}</p>
       </div>
       ${isSuspicious ? `
-      <div class="infosec-section" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0;">
-        <button class="btn btn-primary btn-sm quick-whitelist-btn" type="button" data-name="${escapeHtml(item.name || 'Approved Peripheral')}" data-vid="${escapeHtml(item.vendorId || '')}" data-pid="${escapeHtml(item.productId || '')}" data-serial="${escapeHtml(item.serialNumber || '')}" data-device-id="${escapeHtml(item.deviceId || item.id || '')}">
+      <div class="infosec-section" style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <button class="btn btn-danger btn-sm quick-block-btn" type="button" data-device-id="${escapeHtml(resolvedDeviceId)}">
+          Block Device
+        </button>
+        <button class="btn btn-secondary btn-sm quick-allow-btn" type="button" data-device-id="${escapeHtml(resolvedDeviceId)}">
+          Let It Run
+        </button>
+        <button class="btn btn-primary btn-sm quick-whitelist-btn" type="button" data-name="${escapeHtml(item.name || 'Approved Peripheral')}" data-vid="${escapeHtml(item.vendorId || '')}" data-pid="${escapeHtml(item.productId || '')}" data-serial="${escapeHtml(item.serialNumber || '')}" data-device-id="${escapeHtml(resolvedDeviceId)}">
           + Trust &amp; Add to Whitelist
         </button>
       </div>` : ''}
@@ -970,6 +1103,8 @@ function displayConsolidatedDevices(groups) {
   const rows = [];
   groups.forEach((group, index) => {
     const row = document.createElement("tr");
+    row.dataset.deviceKey = group.groupKey;
+    row.dataset.primaryDeviceId = group.primaryDeviceId;
 
     // 1. Time
     const timeTd = document.createElement("td");
@@ -1011,14 +1146,18 @@ function displayConsolidatedDevices(groups) {
     actionSpan.textContent = group.actionTaken;
     actionTd.appendChild(actionSpan);
 
-    // 6. Actions (Inspect + Whitelist)
+    // 6. Actions (Inspect + Warning Triage)
     const actActionTd = document.createElement("td");
     actActionTd.className = "text-right";
     const btnGroup = document.createElement("div");
     btnGroup.style.display = "inline-flex";
     btnGroup.style.gap = "6px";
+    btnGroup.style.flexWrap = "wrap";
+    btnGroup.style.justifyContent = "flex-end";
 
-    const isExpanded = expandedInspectionKeys.has(group.primaryDeviceId);
+    const isExpanded =
+      expandedInspectionKeys.has(group.primaryDeviceId) ||
+      expandedInspectionKeys.has(group.groupKey);
 
     const inspectBtn = document.createElement("button");
     inspectBtn.className = "btn btn-sm btn-secondary";
@@ -1030,21 +1169,22 @@ function displayConsolidatedDevices(groups) {
     inspectBtn.textContent = isExpanded ? "Close" : "Inspect";
     btnGroup.appendChild(inspectBtn);
 
-    if (group.verdict === "DANGER" || group.verdict === "WARNING") {
-      const wlBtn = document.createElement("button");
-      wlBtn.className = "btn btn-sm btn-ghost";
-      wlBtn.type = "button";
-      wlBtn.textContent = "+ Whitelist";
-      wlBtn.title = "Authorize this peripheral in the whitelist";
-      wlBtn.addEventListener("click", () => {
-        document.querySelector("#wl-name").value = group.name;
-        document.querySelector("#wl-serial").value = group.serialNumber || "";
-        document.querySelector("#wl-vid").value = group.vendorId || "";
-        document.querySelector("#wl-pid").value = group.productId || "";
-        addWlForm.hidden = false;
-        addWlForm.scrollIntoView({ behavior: "smooth" });
-      });
-      btnGroup.appendChild(wlBtn);
+    if (group.verdict === "SUSPICIOUS" || group.verdict === "DANGER" || group.verdict === "WARNING") {
+      const quickBlockBtn = document.createElement("button");
+      quickBlockBtn.className = "btn btn-sm btn-danger quick-block-btn";
+      quickBlockBtn.type = "button";
+      quickBlockBtn.dataset.deviceId = group.primaryDeviceId;
+      quickBlockBtn.textContent = "Block";
+      quickBlockBtn.title = "Disable and isolate this device immediately";
+      btnGroup.appendChild(quickBlockBtn);
+
+      const quickAllowBtn = document.createElement("button");
+      quickAllowBtn.className = "btn btn-sm btn-ghost quick-allow-btn";
+      quickAllowBtn.type = "button";
+      quickAllowBtn.dataset.deviceId = group.primaryDeviceId;
+      quickAllowBtn.textContent = "Let Run";
+      quickAllowBtn.title = "Permit this device to run without blocking";
+      btnGroup.appendChild(quickAllowBtn);
     }
     actActionTd.appendChild(btnGroup);
 
@@ -1323,8 +1463,44 @@ if (clearEventsBtn) {
   });
 }
 
-// Quick Authorize directly from inspection drawer
+// Quick Authorize / Block / Let It Run directly from inspection drawer & table rows
 document.addEventListener("click", async (e) => {
+  const blockBtn = e.target.closest(".quick-block-btn");
+  if (blockBtn) {
+    const devId = blockBtn.dataset.deviceId;
+    if (!devId) return;
+    const origText = blockBtn.textContent;
+    blockBtn.disabled = true;
+    blockBtn.textContent = "Blocking...";
+    try {
+      await executeBlockDevice(devId, "Blocked by user from device security panel");
+      focusDeviceDetails(devId);
+    } catch (err) {
+      showMessage(`Failed to block device: ${err.message}`, true);
+      blockBtn.disabled = false;
+      blockBtn.textContent = origText;
+    }
+    return;
+  }
+
+  const allowBtn = e.target.closest(".quick-allow-btn");
+  if (allowBtn) {
+    const devId = allowBtn.dataset.deviceId;
+    if (!devId) return;
+    const origText = allowBtn.textContent;
+    allowBtn.disabled = true;
+    allowBtn.textContent = "Permitting...";
+    try {
+      await executeAllowDevice(devId, "User clicked Let It Run from device security panel");
+      focusDeviceDetails(devId);
+    } catch (err) {
+      showMessage(`Failed to allow device: ${err.message}`, true);
+      allowBtn.disabled = false;
+      allowBtn.textContent = origText;
+    }
+    return;
+  }
+
   const btn = e.target.closest(".quick-whitelist-btn");
   if (!btn) return;
   btn.disabled = true;
@@ -1353,9 +1529,67 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+async function handleNotificationDeepLinks() {
+  const params = new URLSearchParams(window.location.search);
+  const toastAction = params.get("toast_action");
+  const inspectDevice = params.get("device_id") || params.get("inspect_device");
+  const openTriage = params.get("triage") === "1";
+
+  if (!toastAction && !inspectDevice) return;
+
+  // Clean query parameters from URL so refreshes don't re-trigger actions
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  try {
+    if (toastAction === "block" && inspectDevice) {
+      await executeBlockDevice(
+        inspectDevice,
+        "Blocked by user directly from Windows desktop notification"
+      );
+      if (suspiciousTriageModal) suspiciousTriageModal.hidden = true;
+    } else if (toastAction === "allow" && inspectDevice) {
+      await executeAllowDevice(
+        inspectDevice,
+        "Permitted to run directly from Windows desktop notification (Let It Run)"
+      );
+      if (suspiciousTriageModal) suspiciousTriageModal.hidden = true;
+    } else {
+      await loadEvents(false);
+    }
+
+    if (inspectDevice) {
+      focusDeviceDetails(inspectDevice);
+      if (openTriage && !toastAction) {
+        const normTarget = normalizeDeviceGroupKey(inspectDevice);
+        const warningEvent = allEventsCache.find(
+          (ev) =>
+            ev.severity === "warning" &&
+            (ev.device_id === inspectDevice || normalizeDeviceGroupKey(ev.device_id) === normTarget)
+        );
+        const latestResolution = allEventsCache.find(
+          (ev) =>
+            (ev.event_type === "device.allowed" || ev.event_type === "device.blocked") &&
+            (ev.device_id === inspectDevice || normalizeDeviceGroupKey(ev.device_id) === normTarget)
+        );
+        if (
+          warningEvent &&
+          (!latestResolution || new Date(latestResolution.time) < new Date(warningEvent.time))
+        ) {
+          openSuspiciousTriageModal(warningEvent);
+        }
+      }
+    }
+  } catch (err) {
+    showMessage(`Notification action failed: ${err.message}`, true);
+  }
+}
+
 // Initial bootstrap
-loadWhitelist();
-loadEvents(false);
+(async () => {
+  await loadWhitelist();
+  await loadEvents(false);
+  await handleNotificationDeepLinks();
+})();
 
 window.setInterval(() => {
   if (document.visibilityState === "visible") loadEvents(false);
