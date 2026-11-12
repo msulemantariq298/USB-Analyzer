@@ -57,6 +57,46 @@
   --danger-crimson: #be123c;  /* Deep Crimson 700 */
   --danger-bg: #fff1f2;
   --danger-border: #fecdd3;
+
+  /* Motion Tokens */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+:root[data-theme="dark"] {
+  --canvas-bg: #060b16;
+  --surface-card: #0d1526;
+  --surface-subtle: #111c33;
+  --surface-hover: #16233d;
+
+  --card-border: #1e2e4d;
+  --card-border-subtle: #16223b;
+  --card-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.28);
+  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.45), 0 16px 34px rgba(0, 0, 0, 0.38);
+
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-light: #ffffff;
+
+  --blue-anchor: #0f2b5c;
+  --blue-anchor-gradient: linear-gradient(135deg, #0b1f47 0%, #1e40af 100%);
+  --blue-primary: #3b82f6;
+  --blue-primary-hover: #2563eb;
+  --blue-tint: rgba(37, 99, 235, 0.16);
+  --blue-border: rgba(59, 130, 246, 0.38);
+
+  --safe-green: #34d399;
+  --safe-bg: rgba(16, 185, 129, 0.12);
+  --safe-border: rgba(16, 185, 129, 0.32);
+
+  --warning-amber: #fbbf24;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --warning-border: rgba(245, 158, 11, 0.32);
+
+  --danger-crimson: #fb7185;
+  --danger-bg: rgba(244, 63, 94, 0.13);
+  --danger-border: rgba(244, 63, 94, 0.35);
 }
 
 /* Base Reset & Core Setup */
@@ -1927,5 +1967,204 @@ body {
 .notification-focus-row {
   background-color: rgba(37, 99, 235, 0.12) !important;
   transition: background-color 0.4s ease;
+}
+
+/* ==========================================================================
+   Dark Theme Overrides & Theme Toggle Button
+   ========================================================================== */
+.theme-toggle-btn .theme-icon {
+  transition: transform 220ms var(--ease-out), opacity 180ms ease;
+}
+
+[data-theme="dark"] .kpi-card {
+  background: var(--surface-card);
+  border-color: var(--card-border);
+}
+
+[data-theme="dark"] .kpi-primary {
+  background: var(--blue-anchor-gradient);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+[data-theme="dark"] .scenario-sim-lab {
+  background: linear-gradient(135deg, #0d1526 0%, #111c33 100%);
+  border-color: var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+[data-theme="dark"] .scenario-btn,
+[data-theme="dark"] .btn-secondary {
+  background: var(--surface-subtle);
+  color: var(--text-main);
+  border-color: var(--card-border);
+}
+
+[data-theme="dark"] .scenario-btn:hover,
+[data-theme="dark"] .btn-secondary:hover {
+  background: var(--blue-tint);
+  border-color: var(--blue-primary);
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .btn-tab.active {
+  background: var(--surface-card);
+  color: #93c5fd;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .search-box,
+[data-theme="dark"] .whitelist-form input,
+[data-theme="dark"] .form-field input {
+  background: var(--surface-subtle);
+  color: var(--text-main);
+  border-color: var(--card-border);
+}
+
+[data-theme="dark"] .events-table tbody tr {
+  background: var(--surface-card);
+  border-bottom-color: var(--card-border-subtle);
+}
+
+[data-theme="dark"] .events-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+[data-theme="dark"] .events-table thead th,
+[data-theme="dark"] .details-row,
+[data-theme="dark"] .details-panel {
+  background: var(--surface-subtle);
+}
+
+[data-theme="dark"] .infosec-card {
+  background: var(--surface-card);
+  border-color: var(--card-border);
+}
+
+[data-theme="dark"] .infosec-card.badge-danger {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, #0d1526 100%);
+  border-color: var(--danger-border);
+}
+
+[data-theme="dark"] .infosec-card.badge-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, #0d1526 100%);
+  border-color: var(--warning-border);
+}
+
+[data-theme="dark"] .infosec-card.badge-safe {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, #0d1526 100%);
+  border-color: var(--safe-border);
+}
+
+[data-theme="dark"] .infosec-card.badge-info {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, #0d1526 100%);
+  border-color: var(--blue-border);
+}
+
+[data-theme="dark"] .finding-card,
+[data-theme="dark"] .summary-callout,
+[data-theme="dark"] .details-json,
+[data-theme="dark"] .modal-card,
+[data-theme="dark"] .triage-btn,
+[data-theme="dark"] .triage-icon-wrap,
+[data-theme="dark"] .toast-message {
+  background: var(--surface-card);
+  color: var(--text-main);
+  border-color: var(--card-border);
+}
+
+[data-theme="dark"] .triage-header {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-bottom-color: var(--warning-border) !important;
+}
+
+[data-theme="dark"] .details-json,
+[data-theme="dark"] .scan-caveat {
+  background: #070c18;
+  border-color: var(--card-border);
+}
+
+[data-theme="dark"] code {
+  background: rgba(59, 130, 246, 0.14);
+  color: #93c5fd;
+}
+
+/* ==========================================================================
+   Venom Symbiote Theme Transition (View Transition + Tendril Wave)
+   ========================================================================== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+.venom-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99999;
+  overflow: hidden;
+}
+
+.venom-svg {
+  position: fixed;
+  left: var(--venom-x, 90vw);
+  top: var(--venom-y, 32px);
+  width: var(--venom-size, 260vmax);
+  height: var(--venom-size, 260vmax);
+  transform: translate(-50%, -50%) scale(0.02);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.venom-ring-outer {
+  fill: none;
+  stroke: #030712;
+  stroke-width: 14;
+  opacity: 0.92;
+}
+
+.venom-tendrils {
+  fill: none;
+  stroke: #090d16;
+  stroke-width: 7;
+  stroke-linejoin: round;
+  opacity: 0.88;
+}
+
+.venom-ring-inner {
+  fill: none;
+  stroke: #1d4ed8;
+  stroke-width: 4;
+  opacity: 0.55;
+}
+
+.venom-overlay.to-light .venom-ring-outer {
+  stroke: #eff6ff;
+}
+
+.venom-overlay.to-light .venom-tendrils {
+  stroke: #bfdbfe;
+}
+
+.venom-overlay.to-light .venom-ring-inner {
+  stroke: #3b82f6;
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .venom-overlay {
+    display: none !important;
+  }
+  .theme-toggle-btn .theme-icon {
+    transition: none;
+  }
 }
 

@@ -299,6 +299,12 @@ if (closeTriageModalBtn && suspiciousTriageModal) {
 }
 
 const themeStorageKey = "usb-analyzer-theme";
+const themeToggleLabel = document.querySelector("#theme-label");
+const themeIconMoon = document.querySelector("#theme-icon-moon");
+const themeIconSun = document.querySelector("#theme-icon-sun");
+const venomOverlay = document.querySelector("#venom-transition-overlay");
+let venomSvgAnimation = null;
+
 let allEventsCache = [];
 let eventsLoadInProgress = false;
 let currentPolicyMode = "enforce";
@@ -308,12 +314,136 @@ let activityChart = null;
 let dismissedAlertIds = new Set();
 let searchQuery = "";
 
-// Permanent Vision UI Light Theme
-document.documentElement.dataset.theme = "light";
-document.documentElement.setAttribute("data-theme", "light");
+function applyTheme(theme, { persist = true, refreshCharts = true } = {}) {
+  const normalized = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = normalized;
+  document.documentElement.setAttribute("data-theme", normalized);
+
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+  if (metaTheme) {
+    metaTheme.setAttribute("content", normalized === "dark" ? "#060b16" : "#f1f5f9");
+  }
+  if (themeToggle) {
+    themeToggle.setAttribute("aria-pressed", String(normalized === "dark"));
+  }
+  if (themeToggleLabel) {
+    themeToggleLabel.textContent = normalized === "dark" ? "Light" : "Dark";
+  }
+  if (themeIconMoon) themeIconMoon.hidden = normalized === "dark";
+  if (themeIconSun) themeIconSun.hidden = normalized !== "dark";
+
+  if (persist) {
+    try {
+      localStorage.setItem(themeStorageKey, normalized);
+    } catch (e) {}
+  }
+  if (refreshCharts && allEventsCache.length >= 0) {
+    renderCharts(allEventsCache);
+  }
+}
+
+function playVenomTendrilWave(x, y, maxRadius, toDark) {
+  if (!venomOverlay) return;
+  const svg = venomOverlay.querySelector(".venom-svg");
+  if (!svg) return;
+
+  if (venomSvgAnimation) {
+    venomSvgAnimation.cancel();
+    venomSvgAnimation = null;
+  }
+
+  venomOverlay.classList.toggle("to-dark", toDark);
+  venomOverlay.classList.toggle("to-light", !toDark);
+  venomOverlay.style.setProperty("--venom-x", `${x}px`);
+  venomOverlay.style.setProperty("--venom-y", `${y}px`);
+  venomOverlay.style.setProperty("--venom-size", `${Math.ceil(maxRadius * 2.4)}px`);
+  venomOverlay.hidden = false;
+
+  venomSvgAnimation = svg.animate(
+    [
+      { transform: "translate(-50%, -50%) scale(0.03) rotate(0deg)", opacity: 0.95 },
+      { transform: "translate(-50%, -50%) scale(0.62) rotate(9deg)", opacity: 0.85, offset: 0.55 },
+      { transform: "translate(-50%, -50%) scale(1.18) rotate(16deg)", opacity: 0 },
+    ],
+    {
+      duration: 640,
+      easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+      fill: "forwards",
+    }
+  );
+  venomSvgAnimation.onfinish = () => {
+    venomOverlay.hidden = true;
+    venomSvgAnimation = null;
+  };
+  venomSvgAnimation.oncancel = () => {
+    venomOverlay.hidden = true;
+    venomSvgAnimation = null;
+  };
+}
+
+function toggleThemeWithVenom(event) {
+  const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (reducedMotion) {
+    applyTheme(nextTheme);
+    return;
+  }
+
+  let x = window.innerWidth - 64;
+  let y = 36;
+  if (event && typeof event.clientX === "number" && event.clientX > 0) {
+    x = event.clientX;
+    y = event.clientY;
+  } else if (themeToggle) {
+    const rect = themeToggle.getBoundingClientRect();
+    x = rect.left + rect.width / 2;
+    y = rect.top + rect.height / 2;
+  }
+
+  const maxRadius = Math.hypot(
+    Math.max(x, window.innerWidth - x),
+    Math.max(y, window.innerHeight - y)
+  );
+
+  playVenomTendrilWave(x, y, maxRadius, nextTheme === "dark");
+
+  if (typeof document.startViewTransition === "function") {
+    const transition = document.startViewTransition(() => {
+      applyTheme(nextTheme);
+    });
+    transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${maxRadius}px at ${x}px ${y}px)`,
+            ],
+          },
+          {
+            duration: 600,
+            easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+            pseudoElement: "::view-transition-new(root)",
+          }
+        );
+      })
+      .catch(() => {});
+  } else {
+    window.setTimeout(() => applyTheme(nextTheme), 170);
+  }
+}
+
+let savedTheme = "light";
 try {
-  localStorage.setItem(themeStorageKey, "light");
+  savedTheme = localStorage.getItem(themeStorageKey) || "light";
 } catch (e) {}
+applyTheme(savedTheme, { persist: false, refreshCharts: false });
+
+if (themeToggle) {
+  themeToggle.addEventListener("click", toggleThemeWithVenom);
+}
 
 // Expansion tracking for inspection and details rows (prevents auto-closing on refresh)
 const expandedInspectionKeys = new Set();
@@ -767,8 +897,10 @@ function renderCharts(events) {
   if (typeof Chart === "undefined") return;
   Chart.defaults.font.family = "'Montserrat', sans-serif";
 
-  const textColor = "#707eae";
-  const gridColor = "rgba(0, 0, 0, 0.05)";
+  const isDark = document.documentElement.dataset.theme === "dark";
+  const textColor = isDark ? "#94a3b8" : "#707eae";
+  const gridColor = isDark ? "rgba(148, 163, 184, 0.14)" : "rgba(0, 0, 0, 0.05)";
+  const donutBorderColor = isDark ? "#0d1526" : "#ffffff";
 
   const infoCount = events.filter((e) => e.severity === "info").length;
   const warnCount = events.filter((e) => e.severity === "warning").length;
@@ -785,7 +917,7 @@ function renderCharts(events) {
         datasets: [{
           data: [infoCount, warnCount, critCount],
           backgroundColor: ["#2563eb", "#b45309", "#be123c"],
-          borderColor: "#ffffff",
+          borderColor: donutBorderColor,
           borderWidth: 3,
           hoverOffset: 6,
         }],

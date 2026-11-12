@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=9.7">
+    <link rel="stylesheet" href="/static/styles.css?v=9.8">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -59,11 +59,21 @@
             <span>Export Report (PDF)</span>
           </a>
 
+          <button id="theme-toggle" class="btn btn-secondary btn-icon-text theme-toggle-btn" type="button" aria-label="Toggle dark and light theme" aria-pressed="false" title="Switch between Light and Dark theme">
+            <svg id="theme-icon-moon" class="theme-icon theme-icon-moon" viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg id="theme-icon-sun" class="theme-icon theme-icon-sun" viewBox="0 0 20 20" fill="none" width="15" height="15" stroke="currentColor" stroke-width="1.8" aria-hidden="true" hidden>
+              <circle cx="10" cy="10" r="3.5"/>
+              <path d="M10 2v1.5M10 16.5V18M3.757 3.757l1.06 1.06M15.182 15.182l1.06 1.06M2 10h1.5M16.5 10H18M3.757 16.243l1.06-1.06M15.182 4.818l1.06-1.06" stroke-linecap="round"/>
+            </svg>
+            <span id="theme-label">Dark</span>
+          </button>
+
           <!-- Hidden compatibility toggles for test suite -->
           <button id="simulate-dropdown-btn" hidden style="display:none;"></button>
           <div id="simulation-menu" hidden style="display:none;"></div>
           <button id="simulate-badusb-btn" hidden style="display:none;" data-scenario="badusb"></button>
-          <button id="theme-toggle" hidden aria-hidden="true" style="display: none;"></button>
         </div>
       </div>
     </header>
@@ -475,6 +485,23 @@
       </div>
     </footer>
 
-    <script src="/static/app.js?v=9.8"></script>
+    <!-- Venom Symbiote Theme Transition Overlay -->
+    <div id="venom-transition-overlay" class="venom-overlay" aria-hidden="true" hidden>
+      <svg class="venom-svg" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="venom-goo" x="-30%" y="-30%" width="160%" height="160%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="7" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+        </defs>
+        <g filter="url(#venom-goo)">
+          <circle class="venom-ring-outer" cx="100" cy="100" r="76"/>
+          <path class="venom-tendrils" d="M100 10 C106 32, 118 22, 128 8 C124 34, 142 36, 158 24 C146 48, 160 58, 180 54 C160 72, 170 86, 192 92 C168 102, 174 118, 190 132 C164 132, 166 150, 176 168 C152 154, 144 170, 146 190 C128 168, 116 178, 108 194 C98 172, 84 178, 72 192 C72 168, 56 166, 40 178 C50 156, 36 146, 18 148 C36 130, 26 116, 8 108 C32 98, 26 82, 12 68 C36 68, 36 50, 26 32 C50 46, 58 30, 56 10 C74 32, 86 22, 100 10 Z"/>
+          <circle class="venom-ring-inner" cx="100" cy="100" r="64"/>
+        </g>
+      </svg>
+    </div>
+
+    <script src="/static/app.js?v=9.9"></script>
   </body>
 </html>
