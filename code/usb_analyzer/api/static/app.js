@@ -898,9 +898,9 @@ function renderCharts(events) {
   Chart.defaults.font.family = "'Montserrat', sans-serif";
 
   const isDark = document.documentElement.dataset.theme === "dark";
-  const textColor = isDark ? "#94a3b8" : "#707eae";
-  const gridColor = isDark ? "rgba(148, 163, 184, 0.14)" : "rgba(0, 0, 0, 0.05)";
-  const donutBorderColor = isDark ? "#0d1526" : "#ffffff";
+  const textColor = isDark ? "#94a3b8" : "#64748b";
+  const gridColor = isDark ? "rgba(148, 163, 184, 0.12)" : "rgba(15, 23, 42, 0.06)";
+  const donutBorderColor = isDark ? "#0e172a" : "#ffffff";
 
   const infoCount = events.filter((e) => e.severity === "info").length;
   const warnCount = events.filter((e) => e.severity === "warning").length;
@@ -913,23 +913,23 @@ function renderCharts(events) {
     severityChart = new Chart(sevCtx, {
       type: "doughnut",
       data: {
-        labels: ["Info (Safe)", "Warning", "Critical"],
+        labels: ["Safe / Info", "Warning", "Critical"],
         datasets: [{
           data: [infoCount, warnCount, critCount],
-          backgroundColor: ["#2563eb", "#b45309", "#be123c"],
+          backgroundColor: [isDark ? "#3b82f6" : "#1d4ed8", isDark ? "#fbbf24" : "#b45309", isDark ? "#fb7185" : "#be123c"],
           borderColor: donutBorderColor,
-          borderWidth: 3,
-          hoverOffset: 6,
+          borderWidth: 2,
+          hoverOffset: 4,
         }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: "70%",
+        cutout: "74%",
         plugins: {
           legend: {
             position: "bottom",
-            labels: { color: textColor, boxWidth: 12, padding: 14, font: { family: "var(--font-sans)", size: 11, weight: "600" } },
+            labels: { color: textColor, boxWidth: 10, padding: 12, font: { family: "'Montserrat', sans-serif", size: 11, weight: "500" } },
           },
         },
       },
@@ -953,9 +953,9 @@ function renderCharts(events) {
         labels: topTypes.map(([k]) => k.toUpperCase()),
         datasets: [{
           data: topTypes.map(([, v]) => v),
-          backgroundColor: "#1e3a8a",
-          borderRadius: 6,
-          hoverBackgroundColor: "#2563eb",
+          backgroundColor: isDark ? "#1e3a8a" : "#0f2b5c",
+          borderRadius: 4,
+          hoverBackgroundColor: isDark ? "#3b82f6" : "#1d4ed8",
         }],
       },
       options: {
@@ -967,12 +967,12 @@ function renderCharts(events) {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: textColor, font: { family: "var(--font-sans)", size: 10, weight: "600" } },
+            ticks: { color: textColor, font: { family: "'Montserrat', sans-serif", size: 10, weight: "600" } },
           },
           y: {
             beginAtZero: true,
             grid: { color: gridColor },
-            ticks: { precision: 0, color: textColor, font: { family: "var(--font-mono)", size: 10 } },
+            ticks: { precision: 0, color: textColor, font: { family: "'JetBrains Mono', monospace", size: 10 } },
           },
         },
       },
