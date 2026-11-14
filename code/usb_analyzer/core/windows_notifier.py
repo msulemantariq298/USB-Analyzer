@@ -29,25 +29,31 @@ def build_notification_urls(
     severity: str = "info",
     dashboard_url: str = DEFAULT_DASHBOARD_URL,
 ) -> dict[str, str]:
-    """Construct deep-link dashboard URLs for toast click and action buttons."""
+    """Construct deep-link dashboard URLs for toast click and action buttons.
+    
+    Routes through /open so if a dashboard tab is already open in the browser,
+    it directs focus and executes actions in that existing tab without opening
+    duplicate tabs. If no tab is open, /open redirects to open the dashboard tab.
+    """
     base = dashboard_url.rstrip("/") + "/"
+    open_base = f"{base}open"
     if not device_id:
         return {
-            "inspect": base,
-            "block": base,
-            "allow": base,
+            "inspect": open_base,
+            "block": open_base,
+            "allow": open_base,
         }
 
     encoded_id = urllib.parse.quote(device_id, safe="")
     is_warning = severity.lower() == "warning"
-    inspect_url = f"{base}?inspect_device={encoded_id}"
+    inspect_url = f"{open_base}?inspect_device={encoded_id}"
     if is_warning:
         inspect_url += "&triage=1"
 
     return {
         "inspect": inspect_url,
-        "block": f"{base}?toast_action=block&device_id={encoded_id}",
-        "allow": f"{base}?toast_action=allow&device_id={encoded_id}",
+        "block": f"{open_base}?toast_action=block&device_id={encoded_id}",
+        "allow": f"{open_base}?toast_action=allow&device_id={encoded_id}",
     }
 
 

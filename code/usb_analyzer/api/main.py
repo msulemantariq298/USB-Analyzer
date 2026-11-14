@@ -1,6 +1,8 @@
 import csv
 import io
 import json
+import time
+import urllib.parse
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -53,9 +55,101 @@ class PolicyModeUpdateRequest(BaseModel):
     mode: PolicyMode
 
 
+class NotificationActionPayload(BaseModel):
+    action: str | None = None
+    device_id: str | None = None
+    triage: bool = False
+
+
+# In-memory queue / broadcast for notification actions consumed by active dashboard tab(s)
+_pending_notification_actions: list[dict[str, Any]] = []
+
+
 @app.get("/", include_in_schema=False)
 def dashboard() -> FileResponse:
     return FileResponse(static_directory / "index.html")
+
+
+@app.get("/open", include_in_schema=False)
+def open_dashboard_redirect(
+    toast_action: str | None = None,
+    inspect_device: str | None = None,
+    device_id: str | None = None,
+    triage: str | None = None,
+) -> Response:
+    """Entrypoint launched by Windows desktop notifications.
+    
+    If the dashboard is already open in a browser tab, signals that tab
+    via SSE/polling and returns a self-closing response to prevent duplicate tabs.
+    If no tab is currently open, redirects to the dashboard root with query parameters.
+    """
+    target_device = device_id or inspect_device
+    is_triage = triage in ("1", "true", "yes")
+
+    if toast_action or target_device or is_triage:
+        _pending_notification_actions.append({
+            "action": toast_action,
+            "device_id": target_device,
+            "triage": is_triage,
+            "timestamp": time.time(),
+        })
+        # Keep queue bounded
+        del _pending_notification_actions[:-20]
+
+    # Check if a client dashboard tab is currently connected (heartbeat within 8s)
+    has_active_client = bool(
+        _active_dashboard_clients
+        and any(time.time() - t < 8.0 for t in _active_dashboard_clients.values())
+    )
+
+    if has_active_client:
+        # Client tab is already open: serve minimal self-closing HTML
+        html_content = """<!doctype html>
+<html>
+<head><title>USB Analyzer</title></head>
+<body>
+<script>
+window.focus();
+try { window.close(); } catch(e) {}
+setTimeout(function() { window.close(); }, 350);
+</script>
+</body>
+</html>"""
+        return Response(content=html_content, media_type="text/html")
+
+    # No dashboard tab currently open: redirect to open dashboard with parameters
+    params = []
+    if toast_action:
+        params.append(f"toast_action={urllib.parse.quote(toast_action)}")
+    if target_device:
+        params.append(f"inspect_device={urllib.parse.quote(target_device)}")
+    if is_triage:
+        params.append("triage=1")
+
+    query_str = f"?{'&'.join(params)}" if params else ""
+    return Response(
+        status_code=307,
+        headers={"Location": f"/{query_str}"},
+    )
+
+
+_active_dashboard_clients: dict[str, float] = {}
+
+
+@app.post(f"{settings.api_prefix}/dashboard/heartbeat")
+def dashboard_heartbeat(client_id: str = Query(...)) -> dict[str, Any]:
+    """Track active dashboard browser tabs to prevent opening duplicate tabs."""
+    now = time.time()
+    _active_dashboard_clients[client_id] = now
+    # Clean stale clients (> 30s)
+    stale = [cid for cid, last in _active_dashboard_clients.items() if now - last > 30.0]
+    for cid in stale:
+        _active_dashboard_clients.pop(cid, None)
+
+    # Return any pending notification actions
+    actions = list(_pending_notification_actions)
+    _pending_notification_actions.clear()
+    return {"status": "ok", "actions": actions}
 
 
 @app.get(f"{settings.api_prefix}/health")

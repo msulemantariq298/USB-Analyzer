@@ -133,3 +133,30 @@ def test_manual_allow_device_endpoint() -> None:
     assert matching[0]["details"]["action"] == "allowed_by_user"
 
 
+def test_open_endpoint_without_active_dashboard_tab_redirects() -> None:
+    client = TestClient(app)
+    # When no client heartbeat has been registered, /open redirects (307) to the dashboard /
+    response = client.get("/open?inspect_device=USB%5CTEST&triage=1", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["Location"] == "/?inspect_device=USB%5CTEST&triage=1"
+
+
+def test_open_endpoint_with_active_dashboard_tab_returns_self_closing_html() -> None:
+    client = TestClient(app)
+    # Register an active client heartbeat
+    hb_resp = client.post("/api/v1/dashboard/heartbeat?client_id=test_tab_1")
+    assert hb_resp.status_code == 200
+
+    # /open now returns the self-closing HTML to prevent opening duplicate tabs
+    response = client.get("/open?inspect_device=USB%5CTEST_ACTIVE", follow_redirects=False)
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "window.close()" in response.text
+
+    # Heartbeat retrieves queued notification actions
+    hb_resp2 = client.post("/api/v1/dashboard/heartbeat?client_id=test_tab_1")
+    data = hb_resp2.json()
+    assert data["status"] == "ok"
+    assert any(a["device_id"] == "USB\\TEST_ACTIVE" for a in data.get("actions", []))
+
+

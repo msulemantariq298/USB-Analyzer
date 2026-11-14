@@ -9,19 +9,19 @@ from usb_analyzer.core.windows_notifier import (
 def test_build_notification_urls_without_device_id() -> None:
     urls = build_notification_urls(device_id=None, severity="info")
     assert urls == {
-        "inspect": "http://127.0.0.1:8000/",
-        "block": "http://127.0.0.1:8000/",
-        "allow": "http://127.0.0.1:8000/",
+        "inspect": "http://127.0.0.1:8000/open",
+        "block": "http://127.0.0.1:8000/open",
+        "allow": "http://127.0.0.1:8000/open",
     }
 
 
 def test_build_notification_urls_for_warning_device() -> None:
     dev_id = r"USB\VID_1234&PID_5678\SERIAL_01"
     urls = build_notification_urls(device_id=dev_id, severity="warning")
-    assert "inspect_device=USB%5CVID_1234%26PID_5678%5CSERIAL_01" in urls["inspect"]
+    assert "open?inspect_device=USB%5CVID_1234%26PID_5678%5CSERIAL_01" in urls["inspect"]
     assert "&triage=1" in urls["inspect"]
-    assert "toast_action=block&device_id=USB%5CVID_1234%26PID_5678%5CSERIAL_01" in urls["block"]
-    assert "toast_action=allow&device_id=USB%5CVID_1234%26PID_5678%5CSERIAL_01" in urls["allow"]
+    assert "open?toast_action=block&device_id=USB%5CVID_1234%26PID_5678%5CSERIAL_01" in urls["block"]
+    assert "open?toast_action=allow&device_id=USB%5CVID_1234%26PID_5678%5CSERIAL_01" in urls["allow"]
 
 
 def test_build_toast_xml_warning_includes_block_and_allow_actions() -> None:

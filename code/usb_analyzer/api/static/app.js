@@ -1661,17 +1661,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-async function handleNotificationDeepLinks() {
-  const params = new URLSearchParams(window.location.search);
-  const toastAction = params.get("toast_action");
-  const inspectDevice = params.get("device_id") || params.get("inspect_device");
-  const openTriage = params.get("triage") === "1";
-
-  if (!toastAction && !inspectDevice) return;
-
-  // Clean query parameters from URL so refreshes don't re-trigger actions
-  window.history.replaceState({}, document.title, window.location.pathname);
-
+async function dispatchNotificationAction(toastAction, inspectDevice, openTriage) {
   try {
     if (toastAction === "block" && inspectDevice) {
       await executeBlockDevice(
@@ -1716,13 +1706,51 @@ async function handleNotificationDeepLinks() {
   }
 }
 
+async function handleNotificationDeepLinks() {
+  const params = new URLSearchParams(window.location.search);
+  const toastAction = params.get("toast_action");
+  const inspectDevice = params.get("device_id") || params.get("inspect_device");
+  const openTriage = params.get("triage") === "1";
+
+  if (!toastAction && !inspectDevice) return;
+
+  // Clean query parameters from URL so refreshes don't re-trigger actions
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  await dispatchNotificationAction(toastAction, inspectDevice, openTriage);
+}
+
+// Client session ID for tracking active dashboard tab
+const dashboardClientId = "tab_" + Math.random().toString(36).slice(2, 11) + "_" + Date.now();
+
+async function sendDashboardHeartbeat() {
+  try {
+    const res = await fetch(`/api/v1/dashboard/heartbeat?client_id=${encodeURIComponent(dashboardClientId)}`, {
+      method: "POST",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.actions && Array.isArray(data.actions) && data.actions.length > 0) {
+      for (const item of data.actions) {
+        window.focus();
+        await dispatchNotificationAction(item.action, item.device_id, item.triage);
+      }
+    }
+  } catch (e) {}
+}
+
 // Initial bootstrap
 (async () => {
   await loadWhitelist();
   await loadEvents(false);
   await handleNotificationDeepLinks();
+  await sendDashboardHeartbeat();
 })();
 
 window.setInterval(() => {
   if (document.visibilityState === "visible") loadEvents(false);
 }, 3500);
+
+window.setInterval(() => {
+  sendDashboardHeartbeat();
+}, 2000);
