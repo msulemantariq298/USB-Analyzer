@@ -18,6 +18,15 @@ const simulateDropdownBtn = document.querySelector("#simulate-dropdown-btn");
 const simulationMenu = document.querySelector("#simulation-menu");
 const simulateBadusbBtn = document.querySelector("#simulate-badusb-btn");
 const eventSearchInput = document.querySelector("#event-search");
+
+// Global shortcut: press '/' to focus search
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement !== eventSearchInput && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) {
+    e.preventDefault();
+    eventSearchInput?.focus();
+    eventSearchInput?.select();
+  }
+});
 const soundToggleBtn = document.querySelector("#sound-toggle-btn");
 const soundIcon = document.querySelector("#sound-icon");
 const soundLabel = document.querySelector("#sound-label");
@@ -356,21 +365,37 @@ function playVenomTendrilWave(x, y, maxRadius, toDark) {
   venomOverlay.classList.toggle("to-light", !toDark);
   venomOverlay.style.setProperty("--venom-x", `${x}px`);
   venomOverlay.style.setProperty("--venom-y", `${y}px`);
-  venomOverlay.style.setProperty("--venom-size", `${Math.ceil(maxRadius * 2.4)}px`);
+  venomOverlay.style.setProperty("--venom-size", `${Math.ceil(maxRadius * 2.6)}px`);
   venomOverlay.hidden = false;
 
+  // Animate the main symbiote mass expanding with visceral rotation and organic spring curve
   venomSvgAnimation = svg.animate(
     [
-      { transform: "translate(-50%, -50%) scale(0.03) rotate(0deg)", opacity: 0.95 },
-      { transform: "translate(-50%, -50%) scale(0.62) rotate(9deg)", opacity: 0.85, offset: 0.55 },
-      { transform: "translate(-50%, -50%) scale(1.18) rotate(16deg)", opacity: 0 },
+      { transform: "translate(-50%, -50%) scale(0.02) rotate(0deg)", opacity: 1 },
+      { transform: "translate(-50%, -50%) scale(0.48) rotate(-14deg)", opacity: 0.98, offset: 0.32 },
+      { transform: "translate(-50%, -50%) scale(1.08) rotate(18deg)", opacity: 0.9, offset: 0.68 },
+      { transform: "translate(-50%, -50%) scale(1.42) rotate(32deg)", opacity: 0, offset: 1.0 },
     ],
     {
-      duration: 640,
-      easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+      duration: 620,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
       fill: "forwards",
     }
   );
+
+  // Micro-motion on secondary tendril branch for liquid crawling feel
+  const branch2 = svg.querySelector(".branch-2");
+  if (branch2) {
+    branch2.animate(
+      [
+        { transform: "scale(0.85) rotate(0deg)", opacity: 0.7 },
+        { transform: "scale(1.2) rotate(-24deg)", opacity: 1, offset: 0.4 },
+        { transform: "scale(1.35) rotate(40deg)", opacity: 0, offset: 1.0 },
+      ],
+      { duration: 620, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
+    );
+  }
+
   venomSvgAnimation.onfinish = () => {
     venomOverlay.hidden = true;
     venomSvgAnimation = null;
@@ -385,6 +410,18 @@ function toggleThemeWithVenom(event) {
   const currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
   const nextTheme = currentTheme === "dark" ? "light" : "dark";
   const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Tactile button bounce
+  if (themeToggle) {
+    themeToggle.animate(
+      [
+        { transform: "scale(0.92)" },
+        { transform: "scale(1.08)" },
+        { transform: "scale(1.0)" },
+      ],
+      { duration: 240, easing: "cubic-bezier(0.16, 1, 0.3, 1)" }
+    );
+  }
 
   if (reducedMotion) {
     applyTheme(nextTheme);
@@ -423,8 +460,8 @@ function toggleThemeWithVenom(event) {
             ],
           },
           {
-            duration: 600,
-            easing: "cubic-bezier(0.23, 1, 0.32, 1)",
+            duration: 560,
+            easing: "cubic-bezier(0.16, 1, 0.3, 1)",
             pseudoElement: "::view-transition-new(root)",
           }
         );

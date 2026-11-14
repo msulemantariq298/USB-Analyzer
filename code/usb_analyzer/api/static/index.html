@@ -8,22 +8,22 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=11.0">
+    <link rel="stylesheet" href="/static/styles.css?v=12.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <!-- Topbar Navigation -->
+    <!-- Topbar Navigation (Minimalist Executive Header) -->
     <header class="topbar">
       <div class="topbar-left">
         <a class="brand" href="/" aria-label="USB Analyzer Dashboard Home">
           <div class="brand-breadcrumb">
             <span class="brand-name">USB Analyzer Dashboard</span>
-            <span class="breadcrumb-path">Endpoint Hardware Defense</span>
+            <span class="brand-tag">ENDPOINT DEFENSE</span>
           </div>
         </a>
       </div>
 
-      <!-- Quick Actions & Status -->
+      <!-- Quick Actions & Status Indicators -->
       <div class="topbar-actions">
         <div class="status-pill-group">
           <div class="connection" aria-live="polite">
@@ -59,7 +59,7 @@
             <span>Export Report (PDF)</span>
           </a>
 
-          <button id="theme-toggle" class="btn btn-secondary btn-icon-text theme-toggle-btn" type="button" aria-label="Toggle dark and light theme" aria-pressed="false" title="Switch between Light and Dark theme">
+          <button id="theme-toggle" class="btn btn-secondary btn-icon-text theme-toggle-btn" type="button" aria-label="Toggle dark and light theme" aria-pressed="false" title="Switch between Light and Dark theme (Venom Symbiote Transition)">
             <svg id="theme-icon-moon" class="theme-icon theme-icon-moon" viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
               <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -100,7 +100,7 @@
         <button id="dismiss-alert-btn" class="alert-close" type="button" aria-label="Dismiss alert">&times;</button>
       </div>
 
-      <!-- Page Header -->
+      <!-- Page Overview Header -->
       <section class="overview">
         <div class="overview-header">
           <div class="page-title-wrap">
@@ -109,54 +109,66 @@
           </div>
           <div class="header-meta">
             <div class="last-sync">
-              <span>Last sync: </span>
-              <span id="last-update" class="sync-value">—</span>
+              <span>Telemetry sync: </span>
+              <span id="last-update" class="sync-value font-mono">—</span>
             </div>
           </div>
         </div>
 
-        <!-- Telemetry KPI Metrics Grid -->
-        <div class="kpi-grid" aria-label="Telemetry KPI summary">
+        <!-- Telemetry Architectural HUD Strip (Flat, Type-Led, Unified Compartments) -->
+        <div class="telemetry-hud kpi-grid" aria-label="Telemetry KPI summary">
           <!-- 1. The Deep Cobalt Anchor Card -->
-          <article class="kpi-card kpi-anchor-blue">
-            <span class="kpi-label">Total Events</span>
-            <strong id="total-events" class="kpi-value num">0</strong>
-            <span class="kpi-subtext">Continuous telemetry stream</span>
+          <article class="hud-compartment kpi-card hud-anchor kpi-anchor-blue">
+            <span class="hud-label kpi-label">Total Events</span>
+            <div class="hud-value-row">
+              <strong id="total-events" class="hud-value kpi-value num">0</strong>
+            </div>
+            <span class="hud-caption kpi-subtext">Continuous telemetry stream</span>
           </article>
 
           <!-- 2. Devices Blocked -->
-          <article class="kpi-card">
-            <span class="kpi-label">Devices Blocked</span>
-            <strong id="blocked-count" class="kpi-value num">0</strong>
-            <span class="kpi-subtext">Hardware ports isolated</span>
+          <article class="hud-compartment kpi-card">
+            <span class="hud-label kpi-label">Devices Blocked</span>
+            <div class="hud-value-row">
+              <strong id="blocked-count" class="hud-value kpi-value num">0</strong>
+            </div>
+            <span class="hud-caption kpi-subtext">Hardware ports isolated</span>
           </article>
 
           <!-- 3. Policy Warnings -->
-          <article class="kpi-card">
-            <span class="kpi-label">Suspicious Warnings</span>
-            <strong id="warning-events" class="kpi-value num">0</strong>
-            <span class="kpi-subtext">Unregistered / triage review</span>
+          <article class="hud-compartment kpi-card">
+            <span class="hud-label kpi-label">Suspicious Warnings</span>
+            <div class="hud-value-row">
+              <strong id="warning-events" class="hud-value kpi-value num">0</strong>
+            </div>
+            <span class="hud-caption kpi-subtext">Unregistered / triage review</span>
           </article>
 
           <!-- 4. Critical Threats -->
-          <article class="kpi-card">
-            <span class="kpi-label">Critical Threats</span>
-            <strong id="critical-events" class="kpi-value num">0</strong>
-            <span class="kpi-subtext">BadUSB &amp; malware threats</span>
+          <article class="hud-compartment kpi-card">
+            <span class="hud-label kpi-label">Critical Threats</span>
+            <div class="hud-value-row">
+              <strong id="critical-events" class="hud-value kpi-value num">0</strong>
+            </div>
+            <span class="hud-caption kpi-subtext">BadUSB &amp; malware threats</span>
           </article>
 
           <!-- 5. Active Scans -->
-          <article class="kpi-card">
-            <span class="kpi-label">Storage Scans</span>
-            <strong id="active-scans" class="kpi-value num">0</strong>
-            <span class="kpi-subtext">Volumes inspected</span>
+          <article class="hud-compartment kpi-card">
+            <span class="hud-label kpi-label">Storage Scans</span>
+            <div class="hud-value-row">
+              <strong id="active-scans" class="hud-value kpi-value num">0</strong>
+            </div>
+            <span class="hud-caption kpi-subtext">Volumes inspected</span>
           </article>
 
           <!-- 6. Flagged Files -->
-          <article class="kpi-card">
-            <span class="kpi-label">Flagged Files</span>
-            <strong id="flagged-files" class="kpi-value num">0</strong>
-            <span class="kpi-subtext">Signatures &amp; SHA-256 matches</span>
+          <article class="hud-compartment kpi-card">
+            <span class="hud-label kpi-label">Flagged Files</span>
+            <div class="hud-value-row">
+              <strong id="flagged-files" class="hud-value kpi-value num">0</strong>
+            </div>
+            <span class="hud-caption kpi-subtext">Signatures &amp; SHA-256 matches</span>
           </article>
         </div>
       </section>
@@ -179,6 +191,7 @@
             </div>
             <div class="search-wrap">
               <input type="search" id="event-search" class="search-input" placeholder="Search device, type, risk, serial..." aria-label="Search events">
+              <span class="search-kbd-hint">/</span>
             </div>
             <button id="clear-events-btn" class="btn btn-secondary" type="button" title="Clear all recorded events from database">
               <svg viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
@@ -201,10 +214,10 @@
           </div>
         </div>
 
-        <!-- Hardware Attack & Defense Diagnostics Bar (Proper Button Design) -->
+        <!-- Hardware Attack & Defense Diagnostics Lab (Integrated Testbench) -->
         <div class="scenario-simulator-bar">
           <div class="scenario-sim-label">
-            <span class="pulse-indicator"></span>
+            <span class="pulse-indicator" aria-hidden="true"></span>
             <div class="scenario-sim-text-group">
               <span class="scenario-sim-title">Defense Diagnostics Lab</span>
               <span class="scenario-sim-caption">Inject simulated hardware vectors to verify zero-trust containment policy:</span>
@@ -471,23 +484,38 @@
       </div>
     </footer>
 
-    <!-- Venom Symbiote Theme Transition Overlay -->
+    <!-- Venom Symbiote Liquid Morph Transition Overlay -->
     <div id="venom-transition-overlay" class="venom-overlay" aria-hidden="true" hidden>
-      <svg class="venom-svg" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+      <svg class="venom-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
         <defs>
-          <filter id="venom-goo" x="-30%" y="-30%" width="160%" height="160%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="7" result="noise"/>
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+          <!-- Organic fluid goo filter combining high-frequency turbulence and alpha thresholding -->
+          <filter id="venom-goo-heavy" x="-40%" y="-40%" width="180%" height="180%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="14" result="noise"/>
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="38" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
+            <feGaussianBlur in="displaced" stdDeviation="5" result="blur"/>
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 28 -12" result="goo"/>
+            <feBlend in="SourceGraphic" in2="goo" mode="multiply"/>
           </filter>
         </defs>
-        <g filter="url(#venom-goo)">
-          <circle class="venom-ring-outer" cx="100" cy="100" r="76"/>
-          <path class="venom-tendrils" d="M100 10 C106 32, 118 22, 128 8 C124 34, 142 36, 158 24 C146 48, 160 58, 180 54 C160 72, 170 86, 192 92 C168 102, 174 118, 190 132 C164 132, 166 150, 176 168 C152 154, 144 170, 146 190 C128 168, 116 178, 108 194 C98 172, 84 178, 72 192 C72 168, 56 166, 40 178 C50 156, 36 146, 18 148 C36 130, 26 116, 8 108 C32 98, 26 82, 12 68 C36 68, 36 50, 26 32 C50 46, 58 30, 56 10 C74 32, 86 22, 100 10 Z"/>
-          <circle class="venom-ring-inner" cx="100" cy="100" r="64"/>
+        <g class="venom-layer-group" filter="url(#venom-goo-heavy)">
+          <!-- Core expansive symbiote body -->
+          <circle class="venom-core-orb" cx="200" cy="200" r="140"/>
+          
+          <!-- Primary reaching tendrils -->
+          <path class="venom-tendril-branch branch-1" d="M200 40 Q225 95 285 85 T355 45 Q325 125 375 175 T385 265 Q325 245 315 325 T215 385 Q195 325 125 345 T45 295 Q95 245 45 185 T75 85 Q145 115 200 40 Z"/>
+          
+          <!-- Secondary visceral tendrils -->
+          <path class="venom-tendril-branch branch-2" d="M200 20 C240 70, 270 50, 310 25 C295 85, 345 95, 385 65 C355 125, 390 150, 435 140 C385 185, 410 220, 465 235 C405 260, 420 300, 460 335 C395 335, 400 380, 425 425 C365 390, 345 430, 350 480 C305 425, 275 450, 255 490 C230 435, 195 450, 165 485 C165 425, 125 420, 85 450 C110 395, 75 370, 30 375 C75 330, 50 295, 5 275 C65 250, 50 210, 15 175 C75 175, 75 130, 50 85 C110 120, 130 80, 125 30 C170 85, 200 60, 200 20 Z"/>
+          
+          <!-- Splatter and micro droplets -->
+          <circle class="venom-droplet d1" cx="340" cy="110" r="26"/>
+          <circle class="venom-droplet d2" cx="100" cy="90" r="30"/>
+          <circle class="venom-droplet d3" cx="70" cy="310" r="24"/>
+          <circle class="venom-droplet d4" cx="320" cy="330" r="28"/>
         </g>
       </svg>
     </div>
 
-    <script src="/static/app.js?v=11.0"></script>
+    <script src="/static/app.js?v=12.0"></script>
   </body>
 </html>
