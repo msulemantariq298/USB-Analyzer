@@ -769,9 +769,6 @@
     modal.classList.remove('hidden');
   }
 
-    modal.classList.remove('hidden');
-  }
-
   function closeDetailModal() {
     const modal = document.getElementById('detail-modal');
     if (modal) modal.classList.add('hidden');

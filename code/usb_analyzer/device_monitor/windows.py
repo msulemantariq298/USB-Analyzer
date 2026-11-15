@@ -288,6 +288,7 @@ def main() -> None:
                         storage_scan_scheduler=scan_service,
                         policy_engine=policy_engine,
                         hid_detector=hid_detector,
+                        populate_initial=True,
                     )
             finally:
                 hid_detector.stop_listener()
