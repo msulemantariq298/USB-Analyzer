@@ -181,3 +181,13 @@ class PolicyEngine:
         )
         return decision, event
 
+    def unblock_device(
+        self,
+        device_id: str,
+        reason: str = "Authorized by operator",
+    ) -> tuple[bool, str]:
+        """Re-enable a previously contained/blocked hardware device at the OS/hardware port."""
+        if hasattr(self.blocker, "enable_device"):
+            return self.blocker.enable_device(device_id)
+        return True, "No blocker enable routine defined"
+

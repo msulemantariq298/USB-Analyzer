@@ -165,6 +165,11 @@ def test_policy_engine_block_threat(tmp_path: Path):
     assert event.event_type == "device.blocked"
     assert event.severity == EventSeverity.CRITICAL
 
+    # Unblock test
+    success, msg = engine.unblock_device(device_id)
+    assert success is True
+    assert device_id not in blocker.blocked_devices
+
 
 def test_policy_api_endpoints():
     client = TestClient(app)

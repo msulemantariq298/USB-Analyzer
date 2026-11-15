@@ -279,6 +279,7 @@ async def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
 
 @app.post(f"{settings.api_prefix}/devices/allow")
 async def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
+    policy_engine.unblock_device(req.device_id, reason=req.reason)
     allow_event = DeviceEvent(
         device_id=req.device_id,
         source="user-decision",

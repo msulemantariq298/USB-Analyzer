@@ -10,9 +10,12 @@ class DeviceBlocker(Protocol):
     def disable_device(self, device_id: str) -> tuple[bool, str]:
         """Disable/block the device. Returns (success, status_message)."""
 
+    def enable_device(self, device_id: str) -> tuple[bool, str]:
+        """Re-enable/unblock the device. Returns (success, status_message)."""
+
 
 class WindowsPnpUtilBlocker:
-    """Disables a Windows PnP device using pnputil."""
+    """Disables and enables a Windows PnP device using pnputil."""
 
     def __init__(self, dry_run: bool = False) -> None:
         self.dry_run = dry_run
@@ -47,6 +50,38 @@ class WindowsPnpUtilBlocker:
                 return False, f"pnputil error ({result.returncode}): {output}"
         except Exception as error:
             logger.exception("Failed to disable device %s", device_id)
+            return False, f"Execution error: {error}"
+
+    def enable_device(self, device_id: str) -> tuple[bool, str]:
+        if self.dry_run:
+            msg = f"[DryRun] Would execute: pnputil /enable-device \"{device_id}\""
+            logger.info(msg)
+            return True, msg
+
+        cmd = ["pnputil", "/enable-device", device_id]
+        logger.info("Executing device enable command: %s", " ".join(cmd))
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            output = (result.stdout + " " + result.stderr).strip()
+            if result.returncode == 0:
+                logger.info("Successfully enabled device %s: %s", device_id, output)
+                return True, f"Enabled device: {output}"
+            else:
+                logger.warning(
+                    "pnputil failed with code %d for %s: %s",
+                    result.returncode,
+                    device_id,
+                    output,
+                )
+                return False, f"pnputil error ({result.returncode}): {output}"
+        except Exception as error:
+            logger.exception("Failed to enable device %s", device_id)
             return False, f"Execution error: {error}"
 
 
@@ -89,6 +124,36 @@ class LinuxSysfsBlocker:
             logger.exception("Failed to de-authorize device %s via sysfs", device_id)
             return False, f"Sysfs write error: {error}"
 
+    def enable_device(self, device_id: str) -> tuple[bool, str]:
+        if self.dry_run:
+            msg = f"[DryRun] Would write 1 to sysfs authorized for {device_id}"
+            logger.info(msg)
+            return True, msg
+
+        clean_id = os.path.basename(device_id.replace("\\", "/"))
+        authorized_path = os.path.join(self.sysfs_root, clean_id, "authorized")
+        try:
+            if not os.path.exists(authorized_path):
+                found = None
+                if os.path.exists(self.sysfs_root):
+                    for entry in os.listdir(self.sysfs_root):
+                        if clean_id in entry or entry in clean_id:
+                            candidate = os.path.join(self.sysfs_root, entry, "authorized")
+                            if os.path.exists(candidate):
+                                found = candidate
+                                break
+                if not found:
+                    return False, f"Sysfs path not found for {device_id}"
+                authorized_path = found
+
+            with open(authorized_path, "w") as f:
+                f.write("1\n")
+            logger.info("Authorized Linux USB device at %s", authorized_path)
+            return True, f"Written 1 to {authorized_path}"
+        except Exception as error:
+            logger.exception("Failed to authorize device %s via sysfs", device_id)
+            return False, f"Sysfs write error: {error}"
+
 
 class MockDeviceBlocker:
     """Blocker for testing and simulated attack scenarios."""
@@ -102,6 +167,13 @@ class MockDeviceBlocker:
         if self.should_succeed:
             return True, f"Mock-blocked device {device_id}"
         return False, f"Mock failure to block {device_id}"
+
+    def enable_device(self, device_id: str) -> tuple[bool, str]:
+        if device_id in self.blocked_devices:
+            self.blocked_devices.remove(device_id)
+        if self.should_succeed:
+            return True, f"Mock-enabled device {device_id}"
+        return False, f"Mock failure to enable {device_id}"
 
 
 def get_platform_blocker(dry_run: bool = False) -> DeviceBlocker:
