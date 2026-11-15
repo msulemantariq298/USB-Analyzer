@@ -129,6 +129,51 @@ def _build_default_rules() -> list[YaraRule]:
             ],
             condition="any",
         ),
+        YaraRule(
+            name="PowerShell_Encoded_Command",
+            description="PowerShell encoded command execution (-enc / -encodedcommand)",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)powershell.*(-enc|-encodedcommand|-e\b)\s+[A-Za-z0-9+/=]{16,}", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="CertUtil_Download_Cradle",
+            description="Certutil command used to download remote malicious payloads",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)certutil.*-urlcache.*-split", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="MSHTA_Inline_Execution",
+            description="MSHTA executing inline script or remote malicious HTA",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)mshta\s+(vbscript|javascript|http)", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="Double_Extension_Masquerade",
+            description="File using double extension trick to disguise executable payload",
+            severity="critical",
+            regexes=[
+                re.compile(rb"(?i)\.(pdf|docx?|xlsx?|pptx?|txt|jpg|png)\.(exe|scr|bat|cmd|vbs|ps1|hta|pif)$", re.IGNORECASE),
+            ],
+            condition="any",
+        ),
+        YaraRule(
+            name="RTLO_Character_Spoof",
+            description="Right-to-Left Override (U+202E) unicode spoofing detected in filename",
+            severity="critical",
+            regexes=[
+                re.compile(rb"\xe2\x80\xae"),  # UTF-8 encoding of U+202E
+            ],
+            condition="any",
+        ),
     ]
 
 
@@ -200,6 +245,12 @@ class SignatureEngine:
                 flags.append(f"yara:{rule_name}")
                 if rule_name == "EICAR_Test_File" and "eicar_test_file" not in flags:
                     flags.append("eicar_test_file")
+
+            # Check for disguised PE executable (starts with MZ, but non-executable extension)
+            if len(content) >= 64 and content.startswith(b"MZ"):
+                ext = file_path.suffix.lower()
+                if ext not in {".exe", ".dll", ".sys", ".scr", ".com", ".efi", ".drv", ".ocx", ""}:
+                    flags.append("yara:Disguised_PE_Executable")
         except OSError:
             pass
 

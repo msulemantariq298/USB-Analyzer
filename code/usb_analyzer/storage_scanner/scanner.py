@@ -36,6 +36,8 @@ AUTORUN_FILENAME = "autorun.inf"
 
 FLAG_AUTORUN = "autorun_inf"
 FLAG_RISKY_EXTENSION = "risky_extension"
+FLAG_DOUBLE_EXTENSION = "double_extension_masquerade"
+FLAG_RTLO_SPOOF = "rtlo_filename_spoof"
 _FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 
 
@@ -60,7 +62,14 @@ class ScanResult:
     @property
     def has_threats(self) -> bool:
         """Return True if any high-severity malware or signature match was detected."""
-        threat_prefixes = ("malware_hash:", "yara:", "eicar_test_file", "os_detected_malware")
+        threat_prefixes = (
+            "malware_hash:",
+            "yara:",
+            "eicar_test_file",
+            "os_detected_malware",
+            "double_extension_masquerade",
+            "rtlo_filename_spoof",
+        )
         for finding in self.files:
             for flag in finding.flags:
                 if any(flag == p or flag.startswith(p) for p in threat_prefixes):
@@ -104,6 +113,13 @@ def flag_file(name: str, risky_extensions: frozenset[str] = RISKY_EXTENSIONS) ->
         flags.append(FLAG_AUTORUN)
     if Path(lowered).suffix in normalized:
         flags.append(FLAG_RISKY_EXTENSION)
+    if "\u202e" in name:
+        flags.append(FLAG_RTLO_SPOOF)
+    parts = lowered.split(".")
+    if len(parts) >= 3 and f".{parts[-1]}" in normalized:
+        trusted_exts = {"pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "jpg", "png", "mp4"}
+        if parts[-2] in trusted_exts:
+            flags.append(FLAG_DOUBLE_EXTENSION)
     return tuple(flags)
 
 

