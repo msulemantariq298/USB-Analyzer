@@ -372,11 +372,15 @@
     let connected = 0;
     let allowed = 0;
 
+    const allowedDeviceIds = new Set(
+      state.events.filter(e => e.event_type === 'device.allowed').map(e => e.device_id)
+    );
+
     for (const ev of state.events) {
       if (ev.severity === 'critical') critical++;
-      if (ev.severity === 'warning') warnings++;
+      if (ev.severity === 'warning' && !allowedDeviceIds.has(ev.device_id)) warnings++;
 
-      if (ev.event_type === 'device.blocked') blocked++;
+      if (ev.event_type === 'device.blocked' && !allowedDeviceIds.has(ev.device_id)) blocked++;
       if (ev.event_type === 'device.connected') connected++;
       if (ev.event_type === 'device.allowed') allowed++;
 
@@ -497,11 +501,18 @@
         const connectEv = evList.find(e => e.details && (e.details.name || e.details.vendor_id)) || latestEv;
         const reasonEv = evList.find(e => e.details && (e.details.reason || e.details.threat_type || e.details.summary)) || latestEv;
 
-        const isBlocked = evList.some(e => e.event_type === 'device.blocked');
-        const isCritical = isBlocked || evList.some(e => e.severity === 'critical');
-        const isWarning = !isCritical && evList.some(e => e.severity === 'warning');
-        const severity = isCritical ? 'critical' : (isWarning ? 'warning' : 'info');
-        const eventType = isBlocked ? 'device.blocked' : latestEv.event_type;
+        const isAllowed = evList.some(e => e.event_type === 'device.allowed');
+        const hasCritical = evList.some(e => e.severity === 'critical');
+        // A critical virus/malware threat is permanently blocked (cannot be allowed)
+        const isBlocked = !isAllowed && (evList.some(e => e.event_type === 'device.blocked') || hasCritical);
+        // Suspicious is warning ONLY if NOT allowed and NOT permanently blocked
+        const isWarning = !isAllowed && !isBlocked && evList.some(e => e.severity === 'warning' || e.event_type === 'device.suspicious');
+
+        const severity = isBlocked ? 'critical' : (isWarning ? 'warning' : 'info');
+        const eventType = isBlocked ? 'device.blocked' : (isAllowed ? 'device.allowed' : latestEv.event_type);
+
+        const reason = isAllowed ? 'Approved by security officer' : (reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Verified normal operation');
+        const action = isBlocked ? 'Isolated & Disabled' : (isAllowed ? 'Allowed & Active' : (latestEv.details?.action_taken || latestEv.details?.action || 'Contained (Blocked until Allowed)'));
 
         return {
           id: latestEv.id,
@@ -517,8 +528,8 @@
             product_id: connectEv.details?.product_id || latestEv.details?.product_id || extractParam(deviceId, 'PID_'),
             serial_number: connectEv.details?.serial_number || latestEv.details?.serial_number || extractSerial(deviceId),
             device_type: connectEv.details?.device_type || latestEv.details?.device_type || (latestEv.source === 'storage-scanner' ? 'Storage Volume' : 'USB Bus'),
-            reason: reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Verified normal operation',
-            action: isBlocked ? 'Isolated & Disabled' : (evList.some(e => e.event_type === 'device.allowed') ? 'Allowed & Active' : (latestEv.details?.action || 'Monitored')),
+            reason: reason,
+            action: action,
           }
         };
       });
@@ -605,13 +616,16 @@
   }
 
   function getSeverityBadge(sev, eventType) {
+    if (eventType === 'device.allowed') {
+      return '<span class="badge-status badge-safe">SAFE</span>';
+    }
     if (eventType === 'device.blocked' || sev === 'critical') {
       return '<span class="badge-status badge-danger">BLOCKED</span>';
     }
     if (sev === 'warning' || eventType === 'device.suspicious') {
       return '<span class="badge-status badge-warning">CONTAINED</span>';
     }
-    if (eventType === 'device.allowed' || sev === 'info') {
+    if (sev === 'info') {
       return '<span class="badge-status badge-safe">SAFE</span>';
     }
     return `<span class="badge-status badge-neutral">${escapeHtml(sev.toUpperCase())}</span>`;
@@ -836,7 +850,8 @@
       soundEngine.playSuccessChime();
       showToast(`Device ${deviceId} allowed to operate.`, 'safe');
       closeDetailModal();
-      fetchTelemetry();
+      await fetchTelemetry();
+      await fetchWhitelist();
     } catch (e) {
       showToast(`Failed to allow device: ${e.message}`, 'danger');
     }

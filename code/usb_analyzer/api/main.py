@@ -234,7 +234,10 @@ def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
             "action": "allowed_by_user",
             "decision": "let_run",
             "reason": req.reason,
-            "summary": f"User permitted {req.device_id} to run.",
+            "verdict": "SAFE",
+            "risk": "None (Authorized by User)",
+            "action_taken": "Allowed & Active",
+            "summary": f"Device {req.device_id} was permitted to run by user.",
         },
     )
     event_store.add(allow_event)
