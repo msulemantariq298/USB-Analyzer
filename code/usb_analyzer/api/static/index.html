@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=36.0">
+  <link rel="stylesheet" href="/static/styles.css?v=37.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -253,10 +253,6 @@
 
           <div class="testbench-grid">
             <button type="button" class="testbench-card testbench-safe" id="sim-safe-btn">
-              <div class="tb-card-header">
-                <span class="tb-badge badge-safe">SAFE VECTOR</span>
-                <span class="tb-target">CORP_DRIVE_001</span>
-              </div>
               <h3 class="tb-card-title">Corporate Whitelisted Storage</h3>
               <p class="tb-card-desc">Kingston DataTraveler matching verified corporate whitelist. Simulates immediate authorization and clean storage heuristic scan.</p>
               <div class="tb-card-footer">
@@ -266,10 +262,6 @@
             </button>
 
             <button type="button" class="testbench-card testbench-danger" id="sim-badusb-btn">
-              <div class="tb-card-header">
-                <span class="tb-badge badge-danger">CRITICAL THREAT</span>
-                <span class="tb-target">DIGISPARK_001</span>
-              </div>
               <h3 class="tb-card-title">BadUSB Keystroke Injection</h3>
               <p class="tb-card-desc">Rapid simulated keystroke payload (35 chars @ 3ms). Triggers HID anomalous keystroke frequency detector and initiates port disable.</p>
               <div class="tb-card-footer">
@@ -279,10 +271,6 @@
             </button>
 
             <button type="button" class="testbench-card testbench-danger" id="sim-malware-btn">
-              <div class="tb-card-header">
-                <span class="tb-badge badge-danger">MALWARE VECTOR</span>
-                <span class="tb-target">INFECTED_DRIVE</span>
-              </div>
               <h3 class="tb-card-title">Malware Carrier & Autorun</h3>
               <p class="tb-card-desc">Simulates volume insertion with malicious autorun.inf and Trojan dropper payload. Triggers SHA-256 storage heuristic and volume quarantine.</p>
               <div class="tb-card-footer">
@@ -292,12 +280,8 @@
             </button>
 
             <button type="button" class="testbench-card testbench-warning" id="sim-unauthorized-btn">
-              <div class="tb-card-header">
-                <span class="tb-badge badge-warning">POLICY VIOLATION</span>
-                <span class="tb-target">UNKNOWN_VENDOR</span>
-              </div>
               <h3 class="tb-card-title">Unknown Peripheral Triage</h3>
-              <p class="tb-card-desc">Unregistered mass storage device without whitelist authorization. Triggers immediate SOC policy warning and triage notification.</p>
+              <p class="tb-card-desc">Unregistered mass storage device without whitelist authorization. Held in zero-trust containment (blocked) until explicit operator approval.</p>
               <div class="tb-card-footer">
                 <span class="tb-action-label">Inject Unknown Device</span>
                 <span class="tb-arrow">&rarr;</span>
@@ -305,10 +289,6 @@
             </button>
 
             <button type="button" class="testbench-card testbench-danger" id="sim-spoofed-btn">
-              <div class="tb-card-header">
-                <span class="tb-badge badge-danger">SPOOFED IDENTITY</span>
-                <span class="tb-target">CLONED_VID_PID</span>
-              </div>
               <h3 class="tb-card-title">Spoofed Hardware Clone</h3>
               <p class="tb-card-desc">Malicious microcontroller spoofing legitimate corporate VID:PID but differing on serial/fingerprint. Intercepted by identity validation engine.</p>
               <div class="tb-card-footer">
@@ -517,6 +497,6 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <!-- Application Logic -->
-  <script src="/static/app.js?v=36.0"></script>
+  <script src="/static/app.js?v=37.0"></script>
 </body>
 </html>

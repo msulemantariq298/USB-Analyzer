@@ -330,15 +330,16 @@ class DeviceMonitor:
                     event.details["action_taken"] = "Allowed & Monitored"
                     event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Standard desktop peripheral connected and active."
                 else:
-                    # Truly Unrecognized / Unknown Raw Hardware -> Warning for user review
+                    # Truly Unrecognized / Unknown Raw Hardware -> Held in containment (blocked until user allows)
                     event.details["verdict"] = "WARNING"
-                    event.details["risk"] = "Unrecognized Hardware"
-                    event.details["action_taken"] = "Audit Logged"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware connected. Open dashboard to review or block."
+                    event.details["risk"] = "Unrecognized Hardware (Contained)"
+                    event.details["action_taken"] = "Contained (Blocked until Allowed)"
+                    event.details["summary"] = f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware held in zero-trust containment until operator approval."
+                    self.blocked_device_ids.add(event.device_id)
                     for pe in policy_events:
                         pe.details["verdict"] = "WARNING"
-                        pe.details["risk"] = "Unrecognized Hardware"
-                        pe.details["action_taken"] = "Audit Logged"
+                        pe.details["risk"] = "Unrecognized Hardware (Contained)"
+                        pe.details["action_taken"] = "Contained (Blocked until Allowed)"
                         pe.details["summary"] = event.details["summary"]
                         self.event_sink.add(pe)
 

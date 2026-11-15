@@ -554,7 +554,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
         }
 
     elif scenario == "unauthorized_device":
-        # 4. Unknown / Rogue USB Device (Suspicious Warning)
+        # 4. Unknown / Rogue USB Device (Suspicious -> Default Blocked in Containment until user allows)
         device_id = "USB\\VID_9999&PID_8888\\UNAUTHORIZED_SN_999"
         event_store.add(
             DeviceEvent(
@@ -568,6 +568,10 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                     "product_id": "8888",
                     "serial_number": "UNAUTHORIZED_SN_999",
                     "device_type": "Unrecognized USB Peripheral",
+                    "verdict": "WARNING",
+                    "risk": "Unrecognized Peripheral (Contained)",
+                    "action_taken": "Contained (Blocked until Allowed)",
+                    "summary": "Unrecognized USB peripheral connected. Held in zero-trust containment until user authorization.",
                 },
             )
         )
@@ -578,16 +582,19 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 severity=EventSeverity.WARNING,
                 event_type="device.suspicious",
                 details={
-                    "action": "warn_user",
-                    "reason": "Suspicious hardware connected: Device ID is not on the trusted whitelist.",
+                    "action": "containment_block",
+                    "verdict": "WARNING",
+                    "risk": "Unrecognized Peripheral (Contained)",
+                    "action_taken": "Contained (Blocked until Allowed)",
+                    "reason": "Suspicious unregistered hardware detected. Held in zero-trust containment (blocked) until explicitly authorized by operator.",
                     "violation": "unregistered_hardware_detected",
-                    "summary": "Suspicious USB peripheral connected (unregistered hardware). User notified with warning.",
+                    "summary": "Suspicious USB peripheral held in zero-trust containment (blocked) until user explicitly authorizes it to run.",
                 },
             )
         )
         send_desktop_notification(
-            "USB Analyzer — Suspicious Device Alert",
-            "Problem: Unregistered USB hardware connected. Choose Block Device or Let It Run.",
+            "USB Analyzer — Suspicious Device Contained",
+            "Unrecognized hardware held in zero-trust containment (blocked). Review in dashboard to authorize.",
             severity="warning",
             device_id=device_id,
         )
@@ -595,7 +602,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
             "status": "simulated",
             "scenario": "unauthorized_device",
             "outcome": "warning",
-            "summary": "Suspicious device detected: Unregistered USB hardware flagged. User notified with a warning to verify the peripheral.",
+            "summary": "Suspicious device detected: Unregistered USB hardware placed in zero-trust containment (blocked) until user authorizes.",
         }
 
     elif scenario == "spoofed_identity":

@@ -608,8 +608,8 @@
     if (eventType === 'device.blocked' || sev === 'critical') {
       return '<span class="badge-status badge-danger">BLOCKED</span>';
     }
-    if (sev === 'warning') {
-      return '<span class="badge-status badge-warning">SUSPICIOUS</span>';
+    if (sev === 'warning' || eventType === 'device.suspicious') {
+      return '<span class="badge-status badge-warning">CONTAINED</span>';
     }
     if (eventType === 'device.allowed' || sev === 'info') {
       return '<span class="badge-status badge-safe">SAFE</span>';
@@ -669,11 +669,32 @@
     const serial = connectEv.details?.serial_number || specificEv.details?.serial_number || extractSerial(resolvedId) || 'N/A';
     const busClass = connectEv.details?.device_type || specificEv.details?.device_type || (connectEv.source === 'storage-scanner' ? 'Storage Volume' : 'USB Bus');
 
-    const isBlocked = deviceEvents.some(e => e.event_type === 'device.blocked');
-    const isCritical = isBlocked || deviceEvents.some(e => e.severity === 'critical');
-    const isWarning = !isCritical && deviceEvents.some(e => e.severity === 'warning');
-    const effectiveSeverity = isCritical ? 'critical' : (isWarning ? 'warning' : 'info');
-    const effectiveEventType = isBlocked ? 'device.blocked' : (specificEv.event_type || 'device.connected');
+    const isAllowedByUser = deviceEvents.some(e => e.event_type === 'device.allowed');
+    const hasCriticalEvent = deviceEvents.some(e => {
+      if (e.severity === 'critical') return true;
+      const t = (e.details?.threat_type || '').toLowerCase();
+      const r = (e.details?.reason || '').toLowerCase();
+      const s = (e.details?.summary || '').toLowerCase();
+      return t.includes('badusb') || t.includes('malware') || t.includes('attack') || t.includes('cloned') || t.includes('spoof') ||
+             r.includes('keystroke') || r.includes('trojan') || r.includes('autorun') || s.includes('trojan') || s.includes('badusb');
+    });
+    const isExplicitlyBlocked = deviceEvents.some(e => e.event_type === 'device.blocked');
+
+    // A critical virus/malware threat is permanently blocked (cannot be allowed)
+    const isCriticalThreat = (hasCriticalEvent || isExplicitlyBlocked) && !isAllowedByUser;
+
+    // A suspicious device is held in zero-trust containment (blocked by default until user allows)
+    const isSuspiciousContained = !isCriticalThreat && !isAllowedByUser && deviceEvents.some(e => {
+      const act = (e.details?.action || '').toLowerCase();
+      const actTaken = (e.details?.action_taken || '').toLowerCase();
+      return e.severity === 'warning' || e.event_type === 'device.suspicious' || act.includes('contain') || actTaken.includes('contain');
+    });
+
+    // A safe device is verified and authorized (standard desktop peripheral, whitelisted, or allowed by user)
+    const isSafe = !isCriticalThreat && !isSuspiciousContained;
+
+    const effectiveSeverity = isCriticalThreat ? 'critical' : (isSuspiciousContained ? 'warning' : 'info');
+    const effectiveEventType = isCriticalThreat ? 'device.blocked' : (isSuspiciousContained ? 'device.suspicious' : (isAllowedByUser ? 'device.allowed' : (specificEv.event_type || 'device.connected')));
 
     const reason = reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Hardware signature inspected against corporate heuristics.';
 
@@ -752,18 +773,39 @@
     `;
 
     if (actionsEl) {
-      actionsEl.innerHTML = `
-        <button type="button" class="btn-action-ghost btn-modal-block" style="color: var(--danger-text);">Isolate Port (Block)</button>
-        <button type="button" class="btn-action-ghost btn-modal-allow" style="color: var(--safe-text);">Allow Device</button>
-        <button type="button" class="btn-primary-action btn-modal-whitelist">Add to Whitelist</button>
-      `;
-      const btnBlock = actionsEl.querySelector('.btn-modal-block');
-      const btnAllow = actionsEl.querySelector('.btn-modal-allow');
-      const btnWl = actionsEl.querySelector('.btn-modal-whitelist');
-
-      if (btnBlock) btnBlock.onclick = () => blockDevice(resolvedId);
-      if (btnAllow) btnAllow.onclick = () => allowDevice(resolvedId);
-      if (btnWl) btnWl.onclick = () => whitelistDevice(resolvedId);
+      if (isCriticalThreat) {
+        // Threat / Virus: Already blocked, cannot allow a virus, no block button needed since it is already blocked
+        actionsEl.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge-status badge-danger" style="padding: 6px 14px; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs); letter-spacing: 0.04em;">
+              MALICIOUS THREAT ISOLATED — PORT BLOCKED
+            </span>
+          </div>
+        `;
+      } else if (isSuspiciousContained) {
+        // Suspicious / Unknown: Blocked by default in zero-trust containment until user allows
+        actionsEl.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="badge-status badge-warning" style="padding: 6px 12px; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs);">
+              CONTAINED (BLOCKED UNTIL ALLOWED)
+            </span>
+            <button type="button" class="btn-primary-action btn-modal-allow-sus" style="background-color: var(--safe-text); color: #070B14; font-weight: 700; border: none; padding: 7px 16px; border-radius: var(--radius-xs); cursor: pointer;">
+              Authorize & Allow Device
+            </button>
+          </div>
+        `;
+        const btnAllow = actionsEl.querySelector('.btn-modal-allow-sus');
+        if (btnAllow) btnAllow.onclick = () => allowDevice(resolvedId);
+      } else {
+        // Safe device: Operating cleanly, no allow or block button needed
+        actionsEl.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge-status badge-safe" style="padding: 6px 14px; font-size: 11px; font-weight: 700; border-radius: var(--radius-xs); letter-spacing: 0.04em;">
+              VERIFIED SAFE & ACTIVE PERIPHERAL
+            </span>
+          </div>
+        `;
+      }
     }
 
     modal.classList.remove('hidden');
