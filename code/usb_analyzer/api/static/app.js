@@ -930,7 +930,80 @@
     const el = document.getElementById('last-refresh-time');
     if (el) {
       const now = new Date();
-      el.textContent = `Sync: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const wsActive = wsClient && wsClient.readyState === WebSocket.OPEN;
+      el.textContent = wsActive ? `WS: Live (${timeStr})` : `Sync: ${timeStr}`;
+    }
+  }
+
+  // --- Real-Time WebSocket Telemetry Stream ---
+  let wsClient = null;
+  let wsReconnectTimer = null;
+
+  function initWebSocket() {
+    if (wsClient && (wsClient.readyState === WebSocket.OPEN || wsClient.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}${CONFIG.API_PREFIX}/ws/telemetry`;
+    const syncDot = document.getElementById('ws-pulse-dot') || document.querySelector('.sync-dot');
+    const syncText = document.getElementById('last-refresh-time');
+
+    try {
+      wsClient = new WebSocket(wsUrl);
+
+      wsClient.onopen = () => {
+        if (syncDot) {
+          syncDot.style.backgroundColor = 'var(--safe-text)';
+          syncDot.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
+        }
+        if (syncText) {
+          syncText.textContent = 'WS: Live';
+        }
+        if (wsReconnectTimer) {
+          clearTimeout(wsReconnectTimer);
+          wsReconnectTimer = null;
+        }
+      };
+
+      wsClient.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'connected') return;
+
+          // Instantaneous telemetry refresh on broadcast
+          fetchTelemetry();
+          if (msg.type === 'whitelist_updated') {
+            fetchWhitelist();
+          }
+          if (msg.type === 'threat_alert') {
+            soundEngine.playThreatAlert();
+          }
+          updateSyncTime();
+        } catch (_) {}
+      };
+
+      wsClient.onclose = () => {
+        if (syncDot) {
+          syncDot.style.backgroundColor = 'var(--warning-text)';
+          syncDot.style.boxShadow = 'none';
+        }
+        if (syncText) {
+          syncText.textContent = 'WS: Reconnecting...';
+        }
+        if (!wsReconnectTimer) {
+          wsReconnectTimer = setTimeout(initWebSocket, 3000);
+        }
+      };
+
+      wsClient.onerror = () => {
+        if (wsClient) wsClient.close();
+      };
+    } catch (_) {
+      if (!wsReconnectTimer) {
+        wsReconnectTimer = setTimeout(initWebSocket, 5000);
+      }
     }
   }
 
@@ -1157,9 +1230,10 @@
     initCharts();
     setupEventListeners();
 
-    // Initial fetch
+    // Initial fetch and WebSocket connection
     fetchTelemetry();
     fetchWhitelist();
+    initWebSocket();
 
     // Polling intervals
     setInterval(fetchTelemetry, CONFIG.POLL_INTERVAL_MS);

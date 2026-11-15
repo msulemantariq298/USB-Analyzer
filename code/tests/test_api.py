@@ -160,3 +160,14 @@ def test_open_endpoint_with_active_dashboard_tab_returns_self_closing_html() -> 
     assert any(a["device_id"] == "USB\\TEST_ACTIVE" for a in data.get("actions", []))
 
 
+def test_websocket_telemetry_stream() -> None:
+    client = TestClient(app)
+    with client.websocket_connect("/api/v1/ws/telemetry") as ws:
+        init_msg = ws.receive_json()
+        assert init_msg["type"] == "connected"
+        assert "USB Analyzer" in init_msg["message"]
+        ws.send_text("ping")
+        pong = ws.receive_text()
+        assert pong == "pong"
+
+

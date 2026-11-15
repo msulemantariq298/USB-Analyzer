@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=38.0">
+  <link rel="stylesheet" href="/static/styles.css?v=39.0">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -132,9 +132,9 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
             <span>CSV Log</span>
           </button>
-          <div class="sync-indicator">
-            <span class="sync-dot"></span>
-            <span id="last-refresh-time" class="sync-time">Sync: Just now</span>
+          <div class="sync-indicator" id="ws-sync-badge" title="Sub-Millisecond Real-Time WebSocket Telemetry Stream">
+            <span class="sync-dot" id="ws-pulse-dot"></span>
+            <span id="last-refresh-time" class="sync-time">WS: Live</span>
           </div>
         </div>
       </header>
@@ -497,6 +497,6 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <!-- Application Logic -->
-  <script src="/static/app.js?v=38.0"></script>
+  <script src="/static/app.js?v=39.0"></script>
 </body>
 </html>

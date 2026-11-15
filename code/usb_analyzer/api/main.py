@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -36,6 +36,39 @@ policy_engine = PolicyEngine(
 hid_detector = BadUsbDetector(event_sink=event_store, policy_engine=policy_engine)
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
+
+
+class ConnectionManager:
+    """Manages active WebSocket telemetry streaming clients."""
+
+    def __init__(self) -> None:
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket) -> None:
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, message: dict[str, Any]) -> None:
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+
+ws_manager = ConnectionManager()
+
+
+async def broadcast_telemetry(msg_type: str = "telemetry_update", payload: Any = None) -> None:
+    await ws_manager.broadcast({
+        "type": msg_type,
+        "payload": payload,
+        "timestamp": time.time(),
+    })
 
 
 @app.middleware("http")
@@ -157,6 +190,25 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.websocket(f"{settings.api_prefix}/ws/telemetry")
+async def websocket_telemetry_endpoint(websocket: WebSocket) -> None:
+    await ws_manager.connect(websocket)
+    try:
+        await websocket.send_json({
+            "type": "connected",
+            "message": "USB Analyzer Real-Time Telemetry Stream Connected",
+            "timestamp": time.time(),
+        })
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)
+
+
 @app.get(f"{settings.api_prefix}/events", response_model=list[DeviceEvent])
 def list_events(
     limit: int = Query(default=100, ge=1, le=1000),
@@ -169,8 +221,9 @@ def list_events(
     response_model=DeviceEvent,
     status_code=201,
 )
-def create_event(event: DeviceEvent) -> DeviceEvent:
+async def create_event(event: DeviceEvent) -> DeviceEvent:
     added = event_store.add(event)
+    await broadcast_telemetry("event_added", added.model_dump(mode="json"))
     if event.severity == EventSeverity.CRITICAL:
         summary = event.details.get("summary") or event.details.get("reason") or "Critical hardware threat intercepted"
         send_desktop_notification(
@@ -201,7 +254,7 @@ class DeviceAllowRequest(BaseModel):
 
 
 @app.post(f"{settings.api_prefix}/devices/block")
-def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
+async def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
     decision, block_event = policy_engine.block_threat(
         device_id=req.device_id,
         reason=req.reason,
@@ -209,6 +262,7 @@ def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
         details={"action": "blocked_by_user"},
     )
     event_store.add(block_event)
+    await broadcast_telemetry("device_blocked", {"device_id": req.device_id, "reason": req.reason})
     send_desktop_notification(
         "USB Analyzer — Device Blocked",
         f"Action taken: Port disabled for {req.device_id}.",
@@ -224,7 +278,7 @@ def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
 
 
 @app.post(f"{settings.api_prefix}/devices/allow")
-def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
+async def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
     allow_event = DeviceEvent(
         device_id=req.device_id,
         source="user-decision",
@@ -241,6 +295,7 @@ def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
         },
     )
     event_store.add(allow_event)
+    await broadcast_telemetry("device_allowed", {"device_id": req.device_id, "reason": req.reason})
     return {
         "status": "allowed",
         "device_id": req.device_id,
@@ -249,8 +304,9 @@ def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
 
 
 @app.delete(f"{settings.api_prefix}/events", status_code=200)
-def clear_all_events() -> dict[str, int]:
+async def clear_all_events() -> dict[str, int]:
     count = event_store.clear()
+    await broadcast_telemetry("events_cleared", {"deleted": count})
     return {"deleted": count}
 
 
@@ -267,17 +323,20 @@ def list_whitelist() -> list[WhitelistEntry]:
     response_model=WhitelistEntry,
     status_code=201,
 )
-def add_whitelist_entry(entry: WhitelistEntry) -> WhitelistEntry:
-    return whitelist_store.add(entry)
+async def add_whitelist_entry(entry: WhitelistEntry) -> WhitelistEntry:
+    added = whitelist_store.add(entry)
+    await broadcast_telemetry("whitelist_updated")
+    return added
 
 
 @app.delete(
     f"{settings.api_prefix}/policy/whitelist/{{entry_id}}",
     status_code=204,
 )
-def delete_whitelist_entry(entry_id: UUID) -> None:
+async def delete_whitelist_entry(entry_id: UUID) -> None:
     if not whitelist_store.remove(entry_id):
         raise HTTPException(status_code=404, detail="Whitelist entry not found")
+    await broadcast_telemetry("whitelist_updated")
 
 
 @app.get(f"{settings.api_prefix}/policy/status")
@@ -371,12 +430,13 @@ class BadUsbSimulationRequest(BaseModel):
 
 
 @app.post(f"{settings.api_prefix}/simulate/badusb")
-def simulate_badusb(req: BadUsbSimulationRequest) -> dict[str, Any]:
+async def simulate_badusb(req: BadUsbSimulationRequest) -> dict[str, Any]:
     hid_detector.register_hid_device(req.device_id, req.device_name)
     alert = hid_detector.simulate_injection(
         char_count=req.char_count,
         delay_per_char_seconds=req.delay_ms / 1000.0,
     )
+    await broadcast_telemetry("badusb_simulated", {"detected": alert is not None})
     return {
         "status": "simulated",
         "detected": alert is not None,
@@ -389,7 +449,7 @@ class ScenarioSimulationRequest(BaseModel):
 
 
 @app.post(f"{settings.api_prefix}/simulate/scenario")
-def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
+async def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
     scenario = req.scenario.strip().lower()
 
     if scenario == "safe_usb":
@@ -449,6 +509,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
                 },
             )
         )
+        await broadcast_telemetry("scenario_simulated", {"scenario": "safe_usb"})
         return {
             "status": "simulated",
             "scenario": "safe_usb",
@@ -481,6 +542,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
             severity="critical",
             device_id=device_id,
         )
+        await broadcast_telemetry("threat_alert", {"scenario": "badusb", "device_id": device_id})
         return {
             "status": "simulated",
             "scenario": "badusb",
@@ -549,6 +611,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
             severity="critical",
             device_id=device_id,
         )
+        await broadcast_telemetry("threat_alert", {"scenario": "malware_drive", "device_id": device_id})
         return {
             "status": "simulated",
             "scenario": "malware_drive",
@@ -601,6 +664,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
             severity="warning",
             device_id=device_id,
         )
+        await broadcast_telemetry("device_contained", {"scenario": "unauthorized_device", "device_id": device_id})
         return {
             "status": "simulated",
             "scenario": "unauthorized_device",
@@ -674,6 +738,7 @@ def simulate_scenario(req: ScenarioSimulationRequest) -> dict[str, Any]:
         else:
             summary = "Spoof check did not trigger."
 
+        await broadcast_telemetry("threat_alert", {"scenario": "spoofed_identity", "device_id": device_id})
         return {
             "status": "simulated",
             "scenario": "spoofed_identity",
