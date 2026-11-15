@@ -67,32 +67,45 @@
     playSuccessChime() {
       this.playTone(523.25, 'sine', 0.15, 0);
       this.playTone(659.25, 'sine', 0.2, 0.12);
+    },
+    playHapticClick() {
+      this.playTone(750, 'sine', 0.04, 0);
     }
   };
 
-  // --- Simple, Smooth Theme Transition Controller ---
+  // --- Simple & Buttery-Smooth Theme Transition Controller ---
   function applyTheme(targetTheme, animate = false) {
     const root = document.documentElement;
     const toggleLabel = document.getElementById('theme-toggle-label');
 
-    if (animate) {
+    const updateDOM = () => {
+      root.setAttribute('data-theme', targetTheme);
+      state.theme = targetTheme;
+      localStorage.setItem('usb_analyzer_theme', targetTheme);
+
+      if (toggleLabel) {
+        toggleLabel.textContent = targetTheme === 'dark' ? 'Dark Theme' : 'Light Theme';
+      }
+
+      updateChartThemes(targetTheme);
+    };
+
+    if (!animate) {
+      updateDOM();
+      return;
+    }
+
+    // Use native View Transitions API when available for 60/120fps crossfade
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        updateDOM();
+      });
+    } else {
       root.classList.add('theme-transitioning');
-    }
-
-    root.setAttribute('data-theme', targetTheme);
-    state.theme = targetTheme;
-    localStorage.setItem('usb_analyzer_theme', targetTheme);
-
-    if (toggleLabel) {
-      toggleLabel.textContent = targetTheme === 'dark' ? 'Dark Theme' : 'Light Theme';
-    }
-
-    updateChartThemes(targetTheme);
-
-    if (animate) {
+      updateDOM();
       setTimeout(() => {
         root.classList.remove('theme-transitioning');
-      }, 250);
+      }, 220);
     }
   }
 
@@ -102,7 +115,7 @@
     const toggleBtn = document.getElementById('theme-toggle');
     if (toggleBtn) {
       toggleBtn.addEventListener('click', () => {
-        soundEngine.playSuccessChime();
+        soundEngine.playHapticClick();
         const next = state.theme === 'dark' ? 'light' : 'dark';
         applyTheme(next, true);
       });
