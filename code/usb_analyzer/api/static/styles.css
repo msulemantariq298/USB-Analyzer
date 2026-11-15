@@ -12,10 +12,10 @@
 }
 
 /* ==========================================================================
-   1. Design Tokens & Theme Matrix
+   1. Design Tokens & Theme Matrix (Black, White & Deep Technical Blue)
    ========================================================================== */
 :root {
-  /* Canvas & Surfaces (Clean Crisp Slate-White) */
+  /* Canvas & Surfaces (Crisp Minimalist Slate-White) */
   --canvas-bg: #f8fafc;
   --surface-card: #ffffff;
   --surface-subtle: #f1f5f9;
@@ -34,14 +34,14 @@
   --font-sans: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
 
-  --text-main: #0f172a;       /* Midnight slate ink */
+  --text-main: #0f172a;       /* High-contrast midnight slate */
   --text-muted: #475569;      /* Accessible secondary text */
   --text-dim: #64748b;        /* Subtle hints, labels, metadata */
   --text-light: #ffffff;
 
-  /* Blue Core System (Strict Blue & White Palette) */
+  /* Blue Core System (Strict Blue, Black & White Palette) */
   --blue-anchor: #0f2b5c;     /* Deep navy cobalt anchor */
-  --blue-primary: #1d4ed8;    /* Royal cobalt primary */
+  --blue-primary: #1d4ed8;    /* Royal cobalt primary CTA */
   --blue-primary-hover: #1e40af;
   --blue-tint: #eff6ff;       /* Crisp ice blue tint */
   --blue-border: #bfdbfe;
@@ -66,7 +66,7 @@
 }
 
 :root[data-theme="dark"] {
-  /* Canvas & Surfaces (True Dark Neutral Navy / Black) */
+  /* Canvas & Surfaces (True Dark Obsidian / Slate-Navy) */
   --canvas-bg: #070c18;
   --surface-card: #0e172a;
   --surface-subtle: #131e36;
@@ -136,7 +136,7 @@ body {
 }
 
 /* ==========================================================================
-   3. Topbar Navigation (Minimalist Executive Header)
+   3. Topbar Navigation (Minimalist Executive Command Bar)
    ========================================================================== */
 .topbar {
   position: sticky;
@@ -586,7 +586,7 @@ body {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Legacy KPI class aliases */
+/* Backward compatibility aliases */
 .kpi-grid { display: grid; }
 .kpi-card { box-sizing: border-box; }
 .kpi-value { font-size: 1.7rem; }

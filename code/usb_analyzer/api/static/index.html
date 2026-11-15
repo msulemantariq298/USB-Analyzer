@@ -8,17 +8,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=12.0">
+    <link rel="stylesheet" href="/static/styles.css?v=15.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
-    <!-- Topbar Navigation (Minimalist Executive Header) -->
+    <!-- Topbar Navigation: Executive Security Command Header -->
     <header class="topbar">
       <div class="topbar-left">
         <a class="brand" href="/" aria-label="USB Analyzer Dashboard Home">
           <div class="brand-breadcrumb">
             <span class="brand-name">USB Analyzer Dashboard</span>
-            <span class="brand-tag">ENDPOINT DEFENSE</span>
+            <span class="brand-tag">ENDPOINT DEFENSE BUS</span>
           </div>
         </a>
       </div>
@@ -70,7 +70,7 @@
             <span id="theme-label">Dark</span>
           </button>
 
-          <!-- Hidden compatibility toggles for test suite -->
+          <!-- Hidden compatibility triggers for test suite -->
           <button id="simulate-dropdown-btn" hidden style="display:none;"></button>
           <div id="simulation-menu" hidden style="display:none;"></div>
           <button id="simulate-badusb-btn" hidden style="display:none;" data-scenario="badusb"></button>
@@ -115,11 +115,11 @@
           </div>
         </div>
 
-        <!-- Telemetry Architectural HUD Strip (Flat, Type-Led, Unified Compartments) -->
+        <!-- Architectural Telemetry HUD Strip: Single Container with Divided Hairlines -->
         <div class="telemetry-hud kpi-grid" aria-label="Telemetry KPI summary">
-          <!-- 1. The Deep Cobalt Anchor Card -->
+          <!-- 1. The Deep Cobalt Anchor Compartment -->
           <article class="hud-compartment kpi-card hud-anchor kpi-anchor-blue">
-            <span class="hud-label kpi-label">Total Events</span>
+            <span class="hud-label kpi-label">TOTAL EVENTS</span>
             <div class="hud-value-row">
               <strong id="total-events" class="hud-value kpi-value num">0</strong>
             </div>
@@ -128,7 +128,7 @@
 
           <!-- 2. Devices Blocked -->
           <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">Devices Blocked</span>
+            <span class="hud-label kpi-label">DEVICES BLOCKED</span>
             <div class="hud-value-row">
               <strong id="blocked-count" class="hud-value kpi-value num">0</strong>
             </div>
@@ -137,7 +137,7 @@
 
           <!-- 3. Policy Warnings -->
           <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">Suspicious Warnings</span>
+            <span class="hud-label kpi-label">POLICY WARNINGS</span>
             <div class="hud-value-row">
               <strong id="warning-events" class="hud-value kpi-value num">0</strong>
             </div>
@@ -146,7 +146,7 @@
 
           <!-- 4. Critical Threats -->
           <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">Critical Threats</span>
+            <span class="hud-label kpi-label">CRITICAL THREATS</span>
             <div class="hud-value-row">
               <strong id="critical-events" class="hud-value kpi-value num">0</strong>
             </div>
@@ -155,7 +155,7 @@
 
           <!-- 5. Active Scans -->
           <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">Storage Scans</span>
+            <span class="hud-label kpi-label">STORAGE SCANS</span>
             <div class="hud-value-row">
               <strong id="active-scans" class="hud-value kpi-value num">0</strong>
             </div>
@@ -164,7 +164,7 @@
 
           <!-- 6. Flagged Files -->
           <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">Flagged Files</span>
+            <span class="hud-label kpi-label">FLAGGED FILES</span>
             <div class="hud-value-row">
               <strong id="flagged-files" class="hud-value kpi-value num">0</strong>
             </div>
@@ -488,7 +488,6 @@
     <div id="venom-transition-overlay" class="venom-overlay" aria-hidden="true" hidden>
       <svg class="venom-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
         <defs>
-          <!-- Organic fluid goo filter combining high-frequency turbulence and alpha thresholding -->
           <filter id="venom-goo-heavy" x="-40%" y="-40%" width="180%" height="180%">
             <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="14" result="noise"/>
             <feDisplacementMap in="SourceGraphic" in2="noise" scale="38" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
@@ -516,6 +515,6 @@
       </svg>
     </div>
 
-    <script src="/static/app.js?v=12.0"></script>
+    <script src="/static/app.js?v=15.0"></script>
   </body>
 </html>
