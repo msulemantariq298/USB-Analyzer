@@ -1,520 +1,543 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f8fafc">
-    <title>USB Analyzer Dashboard — Endpoint Hardware Defense</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=15.0">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
-  <body>
-    <!-- Topbar Navigation: Executive Security Command Header -->
-    <header class="topbar">
-      <div class="topbar-left">
-        <a class="brand" href="/" aria-label="USB Analyzer Dashboard Home">
-          <div class="brand-breadcrumb">
-            <span class="brand-name">USB Analyzer Dashboard</span>
-            <span class="brand-tag">ENDPOINT DEFENSE BUS</span>
-          </div>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>USB Analyzer — Endpoint Hardware Defense Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=30.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- Cinematic Venom Symbiote SVG Filters -->
+  <svg class="venom-svg-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="venom-goo">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur" />
+        <feColorMatrix in="blur" mode="matrix" values="
+          1 0 0 0 0
+          0 1 0 0 0
+          0 0 1 0 0
+          0 0 0 32 -13" result="goo" />
+        <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+      </filter>
+      <filter id="venom-organic-edge">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="28" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Venom Symbiote Liquid Transition Overlay -->
+  <div id="venom-overlay" class="venom-overlay" aria-hidden="true">
+    <div class="venom-symbiote-blob blob-1"></div>
+    <div class="venom-symbiote-blob blob-2"></div>
+    <div class="venom-symbiote-blob blob-3"></div>
+    <div class="venom-symbiote-blob blob-4"></div>
+    <div class="venom-symbiote-blob blob-5"></div>
+  </div>
+
+  <div class="app-shell">
+    <!-- Left Navigation Rail / Command Deck -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-monogram">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+        </div>
+        <div class="brand-meta">
+          <div class="brand-title">USB Analyzer Dashboard</div>
+          <div class="brand-badge">ENDPOINT DEFENSE BUS</div>
+        </div>
+      </div>
+
+      <div class="sidebar-status-pill">
+        <span class="status-pulse-dot" id="bus-status-dot"></span>
+        <span class="status-pill-text" id="api-status">BUS ARMED | ONLINE</span>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Main Navigation">
+        <div class="nav-section-label">OPERATIONS</div>
+        <a href="#section-monitor" class="nav-item active" id="nav-monitor">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="nav-label">Live Telemetry</span>
+          <span class="nav-badge" id="nav-active-badge">0</span>
         </a>
+        <a href="#section-diagnostics" class="nav-item" id="nav-diagnostics">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span class="nav-label">Diagnostics Lab</span>
+        </a>
+        <a href="#section-analytics" class="nav-item" id="nav-analytics">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
+          <span class="nav-label">Threat Analytics</span>
+        </a>
+        <a href="#section-whitelist" class="nav-item" id="nav-whitelist">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span class="nav-label">Hardware Whitelist</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-defense-card">
+        <div class="card-caption">POLICY ENGINE</div>
+        <div class="defense-mode-indicator">
+          <span class="mode-icon">🛡️</span>
+          <div class="mode-text">
+            <strong id="sidebar-policy-mode">ENFORCE MODE</strong>
+            <small>Active zero-trust port isolation</small>
+          </div>
+        </div>
       </div>
 
-      <!-- Quick Actions & Status Indicators -->
-      <div class="topbar-actions">
-        <div class="status-pill-group">
-          <div class="connection" aria-live="polite">
-            <span class="connection-dot"></span>
-            <span id="api-status">Connecting...</span>
-          </div>
-
-          <div class="defense-status-pill" title="Automatic real-time threat defense active">
-            <span class="defense-dot"></span>
-            <span>ACTIVE DEFENSE</span>
-          </div>
+      <div class="sidebar-footer">
+        <div class="footer-control-row">
+          <button type="button" class="btn-tool" id="sound-toggle" title="Toggle real-time audio defense alerts">
+            <svg class="tool-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <span class="tool-label">Alerts On</span>
+          </button>
+          <button type="button" class="btn-tool" id="mitre-modal-btn" title="View MITRE ATT&CK Defense Matrix">
+            <svg class="tool-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span class="tool-label">MITRE</span>
+          </button>
         </div>
 
-        <div class="action-buttons">
-          <button id="sound-toggle-btn" class="btn btn-secondary btn-icon-text" type="button" title="Toggle audio alert chime for high-risk threats">
-            <svg id="sound-icon-svg" viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
-              <path d="M10 2a6 6 0 0 0-6 6v3.586l-.707.707A1 1 0 0 0 4 14h12a1 1 0 0 0 .707-1.707L16 11.586V8a6 6 0 0 0-6-6zM10 18a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 10 18z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span id="sound-label">Alerts On</span>
-          </button>
+        <button type="button" class="btn-sidebar-cta" id="export-pdf-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Export Incident PDF</span>
+        </button>
 
-          <button id="threat-matrix-btn" class="btn btn-secondary btn-icon-text" type="button" title="View 3-Tier Security Architecture and MITRE ATT&CK Mapping">
-            <svg viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
-              <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>MITRE Matrix</span>
-          </button>
-
-          <a id="export-pdf" class="btn btn-secondary btn-icon-text" href="/api/v1/reports/incident/pdf" download="usb_analyzer_incident_report.pdf" title="Export forensic incident report (PDF)">
-            <svg viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
-              <path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 3v10m-3-3 3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>Export Report (PDF)</span>
-          </a>
-
-          <button id="theme-toggle" class="btn btn-secondary btn-icon-text theme-toggle-btn" type="button" aria-label="Toggle dark and light theme" aria-pressed="false" title="Switch between Light and Dark theme (Venom Symbiote Transition)">
-            <svg id="theme-icon-moon" class="theme-icon theme-icon-moon" viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <svg id="theme-icon-sun" class="theme-icon theme-icon-sun" viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" aria-hidden="true" hidden>
-              <circle cx="10" cy="10" r="3.5"/>
-              <path d="M10 2v1.5M10 16.5V18M3.757 3.757l1.06 1.06M15.182 15.182l1.06 1.06M2 10h1.5M16.5 10H18M3.757 16.243l1.06-1.06M15.182 4.818l1.06-1.06" stroke-linecap="round"/>
-            </svg>
-            <span id="theme-label">Dark</span>
-          </button>
-
-          <!-- Hidden compatibility triggers for test suite -->
-          <button id="simulate-dropdown-btn" hidden style="display:none;"></button>
-          <div id="simulation-menu" hidden style="display:none;"></div>
-          <button id="simulate-badusb-btn" hidden style="display:none;" data-scenario="badusb"></button>
-        </div>
+        <!-- Venom Theme Toggle Button (Required id="theme-toggle") -->
+        <button type="button" class="btn-venom-toggle" id="theme-toggle" aria-label="Toggle Venom Dark/Light Theme">
+          <div class="venom-toggle-track">
+            <div class="venom-toggle-symbiote">
+              <span class="symbiote-eye eye-left"></span>
+              <span class="symbiote-eye eye-right"></span>
+            </div>
+          </div>
+          <span class="venom-toggle-label" id="theme-toggle-label">Venom Theme</span>
+        </button>
       </div>
-    </header>
+    </aside>
 
-    <main class="shell">
-      <!-- Live Security Alert Banner for Critical Incidents -->
-      <div id="security-alert-banner" class="alert-banner" hidden>
-        <div class="alert-left">
-          <div class="alert-icon-wrap" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-          </div>
-          <div class="alert-content">
-            <div class="alert-header">
-              <span class="alert-badge">SECURITY ALERT</span>
-              <strong id="alert-summary">High-risk USB anomaly intercepted</strong>
-            </div>
-            <span id="alert-detail" class="alert-sub">Device has been isolated per security policy.</span>
-          </div>
-        </div>
-        <button id="dismiss-alert-btn" class="alert-close" type="button" aria-label="Dismiss alert">&times;</button>
-      </div>
-
-      <!-- Page Overview Header -->
-      <section class="overview">
-        <div class="overview-header">
-          <div class="page-title-wrap">
-            <h1 id="page-title" class="page-title">Endpoint Threat Defense</h1>
-            <p class="page-lede">Continuous bus telemetry, automated forensic inspection, and zero-trust hardware containment.</p>
-          </div>
-          <div class="header-meta">
-            <div class="last-sync">
-              <span>Telemetry sync: </span>
-              <span id="last-update" class="sync-value font-mono">—</span>
-            </div>
-          </div>
+    <!-- Main Operational Canvas -->
+    <main class="app-main" id="main-content">
+      <!-- Command Stage Header -->
+      <header class="stage-header">
+        <div class="header-breadcrumbs">
+          <span class="crumb-prefix">SECURITY OPS</span>
+          <span class="crumb-sep">/</span>
+          <span class="crumb-active">REAL-TIME BUS MONITOR</span>
         </div>
 
-        <!-- Architectural Telemetry HUD Strip: Single Container with Divided Hairlines -->
-        <div class="telemetry-hud kpi-grid" aria-label="Telemetry KPI summary">
-          <!-- 1. The Deep Cobalt Anchor Compartment -->
-          <article class="hud-compartment kpi-card hud-anchor kpi-anchor-blue">
-            <span class="hud-label kpi-label">TOTAL EVENTS</span>
-            <div class="hud-value-row">
-              <strong id="total-events" class="hud-value kpi-value num">0</strong>
-            </div>
-            <span class="hud-caption kpi-subtext">Continuous telemetry stream</span>
-          </article>
+        <div class="header-search-wrapper">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="search-input" class="search-input" placeholder="Search device, VID, PID, serial, policy..." aria-label="Filter events">
+          <kbd class="search-kbd">/</kbd>
+        </div>
 
-          <!-- 2. Devices Blocked -->
-          <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">DEVICES BLOCKED</span>
-            <div class="hud-value-row">
-              <strong id="blocked-count" class="hud-value kpi-value num">0</strong>
-            </div>
-            <span class="hud-caption kpi-subtext">Hardware ports isolated</span>
-          </article>
+        <div class="header-actions">
+          <button type="button" class="btn-action-ghost" id="clear-log-btn" title="Purge database events log">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span>Clear Log</span>
+          </button>
+          <button type="button" class="btn-action-ghost" id="refresh-btn" title="Force telemetry poll">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <span>Refresh</span>
+          </button>
+          <button type="button" class="btn-action-ghost" id="export-csv-btn" title="Export audit trail as CSV">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>CSV Log</span>
+          </button>
+          <div class="sync-indicator">
+            <span class="sync-dot"></span>
+            <span id="last-refresh-time" class="sync-time">Sync: Just now</span>
+          </div>
+        </div>
+      </header>
 
-          <!-- 3. Policy Warnings -->
-          <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">POLICY WARNINGS</span>
-            <div class="hud-value-row">
-              <strong id="warning-events" class="hud-value kpi-value num">0</strong>
-            </div>
-            <span class="hud-caption kpi-subtext">Unregistered / triage review</span>
-          </article>
-
-          <!-- 4. Critical Threats -->
-          <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">CRITICAL THREATS</span>
-            <div class="hud-value-row">
-              <strong id="critical-events" class="hud-value kpi-value num">0</strong>
-            </div>
-            <span class="hud-caption kpi-subtext">BadUSB &amp; malware threats</span>
-          </article>
-
-          <!-- 5. Active Scans -->
-          <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">STORAGE SCANS</span>
-            <div class="hud-value-row">
-              <strong id="active-scans" class="hud-value kpi-value num">0</strong>
-            </div>
-            <span class="hud-caption kpi-subtext">Volumes inspected</span>
-          </article>
-
-          <!-- 6. Flagged Files -->
-          <article class="hud-compartment kpi-card">
-            <span class="hud-label kpi-label">FLAGGED FILES</span>
-            <div class="hud-value-row">
-              <strong id="flagged-files" class="hud-value kpi-value num">0</strong>
-            </div>
-            <span class="hud-caption kpi-subtext">Signatures &amp; SHA-256 matches</span>
-          </article>
+      <!-- High Urgency Real-Time Security Incident Banner (Hidden until alert) -->
+      <section id="security-alert-banner" class="security-alert-banner hidden" role="alert">
+        <div class="alert-icon-cell">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        </div>
+        <div class="alert-content">
+          <div class="alert-headline" id="alert-banner-title">CRITICAL HARDWARE THREAT INTERCEPTED</div>
+          <div class="alert-message" id="alert-banner-msg">An unauthorized USB injection payload was blocked at the physical bus layer.</div>
+        </div>
+        <div class="alert-actions">
+          <button type="button" class="btn-alert-inspect" id="alert-banner-inspect-btn">Investigate Device</button>
+          <button type="button" class="btn-alert-dismiss" id="alert-banner-dismiss-btn" aria-label="Dismiss alert">&times;</button>
         </div>
       </section>
 
-      <!-- Real-Time Activity Log & Forensics -->
-      <section class="panel-section" aria-labelledby="activity-title">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <h2 id="activity-title" class="panel-title">Real-Time Event Audit Log</h2>
-            <p class="panel-desc">Live hardware bus inspection, automated security verdicts, and policy actions.</p>
+      <!-- Ruled Telemetry HUD Strip (Not floating card soup - 1px crisp architectural partition) -->
+      <section class="telemetry-hud" aria-label="System Metrics Strip">
+        <div class="hud-compartment">
+          <span class="hud-label">TOTAL EVENTS</span>
+          <span class="hud-metric" id="total-events">0</span>
+          <span class="hud-foot">Bus telemetry stream</span>
+        </div>
+        <div class="hud-compartment">
+          <span class="hud-label">DEVICES BLOCKED</span>
+          <span class="hud-metric metric-danger" id="devices-blocked">0</span>
+          <span class="hud-foot">Hardware ports isolated</span>
+        </div>
+        <div class="hud-compartment">
+          <span class="hud-label">ACTIVE SCANS</span>
+          <span class="hud-metric metric-cobalt" id="active-scans">0</span>
+          <span class="hud-foot">Storage scanners active</span>
+        </div>
+        <div class="hud-compartment">
+          <span class="hud-label">POLICY WARNINGS</span>
+          <span class="hud-metric metric-warning" id="policy-warnings">0</span>
+          <span class="hud-foot">Unregistered peripherals</span>
+        </div>
+        <div class="hud-compartment">
+          <span class="hud-label">CRITICAL THREATS</span>
+          <span class="hud-metric metric-danger" id="critical-threats">0</span>
+          <span class="hud-foot">BadUSB & malware threats</span>
+        </div>
+        <div class="hud-compartment">
+          <span class="hud-label">FLAGGED FILES</span>
+          <span class="hud-metric metric-danger" id="flagged-files">0</span>
+          <span class="hud-foot">Malicious payload drops</span>
+        </div>
+        <div class="hud-compartment">
+          <span class="hud-label">STORAGE SCANS</span>
+          <span class="hud-metric" id="storage-scans">0</span>
+          <span class="hud-foot">Volumes analyzed</span>
+        </div>
+      </section>
+
+      <!-- Main Operational Body -->
+      <div class="stage-sections">
+
+        <!-- SECTION 1: Real-Time Event Audit Stream -->
+        <section class="ops-section" id="section-monitor">
+          <div class="section-top-bar">
+            <div class="section-heading-group">
+              <h2 class="section-title">Live Hardware Bus Audit Log</h2>
+              <p class="section-subtitle">Real-time WMI bus telemetry, automated heuristic verdicts, and active hardware port containment.</p>
+            </div>
+            <div class="section-view-toggle">
+              <button type="button" class="btn-toggle-view active" id="view-connected-btn">Connected Peripherals (Active View)</button>
+              <button type="button" class="btn-toggle-view" id="view-all-events-btn">Full Raw Telemetry Stream</button>
+            </div>
           </div>
-          <div class="table-tools">
-            <div class="view-switch-group" role="tablist" aria-label="Activity view format">
-              <button id="view-mode-consolidated" class="btn-tab active" type="button" role="tab" aria-selected="true">
-                Connected Devices (Summary)
+
+          <div class="table-container">
+            <table class="data-table" id="events-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="th-time">TIMESTAMP</th>
+                  <th scope="col" class="th-device">CONNECTED PERIPHERAL / HARDWARE ID</th>
+                  <th scope="col" class="th-class">BUS CLASS</th>
+                  <th scope="col" class="th-status">SECURITY STATUS</th>
+                  <th scope="col" class="th-reason">RISK / POLICY REASON</th>
+                  <th scope="col" class="th-action">ACTION TAKEN</th>
+                  <th scope="col" class="th-inspect">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="events-table-body">
+                <tr class="table-empty-row">
+                  <td colspan="7" class="table-empty-cell">
+                    <div class="empty-state-wrap">
+                      <span class="empty-icon">🛡️</span>
+                      <strong class="empty-title">Database Clean — Bus Defense Active</strong>
+                      <span class="empty-desc">Connect any USB peripheral or inject diagnostic vectors below to inspect forensic verdicts in real-time.</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SECTION 2: Zero-Trust Defense Diagnostics Lab (Tactile testbench, not a stark white bar!) -->
+        <section class="ops-section" id="section-diagnostics">
+          <div class="section-top-bar">
+            <div class="section-heading-group">
+              <div class="heading-tag">INTERACTIVE TESTBENCH</div>
+              <h2 class="section-title">Zero-Trust Attack Simulation Lab</h2>
+              <p class="section-subtitle">Inject synthetic hardware vectors to verify zero-trust containment policy, HID heuristic rate-limiting, and signature engines.</p>
+            </div>
+            <div class="diagnostics-status-pill" id="sim-status-pill">
+              <span class="sim-dot"></span>
+              <span id="sim-status-text">Engine Ready</span>
+            </div>
+          </div>
+
+          <div class="testbench-grid">
+            <button type="button" class="testbench-card testbench-safe" id="sim-safe-btn">
+              <div class="tb-card-header">
+                <span class="tb-badge badge-safe">SAFE VECTOR</span>
+                <span class="tb-target">CORP_DRIVE_001</span>
+              </div>
+              <h3 class="tb-card-title">Corporate Whitelisted Storage</h3>
+              <p class="tb-card-desc">Kingston DataTraveler matching verified corporate whitelist. Simulates immediate authorization and clean storage heuristic scan.</p>
+              <div class="tb-card-footer">
+                <span class="tb-action-label">Inject Safe Storage</span>
+                <span class="tb-arrow">&rarr;</span>
+              </div>
+            </button>
+
+            <button type="button" class="testbench-card testbench-danger" id="sim-badusb-btn">
+              <div class="tb-card-header">
+                <span class="tb-badge badge-danger">CRITICAL THREAT</span>
+                <span class="tb-target">DIGISPARK_001</span>
+              </div>
+              <h3 class="tb-card-title">BadUSB Keystroke Injection</h3>
+              <p class="tb-card-desc">Rapid simulated keystroke payload (35 chars @ 3ms). Triggers HID anomalous keystroke frequency detector and initiates port disable.</p>
+              <div class="tb-card-footer">
+                <span class="tb-action-label">Inject BadUSB</span>
+                <span class="tb-arrow">&rarr;</span>
+              </div>
+            </button>
+
+            <button type="button" class="testbench-card testbench-danger" id="sim-malware-btn">
+              <div class="tb-card-header">
+                <span class="tb-badge badge-danger">MALWARE VECTOR</span>
+                <span class="tb-target">INFECTED_DRIVE</span>
+              </div>
+              <h3 class="tb-card-title">Malware Carrier & Autorun</h3>
+              <p class="tb-card-desc">Simulates volume insertion with malicious autorun.inf and Trojan dropper payload. Triggers SHA-256 storage heuristic and volume quarantine.</p>
+              <div class="tb-card-footer">
+                <span class="tb-action-label">Inject Malware Media</span>
+                <span class="tb-arrow">&rarr;</span>
+              </div>
+            </button>
+
+            <button type="button" class="testbench-card testbench-warning" id="sim-unauthorized-btn">
+              <div class="tb-card-header">
+                <span class="tb-badge badge-warning">POLICY VIOLATION</span>
+                <span class="tb-target">UNKNOWN_VENDOR</span>
+              </div>
+              <h3 class="tb-card-title">Unknown Peripheral Triage</h3>
+              <p class="tb-card-desc">Unregistered mass storage device without whitelist authorization. Triggers immediate SOC policy warning and triage notification.</p>
+              <div class="tb-card-footer">
+                <span class="tb-action-label">Inject Unknown Device</span>
+                <span class="tb-arrow">&rarr;</span>
+              </div>
+            </button>
+
+            <button type="button" class="testbench-card testbench-danger" id="sim-spoofed-btn">
+              <div class="tb-card-header">
+                <span class="tb-badge badge-danger">SPOOFED IDENTITY</span>
+                <span class="tb-target">CLONED_VID_PID</span>
+              </div>
+              <h3 class="tb-card-title">Spoofed Hardware Clone</h3>
+              <p class="tb-card-desc">Malicious microcontroller spoofing legitimate corporate VID:PID but differing on serial/fingerprint. Intercepted by identity validation engine.</p>
+              <div class="tb-card-footer">
+                <span class="tb-action-label">Inject Cloned Hardware</span>
+                <span class="tb-arrow">&rarr;</span>
+              </div>
+            </button>
+          </div>
+        </section>
+
+        <!-- SECTION 3: Threat Analytics Bento Grid -->
+        <section class="ops-section" id="section-analytics">
+          <div class="section-top-bar">
+            <div class="section-heading-group">
+              <h2 class="section-title">Threat Analytics & Activity Intelligence</h2>
+              <p class="section-subtitle">Real-time forensic telemetry aggregation, risk severity spectrum, and subsystem volume metrics.</p>
+            </div>
+          </div>
+
+          <div class="bento-charts-grid">
+            <div class="bento-chart-card">
+              <div class="chart-header">
+                <div>
+                  <h3 class="chart-title">Threat Severity Distribution</h3>
+                  <span class="chart-desc">Proportion of safe vs anomalous and high-risk hardware events</span>
+                </div>
+                <span class="chart-live-badge">REAL-TIME</span>
+              </div>
+              <div class="chart-canvas-wrapper">
+                <canvas id="threat-chart" aria-label="Threat Severity Distribution Chart"></canvas>
+              </div>
+            </div>
+
+            <div class="bento-chart-card">
+              <div class="chart-header">
+                <div>
+                  <h3 class="chart-title">Telemetry by Activity Subsystem</h3>
+                  <span class="chart-desc">Breakdown of bus connections, storage scans, and containment actions</span>
+                </div>
+                <span class="chart-live-badge">VOLUME</span>
+              </div>
+              <div class="chart-canvas-wrapper">
+                <canvas id="activity-chart" aria-label="Telemetry Activity Type Chart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 4: Authorized Device Whitelist -->
+        <section class="ops-section" id="section-whitelist">
+          <div class="section-top-bar">
+            <div class="section-heading-group">
+              <h2 class="section-title">Zero-Trust Authorized Hardware Whitelist</h2>
+              <p class="section-subtitle">Cryptographically verified hardware IDs and serial numbers permitted to bypass zero-trust port isolation.</p>
+            </div>
+            <div class="whitelist-toolbar">
+              <div class="policy-mode-group">
+                <label for="policy-mode-select" class="policy-mode-label">Mode:</label>
+                <select id="policy-mode-select" class="policy-mode-select">
+                  <option value="enforce" selected>Enforce (Block &amp; Alert)</option>
+                  <option value="audit">Audit Only (Alert Only)</option>
+                </select>
+              </div>
+              <button type="button" class="btn-primary-action" id="open-whitelist-modal-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Add Trusted Device</span>
               </button>
-              <button id="view-mode-raw" class="btn-tab" type="button" role="tab" aria-selected="false">
-                All Raw Events
-              </button>
             </div>
-            <div class="search-wrap">
-              <input type="search" id="event-search" class="search-input" placeholder="Search device, type, risk, serial..." aria-label="Search events">
-              <span class="search-kbd-hint">/</span>
-            </div>
-            <button id="clear-events-btn" class="btn btn-secondary" type="button" title="Clear all recorded events from database">
-              <svg viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 6h12m-1 0l-.867 10.142A2 2 0 0 1 12.14 18H7.86a2 2 0 0 1-1.993-1.858L5 6m3 0V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>Clear Log</span>
-            </button>
-            <button id="refresh-events" class="btn btn-secondary refresh-btn" type="button" title="Refresh event log">
-              <svg viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
-                <path d="M16 10a6 6 0 1 1-1.76-4.24M16 4v4h-4" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>Refresh</span>
-            </button>
-            <a id="export-csv-btn" class="btn btn-secondary" href="/api/v1/reports/events.csv" download="usb_forensic_audit_events.csv" title="Download raw forensic event log in CSV format">
-              <svg viewBox="0 0 20 20" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 14v2a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-2M10 3v10m-3-3 3 3 3-3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span>CSV Log</span>
-            </a>
           </div>
-        </div>
 
-        <!-- Hardware Attack & Defense Diagnostics Lab (Integrated Testbench) -->
-        <div class="scenario-simulator-bar">
-          <div class="scenario-sim-label">
-            <span class="pulse-indicator" aria-hidden="true"></span>
-            <div class="scenario-sim-text-group">
-              <span class="scenario-sim-title">Defense Diagnostics Lab</span>
-              <span class="scenario-sim-caption">Inject simulated hardware vectors to verify zero-trust containment policy:</span>
-            </div>
+          <div class="table-container">
+            <table class="data-table" id="whitelist-table">
+              <thead>
+                <tr>
+                  <th scope="col">DEVICE NAME</th>
+                  <th scope="col">VENDOR ID</th>
+                  <th scope="col">PRODUCT ID</th>
+                  <th scope="col">SERIAL NUMBER</th>
+                  <th scope="col">POLICIES / NOTES</th>
+                  <th scope="col" class="th-inspect">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="whitelist-table-body">
+                <tr class="table-empty-row">
+                  <td colspan="6" class="table-empty-cell">Loading authorized whitelist registry...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div class="scenario-buttons">
-            <button class="scenario-btn" type="button" data-scenario="safe_usb" title="Simulate whitelisted corporate drive">
-              <span>Safe Storage</span>
-            </button>
-            <button class="scenario-btn" type="button" data-scenario="badusb" title="Simulate BadUSB rapid keystroke injection">
-              <span>BadUSB Injection</span>
-            </button>
-            <button class="scenario-btn" type="button" data-scenario="malware_drive" title="Simulate infected flash drive with Trojan dropper and autorun.inf">
-              <span>Infected Media</span>
-            </button>
-            <button class="scenario-btn" type="button" data-scenario="unauthorized_device" title="Simulate unregistered USB device">
-              <span>Unknown Peripheral</span>
-            </button>
-            <button class="scenario-btn" type="button" data-scenario="spoofed_identity" title="Simulate cloned VID/PID with forged hardware serial">
-              <span>Spoofed Hardware</span>
-            </button>
-          </div>
-        </div>
+        </section>
 
-        <div id="message" class="toast-message" role="status" aria-live="polite"></div>
-
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead id="events-table-head">
-              <tr>
-                <th scope="col">Time</th>
-                <th scope="col">Connected Device</th>
-                <th scope="col">Security Status</th>
-                <th scope="col">Risk / Reason</th>
-                <th scope="col">Action Taken</th>
-                <th scope="col" class="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="events-body">
-              <tr>
-                <td colspan="6" class="empty-state">Database reset clean. Connect any USB device to inspect security status in real-time.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Analytics Bento Grid -->
-      <section class="charts-bento" aria-label="Security Analytics">
-        <div class="bento-card">
-          <div class="bento-header">
-            <div>
-              <h2 class="bento-title">Threat Severity Distribution</h2>
-              <span class="bento-sub">Proportion of safe vs. high-risk events</span>
-            </div>
-            <span class="bento-tag">REAL-TIME</span>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="severity-chart"></canvas>
-          </div>
-        </div>
-
-        <div class="bento-card">
-          <div class="bento-header">
-            <div>
-              <h2 class="bento-title">Telemetry by Activity Type</h2>
-              <span class="bento-sub">Breakdown of connections, scans, and containment actions</span>
-            </div>
-            <span class="bento-tag">VOLUME</span>
-          </div>
-          <div class="chart-wrapper">
-            <canvas id="activity-chart"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <!-- Whitelist Management Panel -->
-      <section class="panel-section" aria-labelledby="whitelist-title">
-        <div class="panel-header">
-          <div class="panel-title-group">
-            <h2 id="whitelist-title" class="panel-title">Authorized Device Whitelist</h2>
-            <p class="panel-desc">Configure trusted USB hardware identities for enterprise access management.</p>
-          </div>
-          <button id="show-add-whitelist-btn" class="btn btn-secondary" type="button">
-            + Authorize New Device
-          </button>
-        </div>
-
-        <!-- Add Whitelist Form Drawer -->
-        <form id="add-whitelist-form" class="whitelist-form" hidden>
-          <div class="form-title">Register Trusted USB Peripheral</div>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="wl-name">Device Name *</label>
-              <input type="text" id="wl-name" required placeholder="e.g. Admin Kingston Drive">
-            </div>
-            <div class="form-field">
-              <label for="wl-serial">Physical Serial Number</label>
-              <input type="text" id="wl-serial" placeholder="e.g. 0014D12345678" class="font-mono">
-            </div>
-            <div class="form-field">
-              <label for="wl-vid">Vendor ID (VID)</label>
-              <input type="text" id="wl-vid" placeholder="e.g. 0951" maxlength="4" class="font-mono">
-            </div>
-            <div class="form-field">
-              <label for="wl-pid">Product ID (PID)</label>
-              <input type="text" id="wl-pid" placeholder="e.g. 1666" maxlength="4" class="font-mono">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Save to Whitelist</button>
-            <button type="button" id="cancel-whitelist-btn" class="btn btn-ghost">Cancel</button>
-          </div>
-        </form>
-
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Device Name</th>
-                <th scope="col">Hardware Serial</th>
-                <th scope="col">VID : PID</th>
-                <th scope="col">Authorized Date</th>
-                <th scope="col" class="text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody id="whitelist-body">
-              <tr><td colspan="5" class="empty-state">No authorized devices configured.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      </div>
     </main>
+  </div>
 
-    <!-- MITRE ATT&CK & Architecture Modal -->
-    <div id="threat-matrix-modal" class="modal-backdrop" hidden>
-      <div class="modal-card">
-        <div class="modal-header">
-          <div class="modal-title-group">
-            <span class="modal-badge">SECURITY ARCHITECTURE</span>
-            <h3 class="modal-title">3-Tier Defense &amp; MITRE ATT&amp;CK Mapping</h3>
-          </div>
-          <button id="close-matrix-modal-btn" class="modal-close-btn" type="button" aria-label="Close modal">&times;</button>
+  <!-- Device Forensic Inspection Modal -->
+  <div id="detail-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
+    <div class="modal-window modal-wide">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-badge">FORENSIC TELEMETRY</span>
+          <h2 class="modal-title" id="detail-modal-title">Device Inspection</h2>
         </div>
-        <div class="modal-body">
-          <p class="modal-intro">
-            Comprehensive defense taxonomy aligning endpoint hardware controls, behavioral cadence tracking, and storage threat scanning with the global MITRE ATT&amp;CK Enterprise matrix:
-          </p>
-          <div class="matrix-grid">
-            <div class="matrix-tier-card">
-              <div class="tier-badge tier-1">LAYER 1: HARDWARE &amp; IDENTITY</div>
-              <h4 class="tier-title">Bus Descriptor &amp; Whitelist Verification</h4>
-              <p class="tier-desc">Continuous PnP / WMI bus interception validating Vendor ID, Product ID, and physical serial against the cryptographic zero-trust whitelist.</p>
-              <div class="mitre-tags">
-                <span class="mitre-tag">MITRE T1200 (Hardware Additions)</span>
-                <span class="mitre-tag">MITRE T1036 (Masquerading / Spoofed Serial)</span>
-              </div>
-            </div>
-
-            <div class="matrix-tier-card">
-              <div class="tier-badge tier-2">LAYER 2: BEHAVIORAL CADENCE</div>
-              <h4 class="tier-title">Keystroke Dynamics (BadUSB / Rubber Ducky)</h4>
-              <p class="tier-desc">High-frequency sliding window statistical tracker calculating Inter-Key Intervals (IKIs), CPS throughput, and robotic variance to truncate injection attacks.</p>
-              <div class="mitre-tags">
-                <span class="mitre-tag">MITRE T1059 (Command &amp; Scripting Interpreter)</span>
-                <span class="mitre-tag">MITRE T1052.001 (Exfiltration via Physical Medium)</span>
-              </div>
-            </div>
-
-            <div class="matrix-tier-card">
-              <div class="tier-badge tier-3">LAYER 3: STORAGE &amp; CONTENT</div>
-              <h4 class="tier-title">YARA Signatures &amp; Autorun Quarantine</h4>
-              <p class="tier-desc">Multithreaded storage volume worker crawling file trees, executing YARA pattern searches, verifying SHA-256 hashes, and neutralizing malicious autoruns.</p>
-              <div class="mitre-tags">
-                <span class="mitre-tag">MITRE T1091 (Replication Through Removable Media)</span>
-                <span class="mitre-tag">MITRE T1547.001 (Boot/Logon Autostart: Autorun)</span>
-              </div>
-            </div>
-          </div>
+        <button type="button" class="modal-close-btn" id="close-detail-modal-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body" id="detail-modal-content">
+        <!-- Rendered dynamically in app.js -->
+      </div>
+      <div class="modal-footer" id="detail-modal-footer">
+        <button type="button" class="btn-action-ghost" id="detail-close-btn">Close</button>
+        <div class="modal-footer-actions" id="detail-dynamic-actions">
+          <!-- Dynamic triage actions (Block / Allow / Whitelist) -->
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Suspicious Device Action Modal (Windows Defender Style) -->
-    <div id="suspicious-triage-modal" class="modal-backdrop" hidden>
-      <div class="modal-card modal-triage-card">
-        <div class="modal-header triage-header">
-          <div class="modal-title-group">
-            <span class="triage-badge">ENDPOINT DEFENSE PROMPT</span>
-            <h3 class="modal-title">Suspicious USB Device Connected</h3>
-          </div>
-          <button id="close-triage-modal-btn" class="modal-close-btn" type="button" aria-label="Dismiss prompt">&times;</button>
+  <!-- Add Whitelist Device Modal -->
+  <div id="whitelist-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="whitelist-modal-title">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-badge">ZERO-TRUST REGISTRATION</span>
+          <h2 class="modal-title" id="whitelist-modal-title">Authorize New Hardware</h2>
         </div>
-        <div class="modal-body">
-          <div class="triage-alert-box">
-            <div class="triage-icon-wrap" aria-hidden="true">
-              <svg viewBox="0 0 20 20" fill="none" width="18" height="18" stroke="currentColor" stroke-width="1.8">
-                <path d="M10 2L2 17h16L10 2zM10 7v5m0 3v.01" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+        <button type="button" class="modal-close-btn" id="close-whitelist-modal-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="whitelist-form">
+        <div class="modal-body modal-form-body">
+          <div class="form-field">
+            <label for="wl-name" class="form-label">Friendly Device Name *</label>
+            <input type="text" id="wl-name" class="form-input" placeholder="e.g. Finance Vault Kingston DT50" required>
+          </div>
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="wl-vid" class="form-label">Vendor ID (VID)</label>
+              <input type="text" id="wl-vid" class="form-input form-mono" placeholder="e.g. 0951" maxlength="4">
             </div>
-            <div class="triage-info">
-              <strong id="triage-device-name">Unknown USB Peripheral</strong>
-              <div id="triage-device-id" class="font-mono small text-muted">USB\VID_????&amp;PID_????\...</div>
+            <div class="form-field">
+              <label for="wl-pid" class="form-label">Product ID (PID)</label>
+              <input type="text" id="wl-pid" class="form-input form-mono" placeholder="e.g. 1666" maxlength="4">
             </div>
           </div>
-
-          <div class="triage-explanation">
-            <strong>Identified Problem:</strong>
-            <p id="triage-reason-text">This device is not registered on your authorized corporate whitelist. Unverified USB hardware can carry malicious payloads, hidden storage partitions, or firmware exploits.</p>
+          <div class="form-field">
+            <label for="wl-serial" class="form-label">Hardware Serial Number *</label>
+            <input type="text" id="wl-serial" class="form-input form-mono" placeholder="e.g. CORP_DRIVE_001" required>
           </div>
+          <div class="form-field">
+            <label for="wl-notes" class="form-label">Authorization Justification</label>
+            <textarea id="wl-notes" class="form-textarea" rows="2" placeholder="Approved for executive offsite backups"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-action-ghost" id="cancel-whitelist-btn">Cancel</button>
+          <button type="submit" class="btn-primary-action" id="submit-whitelist-btn">Authorize Device</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-          <div class="triage-prompt-title">What action would you like to take?</div>
-
-          <div class="triage-actions-grid">
-            <button id="triage-block-btn" class="triage-btn triage-btn-block" type="button">
-              <div class="triage-btn-icon-wrap action-icon-block" aria-hidden="true">
-                <svg viewBox="0 0 20 20" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
-                  <circle cx="10" cy="10" r="8"/>
-                  <path d="M5 15L15 5"/>
-                </svg>
-              </div>
-              <div class="triage-btn-content">
-                <strong>Block Device Now</strong>
-                <span>Disables hardware port at OS level to neutralize potential threats immediately</span>
-              </div>
-            </button>
-
-            <button id="triage-trust-btn" class="triage-btn triage-btn-trust" type="button">
-              <div class="triage-btn-icon-wrap action-icon-trust" aria-hidden="true">
-                <svg viewBox="0 0 20 20" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
-                  <path d="M10 2L3 5.5v5.8c0 5.2 3.4 9.1 7 10.2 3.6-1.1 7-5 7-10.2V5.5L10 2z"/>
-                  <path d="M7 10.5l2 2 4-4"/>
-                </svg>
-              </div>
-              <div class="triage-btn-content">
-                <strong>Trust &amp; Whitelist Device</strong>
-                <span>Marks this device as Safe and saves it to your trusted hardware whitelist</span>
-              </div>
-            </button>
-
-            <button id="triage-leave-btn" class="triage-btn triage-btn-leave" type="button">
-              <div class="triage-btn-icon-wrap action-icon-leave" aria-hidden="true">
-                <svg viewBox="0 0 20 20" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2">
-                  <circle cx="10" cy="10" r="3"/>
-                  <path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z"/>
-                </svg>
-              </div>
-              <div class="triage-btn-content">
-                <strong>Let It Run (Allow Device)</strong>
-                <span>Permits this device to continue running without blocking and clears this warning</span>
-              </div>
-            </button>
+  <!-- MITRE ATT&CK Matrix Modal -->
+  <div id="mitre-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="mitre-modal-title">
+    <div class="modal-window modal-wide">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-badge">TACTICAL MAPPING</span>
+          <h2 class="modal-title" id="mitre-modal-title">USB Attack Vector Matrix &amp; Mitigations</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="close-mitre-modal-btn" aria-label="Close modal">&times;</button>
+      </div>
+      <div class="modal-body mitre-matrix-body">
+        <div class="mitre-grid">
+          <div class="mitre-card">
+            <div class="mitre-id">T1091 / T1200</div>
+            <h4 class="mitre-technique">Replication Through Removable Media</h4>
+            <p class="mitre-desc">Adversaries move into air-gapped networks via USB storage volumes carrying droppers or modified autorun scripts.</p>
+            <div class="mitre-defense"><strong>Defense:</strong> Automatic real-time volume hashing, autorun heuristic quarantine, and strict corporate whitelisting.</div>
+          </div>
+          <div class="mitre-card">
+            <div class="mitre-id">T1059.001</div>
+            <h4 class="mitre-technique">BadUSB Keystroke Injection</h4>
+            <p class="mitre-desc">Microcontrollers masquerade as standard human interface devices to inject rapid PowerShell commands.</p>
+            <div class="mitre-defense"><strong>Defense:</strong> Keystroke cadence heuristic detector (flagging &gt;15 cps bursts) and immediate port isolation.</div>
+          </div>
+          <div class="mitre-card">
+            <div class="mitre-id">T1036.001</div>
+            <h4 class="mitre-technique">Hardware Masquerading &amp; Spoofing</h4>
+            <p class="mitre-desc">Attacker flashes malicious USB device with known vendor VID/PID to mimic authorized enterprise peripherals.</p>
+            <div class="mitre-defense"><strong>Defense:</strong> Multi-factor hardware fingerprinting combining VID, PID, bus class, and unique hardware serial validation.</div>
+          </div>
+          <div class="mitre-card">
+            <div class="mitre-id">T1562.001</div>
+            <h4 class="mitre-technique">Disabling Security Tools</h4>
+            <p class="mitre-desc">Malicious peripherals attempt to disrupt endpoint protection services or terminate monitor daemons.</p>
+            <div class="mitre-defense"><strong>Defense:</strong> Out-of-band WMI polling heartbeat and persistent policy daemon with zero-trust fallbacks.</div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-      <div class="footer-inner">
-        <span>USB Analyzer Dashboard — Endpoint Hardware Defense</span>
-        <span class="footer-sep">•</span>
-        <span>SEECS NUST Information Security</span>
+      <div class="modal-footer">
+        <button type="button" class="btn-action-ghost" id="close-mitre-footer-btn">Close Matrix</button>
       </div>
-    </footer>
-
-    <!-- Venom Symbiote Liquid Morph Transition Overlay -->
-    <div id="venom-transition-overlay" class="venom-overlay" aria-hidden="true" hidden>
-      <svg class="venom-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid slice">
-        <defs>
-          <filter id="venom-goo-heavy" x="-40%" y="-40%" width="180%" height="180%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="14" result="noise"/>
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="38" xChannelSelector="R" yChannelSelector="G" result="displaced"/>
-            <feGaussianBlur in="displaced" stdDeviation="5" result="blur"/>
-            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 28 -12" result="goo"/>
-            <feBlend in="SourceGraphic" in2="goo" mode="multiply"/>
-          </filter>
-        </defs>
-        <g class="venom-layer-group" filter="url(#venom-goo-heavy)">
-          <!-- Core expansive symbiote body -->
-          <circle class="venom-core-orb" cx="200" cy="200" r="140"/>
-          
-          <!-- Primary reaching tendrils -->
-          <path class="venom-tendril-branch branch-1" d="M200 40 Q225 95 285 85 T355 45 Q325 125 375 175 T385 265 Q325 245 315 325 T215 385 Q195 325 125 345 T45 295 Q95 245 45 185 T75 85 Q145 115 200 40 Z"/>
-          
-          <!-- Secondary visceral tendrils -->
-          <path class="venom-tendril-branch branch-2" d="M200 20 C240 70, 270 50, 310 25 C295 85, 345 95, 385 65 C355 125, 390 150, 435 140 C385 185, 410 220, 465 235 C405 260, 420 300, 460 335 C395 335, 400 380, 425 425 C365 390, 345 430, 350 480 C305 425, 275 450, 255 490 C230 435, 195 450, 165 485 C165 425, 125 420, 85 450 C110 395, 75 370, 30 375 C75 330, 50 295, 5 275 C65 250, 50 210, 15 175 C75 175, 75 130, 50 85 C110 120, 130 80, 125 30 C170 85, 200 60, 200 20 Z"/>
-          
-          <!-- Splatter and micro droplets -->
-          <circle class="venom-droplet d1" cx="340" cy="110" r="26"/>
-          <circle class="venom-droplet d2" cx="100" cy="90" r="30"/>
-          <circle class="venom-droplet d3" cx="70" cy="310" r="24"/>
-          <circle class="venom-droplet d4" cx="320" cy="330" r="28"/>
-        </g>
-      </svg>
     </div>
+  </div>
 
-    <script src="/static/app.js?v=15.0"></script>
-  </body>
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Application Logic -->
+  <script src="/static/app.js?v=30.0"></script>
+</body>
 </html>
