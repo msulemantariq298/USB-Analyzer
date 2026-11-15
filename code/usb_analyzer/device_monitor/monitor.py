@@ -302,26 +302,33 @@ class DeviceMonitor:
                     return
 
                 # 3. Whitelist check (if explicit whitelist entry exists)
-                decision, policy_events = self.policy_engine.evaluate_device(
-                    device_id=event.device_id,
+                matched_rule = self.policy_engine.whitelist_store.find_match(
                     serial_number=serial,
                     vendor_id=fp.vendor_id,
                     product_id=fp.product_id,
-                    details=event.details,
-                )
+                ) if hasattr(self.policy_engine, "whitelist_store") else None
 
-                if decision.allowed and decision.action == "allow":
-                    rule_name = decision.matched_entry.name if decision.matched_entry else "Whitelist"
+                if matched_rule is not None:
                     event.details["verdict"] = "SAFE"
                     event.details["risk"] = "None (Authorized Peripheral)"
                     event.details["action_taken"] = "Allowed & Active"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Authorized by whitelist rule '{rule_name}'. Action taken: Allowed."
-                    for pe in policy_events:
-                        pe.details["verdict"] = "SAFE"
-                        pe.details["risk"] = "None (Authorized Peripheral)"
-                        pe.details["action_taken"] = "Allowed & Active"
-                        pe.details["summary"] = event.details["summary"]
-                        self.event_sink.add(pe)
+                    event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Authorized by whitelist rule '{matched_rule.name}'. Action taken: Allowed."
+                    wl_event = DeviceEvent(
+                        device_id=event.device_id,
+                        source="policy-engine",
+                        severity=EventSeverity.INFO,
+                        event_type="policy.allowed",
+                        details={
+                            "reason": f"Device matched whitelist rule '{matched_rule.name}'.",
+                            "action": "allow",
+                            "verdict": "SAFE",
+                            "risk": "None (Authorized Peripheral)",
+                            "action_taken": "Allowed & Active",
+                            "summary": event.details["summary"],
+                            **event.details,
+                        },
+                    )
+                    self.event_sink.add(wl_event)
                 elif is_standard_peripheral(dev_type):
                     # Standard Everyday Peripherals (Keyboard, Mouse, Storage Drive, Audio, Webcam)
                     # Safe by default! Monitored dynamically by BadUSB detector and storage scanner.
@@ -330,7 +337,14 @@ class DeviceMonitor:
                     event.details["action_taken"] = "Allowed & Monitored"
                     event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Standard desktop peripheral connected and active."
                 else:
-                    # Truly Unrecognized / Unknown Raw Hardware -> Held in containment (blocked until user allows)
+                    # Truly Unrecognized / Unknown Raw Hardware -> Held in zero-trust containment (blocked until user allows)
+                    decision, policy_events = self.policy_engine.evaluate_device(
+                        device_id=event.device_id,
+                        serial_number=serial,
+                        vendor_id=fp.vendor_id,
+                        product_id=fp.product_id,
+                        details=event.details,
+                    )
                     event.details["verdict"] = "WARNING"
                     event.details["risk"] = "Unrecognized Hardware (Contained)"
                     event.details["action_taken"] = "Contained (Blocked until Allowed)"
@@ -342,28 +356,6 @@ class DeviceMonitor:
                         pe.details["action_taken"] = "Contained (Blocked until Allowed)"
                         pe.details["summary"] = event.details["summary"]
                         self.event_sink.add(pe)
-
-            if self.storage_scan_scheduler is not None:
-                for device_id, device in current.items():
-                    if device_id in self.blocked_device_ids:
-                        continue  # Do not scan blocked devices
-                    old_device = previous.get(device_id)
-                    previous_paths = {
-                        path.casefold()
-                        for path in old_device.volume_paths
-                    } if old_device is not None else set()
-                    for volume_path in device.volume_paths:
-                        if volume_path.casefold() not in previous_paths:
-                            self.storage_scan_scheduler.schedule(
-                                device_id,
-                                volume_path,
-                            )
-                        elif hasattr(self.storage_scan_scheduler, "check_and_reschedule"):
-                            self.storage_scan_scheduler.check_and_reschedule(
-                                device_id,
-                                volume_path,
-                            )
-            previous = current
 
 
 def run_monitor(
