@@ -155,79 +155,17 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
-   Cinematic Venom Symbiote Liquid Transition
+   Simple, Smooth Theme Transition
    -------------------------------------------------------------------------- */
-.venom-svg-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.venom-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 99999;
-  filter: url(#venom-goo) url(#venom-organic-edge);
-  overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-}
-
-.venom-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.venom-symbiote-blob {
-  position: absolute;
-  border-radius: 50%;
-  background: #000000;
-  transform: translate(-50%, -50%) scale(0);
-  pointer-events: none;
-}
-
-html[data-theme="light"] .venom-symbiote-blob {
-  background: #070B14;
-}
-
-.animating-to-light .venom-symbiote-blob {
-  background: #F8FAFC;
-}
-.animating-to-dark .venom-symbiote-blob {
-  background: #070B14;
-}
-
-.blob-1 { top: 50%; left: 50%; width: 200vmax; height: 200vmax; }
-.blob-2 { top: 20%; left: 30%; width: 140vmax; height: 140vmax; }
-.blob-3 { top: 80%; left: 70%; width: 160vmax; height: 160vmax; }
-.blob-4 { top: 10%; left: 90%; width: 120vmax; height: 120vmax; }
-.blob-5 { top: 90%; left: 10%; width: 130vmax; height: 130vmax; }
-
-.venom-overlay.expanding .blob-1 { animation: venom-expand 0.65s var(--ease-spring) forwards; }
-.venom-overlay.expanding .blob-2 { animation: venom-expand 0.7s var(--ease-spring) 0.05s forwards; }
-.venom-overlay.expanding .blob-3 { animation: venom-expand 0.75s var(--ease-spring) 0.08s forwards; }
-.venom-overlay.expanding .blob-4 { animation: venom-expand 0.6s var(--ease-spring) 0.12s forwards; }
-.venom-overlay.expanding .blob-5 { animation: venom-expand 0.7s var(--ease-spring) 0.1s forwards; }
-
-.venom-overlay.collapsing .blob-1,
-.venom-overlay.collapsing .blob-2,
-.venom-overlay.collapsing .blob-3,
-.venom-overlay.collapsing .blob-4,
-.venom-overlay.collapsing .blob-5 {
-  animation: venom-collapse 0.5s var(--ease-out) forwards;
-}
-
-@keyframes venom-expand {
-  0% { transform: translate(-50%, -50%) scale(0); }
-  60% { transform: translate(-50%, -50%) scale(1.1); }
-  100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-@keyframes venom-collapse {
-  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 220ms var(--ease-out),
+              border-color 220ms var(--ease-out),
+              color 220ms var(--ease-out),
+              box-shadow 220ms var(--ease-out) !important;
+  transition-delay: 0s !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -511,8 +449,8 @@ html[data-theme="light"] .venom-symbiote-blob {
   transform: scale(0.97);
 }
 
-/* Venom Theme Toggle Button */
-.btn-venom-toggle {
+/* Simple & Elegant Theme Toggle Button */
+.btn-theme-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -529,73 +467,84 @@ html[data-theme="light"] .venom-symbiote-blob {
   transition: all var(--duration-fast) var(--ease-out);
 }
 
-.btn-venom-toggle:hover {
+.btn-theme-toggle:hover {
   background-color: var(--bg-surface-hover);
   border-color: var(--cobalt-bright);
 }
 
-.btn-venom-toggle:active {
+.btn-theme-toggle:active {
   transform: scale(0.97);
 }
 
-.venom-toggle-track {
+.theme-toggle-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  position: relative;
+}
+
+.theme-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cobalt-bright);
+  transition: transform var(--duration-base) var(--ease-spring), opacity var(--duration-base) var(--ease-out);
+}
+
+.icon-sun {
+  display: none;
+  color: #F59E0B;
+}
+
+.icon-moon {
+  display: flex;
+  color: #60A5FA;
+}
+
+html[data-theme="light"] .icon-sun {
+  display: flex;
+}
+
+html[data-theme="light"] .icon-moon {
+  display: none;
+}
+
+.theme-toggle-label {
+  font-size: 11.5px;
+}
+
+.theme-switch-track {
   width: 32px;
   height: 18px;
-  background-color: #000000;
+  background-color: var(--bg-surface-subtle);
   border-radius: var(--radius-full);
   position: relative;
   display: flex;
   align-items: center;
   padding: 2px;
-  border: 1px solid #1E293B;
-  transition: all var(--duration-smooth) var(--ease-spring);
+  border: 1px solid var(--border-app);
+  transition: background-color var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
 }
 
-html[data-theme="light"] .venom-toggle-track {
+html[data-theme="light"] .theme-switch-track {
   background-color: #E2E8F0;
   border-color: #CBD5E1;
 }
 
-.venom-toggle-symbiote {
+.theme-switch-thumb {
   width: 14px;
   height: 14px;
   border-radius: var(--radius-full);
-  background-color: #F8FAFC;
+  background-color: var(--cobalt-bright);
   transform: translateX(14px);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--duration-smooth) var(--ease-spring);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  transition: transform var(--duration-base) var(--ease-spring), background-color var(--duration-base) var(--ease-out);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-html[data-theme="light"] .venom-toggle-symbiote {
-  background-color: #0F172A;
+html[data-theme="light"] .theme-switch-thumb {
+  background-color: #FFFFFF;
   transform: translateX(0);
-}
-
-.symbiote-eye {
-  width: 2.5px;
-  height: 4px;
-  background-color: #0F172A;
-  border-radius: 50% / 30%;
-  position: absolute;
-  top: 5px;
-  transform: rotate(20deg);
-}
-
-.symbiote-eye.eye-left {
-  left: 3px;
-  transform: rotate(20deg);
-}
-.symbiote-eye.eye-right {
-  right: 3px;
-  transform: rotate(-20deg);
-}
-
-html[data-theme="light"] .symbiote-eye {
-  background-color: #F8FAFC;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 /* --------------------------------------------------------------------------

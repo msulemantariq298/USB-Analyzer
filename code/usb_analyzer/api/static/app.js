@@ -70,57 +70,33 @@
     }
   };
 
-  // --- Cinematic Venom Symbiote Liquid Theme Controller ---
+  // --- Simple, Smooth Theme Transition Controller ---
   function applyTheme(targetTheme, animate = false) {
     const root = document.documentElement;
-    const venomOverlay = document.getElementById('venom-overlay');
     const toggleLabel = document.getElementById('theme-toggle-label');
 
-    if (!animate) {
-      root.setAttribute('data-theme', targetTheme);
-      state.theme = targetTheme;
-      localStorage.setItem('usb_analyzer_theme', targetTheme);
-      if (toggleLabel) {
-        toggleLabel.textContent = targetTheme === 'dark' ? 'Venom Dark' : 'Clinical Light';
-      }
-      updateChartThemes(targetTheme);
-      return;
+    if (animate) {
+      root.classList.add('theme-transitioning');
     }
 
-    // Trigger organic Symbiote goo transition
-    if (venomOverlay) {
-      document.body.classList.remove('animating-to-light', 'animating-to-dark');
-      document.body.classList.add(targetTheme === 'light' ? 'animating-to-light' : 'animating-to-dark');
-      venomOverlay.classList.remove('collapsing');
-      venomOverlay.classList.add('active', 'expanding');
+    root.setAttribute('data-theme', targetTheme);
+    state.theme = targetTheme;
+    localStorage.setItem('usb_analyzer_theme', targetTheme);
 
+    if (toggleLabel) {
+      toggleLabel.textContent = targetTheme === 'dark' ? 'Dark Theme' : 'Light Theme';
+    }
+
+    updateChartThemes(targetTheme);
+
+    if (animate) {
       setTimeout(() => {
-        root.setAttribute('data-theme', targetTheme);
-        state.theme = targetTheme;
-        localStorage.setItem('usb_analyzer_theme', targetTheme);
-        if (toggleLabel) {
-          toggleLabel.textContent = targetTheme === 'dark' ? 'Venom Dark' : 'Clinical Light';
-        }
-        updateChartThemes(targetTheme);
-
-        setTimeout(() => {
-          venomOverlay.classList.remove('expanding');
-          venomOverlay.classList.add('collapsing');
-          setTimeout(() => {
-            venomOverlay.classList.remove('active', 'collapsing');
-            document.body.classList.remove('animating-to-light', 'animating-to-dark');
-          }, 500);
-        }, 150);
-      }, 350);
-    } else {
-      root.setAttribute('data-theme', targetTheme);
-      state.theme = targetTheme;
-      localStorage.setItem('usb_analyzer_theme', targetTheme);
-      updateChartThemes(targetTheme);
+        root.classList.remove('theme-transitioning');
+      }, 250);
     }
   }
 
-  function initVenomTheme() {
+  function initTheme() {
     applyTheme(state.theme, false);
 
     const toggleBtn = document.getElementById('theme-toggle');
@@ -959,7 +935,7 @@
 
   // --- Initialize Application ---
   function init() {
-    initVenomTheme();
+    initTheme();
     initCharts();
     setupEventListeners();
 
