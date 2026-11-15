@@ -443,6 +443,39 @@
     }
   }
 
+  // --- Utility Functions ---
+  function extractParam(str, prefix) {
+    if (!str) return '';
+    const match = str.match(new RegExp(`${prefix}([0-9A-Fa-f]{4})`, 'i'));
+    return match ? match[1].toUpperCase() : '';
+  }
+
+  function extractSerial(str) {
+    if (!str) return '';
+    const parts = str.split(/[\\/]/);
+    return parts.length > 1 ? parts[parts.length - 1] : '';
+  }
+
+  function findDeviceEvents(deviceId) {
+    if (!deviceId) return [];
+    // 1. Direct exact match
+    let matched = state.events.filter(e => e.device_id === deviceId);
+    if (matched.length > 0) return matched;
+
+    // 2. Case-insensitive match
+    matched = state.events.filter(e => e.device_id.toLowerCase() === deviceId.toLowerCase());
+    if (matched.length > 0) return matched;
+
+    // 3. Normalization without slashes / backslashes (handles browser HTML attribute escaping)
+    const norm = s => String(s).replace(/[\\/]/g, '').toLowerCase();
+    const targetNorm = norm(deviceId);
+    matched = state.events.filter(e => norm(e.device_id) === targetNorm);
+    if (matched.length > 0) return matched;
+
+    // 4. Substring or serial match
+    return state.events.filter(e => e.device_id.includes(deviceId) || deviceId.includes(e.device_id));
+  }
+
   // --- Events Table Render ---
   function renderEventsTable() {
     const tbody = document.getElementById('events-table-body');
@@ -450,14 +483,45 @@
 
     let displayList = [];
     if (state.viewMode === 'connected') {
-      // Group by device_id to show latest status per peripheral
+      // Group by device_id to show aggregated hardware info + latest status per peripheral
       const deviceMap = new Map();
       for (const ev of state.events) {
         if (!deviceMap.has(ev.device_id)) {
-          deviceMap.set(ev.device_id, ev);
+          deviceMap.set(ev.device_id, []);
         }
+        deviceMap.get(ev.device_id).push(ev);
       }
-      displayList = Array.from(deviceMap.values());
+
+      displayList = Array.from(deviceMap.entries()).map(([deviceId, evList]) => {
+        const latestEv = evList[0];
+        const connectEv = evList.find(e => e.details && (e.details.name || e.details.vendor_id)) || latestEv;
+        const reasonEv = evList.find(e => e.details && (e.details.reason || e.details.threat_type || e.details.summary)) || latestEv;
+
+        const isBlocked = evList.some(e => e.event_type === 'device.blocked');
+        const isCritical = isBlocked || evList.some(e => e.severity === 'critical');
+        const isWarning = !isCritical && evList.some(e => e.severity === 'warning');
+        const severity = isCritical ? 'critical' : (isWarning ? 'warning' : 'info');
+        const eventType = isBlocked ? 'device.blocked' : latestEv.event_type;
+
+        return {
+          id: latestEv.id,
+          time: latestEv.time,
+          device_id: deviceId,
+          source: latestEv.source,
+          severity: severity,
+          event_type: eventType,
+          details: {
+            ...latestEv.details,
+            name: connectEv.details?.name || latestEv.details?.name || deviceId,
+            vendor_id: connectEv.details?.vendor_id || latestEv.details?.vendor_id || extractParam(deviceId, 'VID_'),
+            product_id: connectEv.details?.product_id || latestEv.details?.product_id || extractParam(deviceId, 'PID_'),
+            serial_number: connectEv.details?.serial_number || latestEv.details?.serial_number || extractSerial(deviceId),
+            device_type: connectEv.details?.device_type || latestEv.details?.device_type || (latestEv.source === 'storage-scanner' ? 'Storage Volume' : 'USB Bus'),
+            reason: reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Verified normal operation',
+            action: isBlocked ? 'Isolated & Disabled' : (evList.some(e => e.event_type === 'device.allowed') ? 'Allowed & Active' : (latestEv.details?.action || 'Monitored')),
+          }
+        };
+      });
     } else {
       displayList = state.events;
     }
@@ -521,11 +585,23 @@
           <td class="th-reason" style="font-size: 11.5px; color: var(--text-muted);">${escapeHtml(reason)}</td>
           <td class="th-action" style="font-size: 11px; font-weight: 600;">${escapeHtml(action)}</td>
           <td class="th-inspect" style="text-align: right;">
-            <button type="button" class="btn-table-action" onclick="window.USBApp.inspectDevice('${escapeHtml(ev.device_id)}')">Inspect</button>
+            <button type="button" class="btn-table-action btn-inspect-row" data-device-id="${escapeHtml(ev.device_id)}" data-event-id="${escapeHtml(ev.id || '')}">Inspect</button>
           </td>
         </tr>
       `;
     }).join('');
+
+    // Wire up inspect button clicks safely via event delegation
+    tbody.onclick = (e) => {
+      const btn = e.target.closest('.btn-inspect-row');
+      if (btn) {
+        const deviceId = btn.getAttribute('data-device-id');
+        const eventId = btn.getAttribute('data-event-id');
+        if (deviceId) {
+          openDeviceInspection(deviceId, eventId);
+        }
+      }
+    };
   }
 
   function getSeverityBadge(sev, eventType) {
@@ -572,57 +648,126 @@
   }
 
   // --- Device Forensic Inspection Modal ---
-  function openDeviceInspection(deviceId) {
+  function openDeviceInspection(deviceId, eventId = null) {
     state.activeDeviceModal = deviceId;
     const modal = document.getElementById('detail-modal');
     const content = document.getElementById('detail-modal-content');
     const actionsEl = document.getElementById('detail-dynamic-actions');
     if (!modal || !content) return;
 
-    const deviceEvents = state.events.filter(e => e.device_id === deviceId);
-    const primary = deviceEvents[0] || { device_id: deviceId, severity: 'info', details: {} };
-    const det = primary.details || {};
+    const deviceEvents = findDeviceEvents(deviceId);
+
+    // Resolve comprehensive device attributes across all events
+    const connectEv = deviceEvents.find(e => e.details && (e.details.name || e.details.vendor_id)) || deviceEvents[0] || {};
+    const specificEv = (eventId && deviceEvents.find(e => String(e.id) === String(eventId))) || deviceEvents[0] || {};
+    const reasonEv = deviceEvents.find(e => e.details && (e.details.reason || e.details.threat_type || e.details.summary)) || specificEv;
+
+    const resolvedId = connectEv.device_id || specificEv.device_id || deviceId;
+    const name = connectEv.details?.name || specificEv.details?.name || resolvedId;
+    const vid = connectEv.details?.vendor_id || specificEv.details?.vendor_id || extractParam(resolvedId, 'VID_') || 'N/A';
+    const pid = connectEv.details?.product_id || specificEv.details?.product_id || extractParam(resolvedId, 'PID_') || 'N/A';
+    const serial = connectEv.details?.serial_number || specificEv.details?.serial_number || extractSerial(resolvedId) || 'N/A';
+    const busClass = connectEv.details?.device_type || specificEv.details?.device_type || (connectEv.source === 'storage-scanner' ? 'Storage Volume' : 'USB Bus');
+
+    const isBlocked = deviceEvents.some(e => e.event_type === 'device.blocked');
+    const isCritical = isBlocked || deviceEvents.some(e => e.severity === 'critical');
+    const isWarning = !isCritical && deviceEvents.some(e => e.severity === 'warning');
+    const effectiveSeverity = isCritical ? 'critical' : (isWarning ? 'warning' : 'info');
+    const effectiveEventType = isBlocked ? 'device.blocked' : (specificEv.event_type || 'device.connected');
+
+    const reason = reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Hardware signature inspected against corporate heuristics.';
+
+    // Check for flagged files (Trojan, autorun, etc.)
+    const threatEv = deviceEvents.find(e => e.details && e.details.flagged_files);
+    const flaggedFiles = threatEv?.details?.flagged_files || [];
+
+    // Build timeline items
+    const timelineHtml = deviceEvents.map(e => {
+      const t = formatTimestamp(e.time);
+      const sevBadge = getSeverityBadge(e.severity, e.event_type);
+      const summ = e.details?.summary || e.details?.reason || e.details?.threat_type || e.event_type;
+      return `
+        <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-subtle); font-size: 11.5px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="mono-cell" style="color: var(--text-dim); font-size: 10px;">${t}</span>
+            <span style="font-weight: 600; color: var(--text-main);">${escapeHtml(e.event_type)}</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--text-muted); font-size: 11px;">${escapeHtml(summ)}</span>
+            ${sevBadge}
+          </div>
+        </div>
+      `;
+    }).join('');
 
     content.innerHTML = `
       <div class="detail-meta-grid">
         <div class="detail-meta-cell">
           <div class="detail-label">DEVICE IDENTIFIER</div>
-          <div class="detail-value detail-value-mono">${escapeHtml(primary.device_id)}</div>
+          <div class="detail-value detail-value-mono" style="word-break: break-all;">${escapeHtml(resolvedId)}</div>
         </div>
         <div class="detail-meta-cell">
           <div class="detail-label">SECURITY VERDICT</div>
-          <div class="detail-value">${getSeverityBadge(primary.severity, primary.event_type)}</div>
+          <div class="detail-value">${getSeverityBadge(effectiveSeverity, effectiveEventType)}</div>
         </div>
         <div class="detail-meta-cell">
           <div class="detail-label">HARDWARE IDENTITY</div>
-          <div class="detail-value">${escapeHtml(det.name || 'Generic USB Bus Device')}</div>
+          <div class="detail-value">${escapeHtml(name)}</div>
         </div>
         <div class="detail-meta-cell">
           <div class="detail-label">BUS SIGNATURE</div>
-          <div class="detail-value detail-value-mono">VID: ${escapeHtml(det.vendor_id || 'N/A')} | PID: ${escapeHtml(det.product_id || 'N/A')}</div>
+          <div class="detail-value detail-value-mono">VID: ${escapeHtml(vid)} | PID: ${escapeHtml(pid)} | SN: ${escapeHtml(serial)}</div>
         </div>
       </div>
 
       <div>
         <div class="detail-label">FORENSIC RISK / DIAGNOSTIC REASON</div>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-          ${escapeHtml(det.reason || det.summary || 'Hardware signature inspected against corporate heuristics.')}
+          ${escapeHtml(reason)}
         </p>
       </div>
 
+      ${flaggedFiles.length > 0 ? `
+        <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius-xs); padding: 10px;">
+          <div class="detail-label" style="color: var(--danger-text); margin-bottom: 6px;">FLAGGED MALICIOUS FILES (${flaggedFiles.length})</div>
+          <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--danger-text);">
+            ${flaggedFiles.map(f => `<li><code>${escapeHtml(f)}</code></li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+
+      ${timelineHtml ? `
+        <div>
+          <div class="detail-label">EVENT AUDIT TIMELINE (${deviceEvents.length} RECORDED)</div>
+          <div style="margin-top: 6px; max-height: 140px; overflow-y: auto;">
+            ${timelineHtml}
+          </div>
+        </div>
+      ` : ''}
+
       <div>
         <div class="detail-label">RAW TELEMETRY TELETYPE (JSON DUMP)</div>
-        <pre class="detail-json-box">${escapeHtml(JSON.stringify(deviceEvents, null, 2))}</pre>
+        <pre class="detail-json-box">${escapeHtml(JSON.stringify(deviceEvents.length > 0 ? deviceEvents : [{ device_id: resolvedId, details: connectEv.details || {} }], null, 2))}</pre>
       </div>
     `;
 
     if (actionsEl) {
       actionsEl.innerHTML = `
-        <button type="button" class="btn-action-ghost" style="color: var(--danger-text);" onclick="window.USBApp.blockDevice('${escapeHtml(deviceId)}')">Isolate Port (Block)</button>
-        <button type="button" class="btn-action-ghost" style="color: var(--safe-text);" onclick="window.USBApp.allowDevice('${escapeHtml(deviceId)}')">Allow Device</button>
-        <button type="button" class="btn-primary-action" onclick="window.USBApp.whitelistDevice('${escapeHtml(deviceId)}')">Add to Whitelist</button>
+        <button type="button" class="btn-action-ghost btn-modal-block" style="color: var(--danger-text);">Isolate Port (Block)</button>
+        <button type="button" class="btn-action-ghost btn-modal-allow" style="color: var(--safe-text);">Allow Device</button>
+        <button type="button" class="btn-primary-action btn-modal-whitelist">Add to Whitelist</button>
       `;
+      const btnBlock = actionsEl.querySelector('.btn-modal-block');
+      const btnAllow = actionsEl.querySelector('.btn-modal-allow');
+      const btnWl = actionsEl.querySelector('.btn-modal-whitelist');
+
+      if (btnBlock) btnBlock.onclick = () => blockDevice(resolvedId);
+      if (btnAllow) btnAllow.onclick = () => allowDevice(resolvedId);
+      if (btnWl) btnWl.onclick = () => whitelistDevice(resolvedId);
     }
+
+    modal.classList.remove('hidden');
+  }
 
     modal.classList.remove('hidden');
   }
@@ -917,8 +1062,14 @@
     // Detail Modal Close
     const closeDetailModalBtn = document.getElementById('close-detail-modal-btn');
     const detailCloseBtn = document.getElementById('detail-close-btn');
+    const detailModal = document.getElementById('detail-modal');
     if (closeDetailModalBtn) closeDetailModalBtn.addEventListener('click', closeDetailModal);
     if (detailCloseBtn) detailCloseBtn.addEventListener('click', closeDetailModal);
+    if (detailModal) {
+      detailModal.addEventListener('click', (e) => {
+        if (e.target === detailModal) closeDetailModal();
+      });
+    }
 
     // MITRE ATT&CK Modal
     const mitreBtn = document.getElementById('mitre-modal-btn');
