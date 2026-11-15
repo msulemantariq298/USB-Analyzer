@@ -39,10 +39,23 @@ class WindowsWmiProvider(DeviceProvider):
         self._connection = wmi.WMI()
 
     def list_devices(self) -> dict[str, UsbDevice]:
+        try:
+            import pythoncom
+            pythoncom.CoInitialize()
+        except Exception:
+            pass
+
         devices: dict[str, UsbDevice] = {}
-        entities = self._connection.query(
-            "SELECT * FROM Win32_PnPEntity WHERE Present = TRUE"
-        )
+        try:
+            entities = self._connection.query(
+                "SELECT * FROM Win32_PnPEntity WHERE Present = TRUE"
+            )
+        except Exception:
+            import wmi
+            self._connection = wmi.WMI()
+            entities = self._connection.query(
+                "SELECT * FROM Win32_PnPEntity WHERE Present = TRUE"
+            )
 
         # Collect child HID and interface metadata for role and brand identification
         hid_info_by_vid_pid: dict[tuple[str, str], dict[str, set[str]]] = {}

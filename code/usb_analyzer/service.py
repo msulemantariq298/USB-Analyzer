@@ -84,21 +84,49 @@ def start_service() -> None:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(REPO_ROOT / "code")
 
-    creationflags = 0
-    if os.name == "nt":
-        creationflags = (
-            getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
-            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
-        )
-
     log_dir = REPO_ROOT / "data" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     api_log = open(log_dir / "api.log", "a", encoding="utf-8")
     monitor_log = open(log_dir / "monitor.log", "a", encoding="utf-8")
 
+    def _spawn(cmd: list[str], log_file: Any) -> subprocess.Popen:
+        if os.name == "nt":
+            flags = (
+                getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+                | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+            )
+            try:
+                return subprocess.Popen(
+                    cmd,
+                    cwd=str(REPO_ROOT),
+                    env=env,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    creationflags=flags | 0x01000000,
+                    close_fds=False,
+                )
+            except OSError:
+                return subprocess.Popen(
+                    cmd,
+                    cwd=str(REPO_ROOT),
+                    env=env,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    creationflags=flags,
+                    close_fds=False,
+                )
+        return subprocess.Popen(
+            cmd,
+            cwd=str(REPO_ROOT),
+            env=env,
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            close_fds=True,
+        )
+
     # 1. Start Web API Server (Uvicorn)
     print("[*] Launching API Server on http://127.0.0.1:8000 (detached)...")
-    api_proc = subprocess.Popen(
+    api_proc = _spawn(
         [
             PYTHON_EXE,
             "-m",
@@ -109,12 +137,7 @@ def start_service() -> None:
             "--port",
             "8000",
         ],
-        cwd=str(REPO_ROOT),
-        env=env,
-        stdout=api_log,
-        stderr=subprocess.STDOUT,
-        creationflags=creationflags,
-        close_fds=(os.name != "nt"),
+        api_log,
     )
 
     # Wait for API to become ready
@@ -132,14 +155,9 @@ def start_service() -> None:
 
     # 2. Start Windows Device Monitor
     print("[*] Launching Hardware Device Monitor (detached)...")
-    monitor_proc = subprocess.Popen(
+    monitor_proc = _spawn(
         [PYTHON_EXE, "-m", "usb_analyzer.device_monitor.windows"],
-        cwd=str(REPO_ROOT),
-        env=env,
-        stdout=monitor_log,
-        stderr=subprocess.STDOUT,
-        creationflags=creationflags,
-        close_fds=(os.name != "nt"),
+        monitor_log,
     )
     print(f"    [+] Device Monitor started (PID: {monitor_proc.pid}).")
 
