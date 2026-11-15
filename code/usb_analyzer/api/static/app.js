@@ -174,7 +174,7 @@
               labels: {
                 color: textColor,
                 boxWidth: 10,
-                font: { family: 'JetBrains Mono', size: 10 }
+                font: { family: 'BBH Bogle', size: 10 }
               }
             }
           },
@@ -200,11 +200,11 @@
           maintainAspectRatio: false,
           scales: {
             x: {
-              ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 9.5 } },
+              ticks: { color: textColor, font: { family: 'BBH Bogle', size: 9.5 } },
               grid: { display: false }
             },
             y: {
-              ticks: { color: textColor, font: { family: 'JetBrains Mono', size: 10 }, precision: 0 },
+              ticks: { color: textColor, font: { family: 'BBH Bogle', size: 10 }, precision: 0 },
               grid: { color: gridColor }
             }
           },
