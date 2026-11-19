@@ -171,3 +171,14 @@ def test_websocket_telemetry_stream() -> None:
         assert pong == "pong"
 
 
+def test_activity_analytics_endpoint() -> None:
+    client = TestClient(app)
+    res = client.get("/api/v1/analytics/activity?range=1h")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["range"] == "1h"
+    assert len(data["labels"]) == len(data["data"])
+    assert "total_events" in data
+    assert "suspicious_events" in data
+
+

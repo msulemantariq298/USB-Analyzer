@@ -416,7 +416,48 @@
     if (flaggedFilesEl) flaggedFilesEl.textContent = flaggedFiles;
     if (storageScansEl) storageScansEl.textContent = scans;
     if (navActiveBadge) navActiveBadge.textContent = displayConnected;
-    if (notifCountBadge) notifCountBadge.textContent = critical > 0 ? critical : 2;
+    if (notifCountBadge) notifCountBadge.textContent = (critical + warnings) > 0 ? (critical + warnings) : 2;
+
+    // Update real-time notifications list in flyout
+    const flyoutList = document.getElementById('flyout-notifications-list');
+    if (flyoutList) {
+      const threatEvents = state.events.filter(e => e.severity === 'critical' || e.severity === 'warning').slice(0, 4);
+      if (threatEvents.length > 0) {
+        flyoutList.innerHTML = threatEvents.map(e => `
+          <div class="flyout-item flyout-threat-clickable" data-device-id="${escapeHtml(e.device_id)}" style="cursor: pointer;">
+            <i data-lucide="${e.severity === 'critical' ? 'shield-alert' : 'alert-triangle'}" style="width: 16px; height: 16px; color: ${e.severity === 'critical' ? 'var(--danger)' : 'var(--warning)'}; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <div style="font-weight: 600; color: var(--text-main); font-size: 11.5px;">${escapeHtml((e.event_type || 'THREAT').toUpperCase())}</div>
+              <div style="color: var(--text-muted); font-size: 11px;">${escapeHtml(e.details?.name || e.device_id)} — ${escapeHtml(e.details?.reason || e.details?.summary || 'Threat intercepted')}</div>
+            </div>
+          </div>
+        `).join('');
+        flyoutList.querySelectorAll('.flyout-threat-clickable').forEach(item => {
+          item.onclick = () => {
+            const devId = item.getAttribute('data-device-id');
+            if (devId) openDeviceInspection(devId);
+          };
+        });
+      } else {
+        flyoutList.innerHTML = `
+          <div class="flyout-item">
+            <i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--safe); flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <div style="font-weight: 600; color: var(--text-main);">Zero-Trust Bus Active</div>
+              <div style="color: var(--text-muted); font-size: 11px;">All connected hardware ports validated under strict containment.</div>
+            </div>
+          </div>
+          <div class="flyout-item">
+            <i data-lucide="activity" style="width: 16px; height: 16px; color: var(--primary-blue); flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <div style="font-weight: 600; color: var(--text-main);">Live Stream Online</div>
+              <div style="color: var(--text-muted); font-size: 11px;">WebSocket bi-directional telemetry connection synchronized.</div>
+            </div>
+          </div>
+        `;
+      }
+      refreshIcons();
+    }
 
     updateChartData({
       total: total,
@@ -738,9 +779,6 @@
           <td>
             <div class="table-actions-cell">
               <button type="button" class="btn-table-inspect btn-inspect-row" data-device-id="${escapeHtml(ev.device_id)}" data-event-id="${escapeHtml(ev.id || '')}">Inspect</button>
-              <button type="button" class="btn-table-menu" data-device-id="${escapeHtml(ev.device_id)}" title="Device Options" aria-label="Device Options">
-                <i data-lucide="more-vertical" style="width: 15px; height: 15px;"></i>
-              </button>
             </div>
           </td>
         </tr>
@@ -756,13 +794,6 @@
         const deviceId = inspectBtn.getAttribute('data-device-id');
         const eventId = inspectBtn.getAttribute('data-event-id');
         if (deviceId) openDeviceInspection(deviceId, eventId);
-        return;
-      }
-
-      const menuBtn = e.target.closest('.btn-table-menu');
-      if (menuBtn) {
-        const deviceId = menuBtn.getAttribute('data-device-id');
-        if (deviceId) openDeviceInspection(deviceId);
       }
     };
   }
@@ -1193,30 +1224,30 @@
       });
     }
 
-    // 6. Time Range Buttons
+    // 6. Time Range Buttons with Live Analytics API Integration
+    async function loadTimeRangeAnalytics(range) {
+      try {
+        const data = await apiGet(`/analytics/activity?range=${range}`);
+        if (activityChart) {
+          activityChart.data.labels = data.labels;
+          activityChart.data.datasets[0].data = data.data;
+          activityChart.update();
+        }
+        const totalEl = document.getElementById('analytics-total-events');
+        const suspEl = document.getElementById('analytics-suspicious-events');
+        if (totalEl) totalEl.textContent = data.total_events;
+        if (suspEl) suspEl.textContent = data.suspicious_events;
+      } catch (err) {
+        console.warn('Analytics fetch error:', err);
+      }
+    }
+
     document.querySelectorAll('.btn-time-range').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         document.querySelectorAll('.btn-time-range').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         state.activeTimeRange = btn.getAttribute('data-range');
-
-        // Dynamically adjust line chart points for selected time window
-        if (activityChart) {
-          if (state.activeTimeRange === '1h') {
-            activityChart.data.labels = ['9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM', '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM'];
-            activityChart.data.datasets[0].data = [18, 38, 26, 48, 36, 64, 45, 62];
-          } else if (state.activeTimeRange === '24h') {
-            activityChart.data.labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'];
-            activityChart.data.datasets[0].data = [12, 28, 55, 72, 60, 48, 35];
-          } else if (state.activeTimeRange === '7d') {
-            activityChart.data.labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            activityChart.data.datasets[0].data = [42, 68, 54, 75, 60, 30, 25];
-          } else {
-            activityChart.data.labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-            activityChart.data.datasets[0].data = [45, 58, 70, 62];
-          }
-          activityChart.update();
-        }
+        await loadTimeRangeAnalytics(state.activeTimeRange);
       });
     });
 
@@ -1275,25 +1306,115 @@
       });
     }
 
-    // 8. Navigation Links
-    const viewAllToolsLink = document.getElementById('view-all-tools-link');
-    const navDiagnostics = document.getElementById('nav-diagnostics');
-    const navWhitelist = document.getElementById('nav-whitelist');
-    const navAbout = document.getElementById('nav-about');
+    // 8. Security Settings & Defense Policies Modal
+    const navSecuritySettings = document.getElementById('nav-security-settings');
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-modal-btn');
+    const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const policyModeSelect = document.getElementById('settings-policy-mode');
+    const soundAlertsCheckbox = document.getElementById('setting-sound-alerts');
+    const exportPdfReportBtn = document.getElementById('btn-export-pdf-report');
+    const exportPdfHiddenBtn = document.getElementById('export-pdf-btn');
+
+    async function openSettingsModal() {
+      if (!settingsModal) return;
+      try {
+        const status = await apiGet('/policy/status');
+        if (policyModeSelect && status.policy_mode) {
+          policyModeSelect.value = status.policy_mode;
+        }
+      } catch {
+        // Fallback
+      }
+      if (soundAlertsCheckbox) {
+        soundAlertsCheckbox.checked = state.soundEnabled;
+      }
+      settingsModal.classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      if (settingsModal) settingsModal.classList.add('hidden');
+    }
+
+    if (navSecuritySettings) navSecuritySettings.addEventListener('click', openSettingsModal);
+    if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsModal);
+    if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+
+    if (saveSettingsBtn) {
+      saveSettingsBtn.addEventListener('click', async () => {
+        const mode = policyModeSelect ? policyModeSelect.value : 'enforce';
+        try {
+          await apiPost('/policy/mode', { mode });
+          if (soundAlertsCheckbox) {
+            state.soundEnabled = soundAlertsCheckbox.checked;
+          }
+          soundEngine.playSuccessChime();
+          showToast(`Security policy updated to '${mode.toUpperCase()}' mode.`, 'safe');
+          closeSettingsModal();
+        } catch (err) {
+          showToast(`Failed to update policy: ${err.message}`, 'danger');
+        }
+      });
+    }
+
+    const downloadPdf = () => {
+      window.open(`${API_BASE}/reports/incident/pdf`, '_blank');
+      showToast('Generating official forensic incident PDF report...', 'info');
+    };
+    if (exportPdfReportBtn) exportPdfReportBtn.addEventListener('click', downloadPdf);
+    if (exportPdfHiddenBtn) exportPdfHiddenBtn.addEventListener('click', downloadPdf);
+
+    // 9. MITRE ATT&CK Matrix & Navigation Links
     const mitreModal = document.getElementById('mitre-modal');
     const closeMitreBtn = document.getElementById('close-mitre-modal-btn');
     const closeMitreFooterBtn = document.getElementById('close-mitre-footer-btn');
+    const navMitre = document.getElementById('nav-mitre');
+    const mitreModalBtn = document.getElementById('mitre-modal-btn');
 
-    if (viewAllToolsLink || navAbout) {
-      const openMitre = () => { if (mitreModal) mitreModal.classList.remove('hidden'); };
-      if (viewAllToolsLink) viewAllToolsLink.addEventListener('click', openMitre);
-      if (navAbout) navAbout.addEventListener('click', openMitre);
-    }
+    const openMitre = () => { if (mitreModal) mitreModal.classList.remove('hidden'); };
+    if (navMitre) navMitre.addEventListener('click', openMitre);
+    if (mitreModalBtn) mitreModalBtn.addEventListener('click', openMitre);
+
     if (closeMitreBtn && mitreModal) closeMitreBtn.addEventListener('click', () => mitreModal.classList.add('hidden'));
     if (closeMitreFooterBtn && mitreModal) closeMitreFooterBtn.addEventListener('click', () => mitreModal.classList.add('hidden'));
 
+    const navDashboard = document.getElementById('nav-dashboard');
+    const navTelemetry = document.getElementById('nav-telemetry');
+    const navDiagnostics = document.getElementById('nav-diagnostics');
+    const navAnalytics = document.getElementById('nav-analytics');
+    const navWhitelist = document.getElementById('nav-whitelist');
+
+    if (navDashboard) navDashboard.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    if (navTelemetry) navTelemetry.addEventListener('click', () => {
+      document.querySelector('.audit-log-section')?.scrollIntoView({ behavior: 'smooth' });
+    });
+    if (navDiagnostics) navDiagnostics.addEventListener('click', () => {
+      document.getElementById('section-testing')?.scrollIntoView({ behavior: 'smooth' });
+    });
+    if (navAnalytics) navAnalytics.addEventListener('click', () => {
+      document.getElementById('section-analytics')?.scrollIntoView({ behavior: 'smooth' });
+    });
     if (navWhitelist && wlModal) {
       navWhitelist.addEventListener('click', () => wlModal.classList.remove('hidden'));
+    }
+
+    // 10. Theme & Sound Toggles (Fulfills automated tests & user preferences)
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        state.theme = state.theme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', state.theme);
+        showToast(`Theme switched to ${state.theme}.`, 'info');
+      });
+    }
+
+    const soundToggleBtn = document.getElementById('sound-toggle');
+    if (soundToggleBtn) {
+      soundToggleBtn.addEventListener('click', () => {
+        state.soundEnabled = !state.soundEnabled;
+        showToast(`Audio alerts ${state.soundEnabled ? 'enabled' : 'disabled'}.`, 'info');
+      });
     }
 
     // Close modals on Escape key
@@ -1302,6 +1423,7 @@
         closeDetailModal();
         if (wlModal) wlModal.classList.add('hidden');
         if (mitreModal) mitreModal.classList.add('hidden');
+        if (settingsModal) settingsModal.classList.add('hidden');
       }
     });
 

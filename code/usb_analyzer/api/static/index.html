@@ -82,14 +82,9 @@
           <span class="nav-label">Security Settings</span>
         </a>
 
-        <a href="javascript:void(0)" class="nav-item" id="nav-preferences">
-          <span class="nav-icon"><i data-lucide="sliders-horizontal"></i></span>
-          <span class="nav-label">Preferences</span>
-        </a>
-
-        <a href="javascript:void(0)" class="nav-item" id="nav-about">
-          <span class="nav-icon"><i data-lucide="info"></i></span>
-          <span class="nav-label">About</span>
+        <a href="javascript:void(0)" class="nav-item" id="nav-mitre">
+          <span class="nav-icon"><i data-lucide="layers"></i></span>
+          <span class="nav-label">MITRE Defense Matrix</span>
         </a>
       </nav>
 
@@ -169,27 +164,22 @@
                 <span class="flyout-title">Security Intercepts</span>
                 <span style="font-size: 11px; color: var(--safe); font-weight: 600;">Bus Armed</span>
               </div>
-              <div class="flyout-item">
-                <i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--safe); flex-shrink: 0; margin-top: 2px;"></i>
-                <div>
-                  <div style="font-weight: 600; color: var(--text-main);">Zero-Trust Bus Active</div>
-                  <div style="color: var(--text-muted); font-size: 11px;">All connected hardware ports validated under strict containment.</div>
-                </div>
-              </div>
-              <div class="flyout-item">
-                <i data-lucide="activity" style="width: 16px; height: 16px; color: var(--primary-blue); flex-shrink: 0; margin-top: 2px;"></i>
-                <div>
-                  <div style="font-weight: 600; color: var(--text-main);">Live Stream Online</div>
-                  <div style="color: var(--text-muted); font-size: 11px;">WebSocket bi-directional telemetry connection synchronized.</div>
+              <div class="flyout-list" id="flyout-notifications-list">
+                <div class="flyout-item">
+                  <i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--safe); flex-shrink: 0; margin-top: 2px;"></i>
+                  <div>
+                    <div style="font-weight: 600; color: var(--text-main);">Zero-Trust Bus Active</div>
+                    <div style="color: var(--text-muted); font-size: 11px;">All connected hardware ports validated under strict containment.</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- User Profile Avatar Pill -->
-          <div class="user-profile-badge" id="user-profile-pill" title="Security Officer Session">
+          <div class="user-profile-badge" id="user-profile-pill" title="Security Officer: Muhammad Suleman Tariq (Active Admin)">
             <div class="avatar-initials">ST</div>
-            <i data-lucide="chevron-down" class="avatar-chevron" style="width: 14px; height: 14px;"></i>
+            <span style="font-size: 11.5px; font-weight: 600; color: var(--text-body); padding: 0 4px;">Officer</span>
           </div>
         </div>
       </header>
@@ -431,10 +421,6 @@
             </div>
             <p class="testing-subtitle">Run tests, analyze threats and manage your security policies.</p>
           </div>
-          <a href="javascript:void(0)" class="testing-view-all-link" id="view-all-tools-link">
-            <span>View All Tools</span>
-            <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i>
-          </a>
         </div>
 
         <div class="testing-cards-grid">
@@ -743,6 +729,60 @@
       <div class="modal-footer">
         <div></div>
         <button type="button" class="btn-hero-action" id="close-mitre-footer-btn" style="border: 1px solid var(--border-light);">Close Matrix</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Security Settings & Defense Policies Modal -->
+  <div id="settings-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="modal-window">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <i data-lucide="sliders-horizontal" style="width: 20px; height: 20px; color: var(--primary-blue);"></i>
+          <h2 class="modal-title" id="settings-modal-title">Security Settings &amp; Defense Policies</h2>
+        </div>
+        <button type="button" class="modal-close-btn" id="close-settings-modal-btn" aria-label="Close modal">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label for="settings-policy-mode" class="form-label">Global Policy Mode</label>
+          <select id="settings-policy-mode" class="form-input">
+            <option value="enforce" selected>Enforce (Zero-Trust Active Blocking &amp; Containment)</option>
+            <option value="audit">Audit (Passive Telemetry &amp; Alert Logging Only)</option>
+          </select>
+          <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">In Enforce mode, unknown or suspicious devices are held in containment until authorized by an officer.</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Active Defense Capabilities</label>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-body); cursor: pointer;">
+              <input type="checkbox" id="setting-auto-badusb" checked disabled style="accent-color: var(--primary-blue);">
+              <span>Sub-millisecond HID keystroke injection rate-limit defense (Armed)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-body); cursor: pointer;">
+              <input type="checkbox" id="setting-storage-quarantine" checked disabled style="accent-color: var(--primary-blue);">
+              <span>Automated mass storage volume containment &amp; YARA scanning (Armed)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-body); cursor: pointer;">
+              <input type="checkbox" id="setting-sound-alerts" checked style="accent-color: var(--primary-blue);">
+              <span>Synthesizer audio alert chimes on critical threat detection</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-field" style="border-top: 1px solid var(--border-light); padding-top: 12px;">
+          <label class="form-label">Forensic Audit Export</label>
+          <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">Download a comprehensive, cryptographic forensic incident report in PDF format.</p>
+          <button type="button" class="btn-hero-action" id="btn-export-pdf-report" style="border: 1px solid var(--border-light); display: inline-flex; align-items: center; gap: 6px; width: fit-content;">
+            <i data-lucide="file-text" style="width: 14px; height: 14px; color: var(--danger);"></i>
+            <span>Export Incident PDF Report</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-hero-action" id="cancel-settings-btn" style="border: 1px solid var(--border-light);">Cancel</button>
+        <button type="button" class="btn-hero-action" id="save-settings-btn" style="background: var(--primary-blue); color: #FFFFFF;">Apply Policy Changes</button>
       </div>
     </div>
   </div>
