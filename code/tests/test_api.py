@@ -182,3 +182,18 @@ def test_activity_analytics_endpoint() -> None:
     assert "suspicious_events" in data
 
 
+def test_connected_devices_endpoint() -> None:
+    client = TestClient(app)
+    res = client.get("/api/v1/devices/connected")
+    assert res.status_code == 200
+    assert isinstance(res.json(), list)
+
+
+def test_scan_devices_endpoint() -> None:
+    client = TestClient(app)
+    res = client.post("/api/v1/devices/scan")
+    assert res.status_code == 200
+    data = res.json()
+    assert "status" in data
+
+

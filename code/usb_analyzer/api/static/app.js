@@ -29,6 +29,7 @@
     activeDeviceModal: null,
     activeTimeRange: '1h',
     theme: 'light',
+    allowedDevices: new Set(),
   };
 
   // --- Web Audio Synthesizer (Zero-latency alert chimes) ---
@@ -312,6 +313,14 @@
   }
 
   // --- Telemetry Polling & Aggregation ---
+  async function syncConnectedDevices() {
+    try {
+      await apiPost('/devices/scan', {});
+    } catch {
+      // Graceful fallback if unsupported
+    }
+  }
+
   async function fetchTelemetry() {
     try {
       const data = await apiGet('/events?limit=200');
@@ -319,6 +328,13 @@
 
       const prevCount = state.events.length;
       state.events = events;
+
+      // Populate allowed devices cache from event history
+      for (const ev of events) {
+        if (ev.event_type === 'device.allowed') {
+          state.allowedDevices.add(ev.device_id);
+        }
+      }
 
       // Play alert chime if new critical threat arrives
       if (events.length > prevCount && prevCount > 0) {
@@ -533,61 +549,6 @@
     };
   }
 
-  // Default initial peripheral samples matching the reference screenshot when database is fresh
-  const DEFAULT_DEVICES = [
-    {
-      id: 'mock_1',
-      time: new Date().toISOString(),
-      device_id: 'USB\\VID_0C45&PID_6452\\7F3A9D2KJ',
-      severity: 'info',
-      event_type: 'device.connected',
-      details: {
-        name: 'HP True Vision FHD Camera',
-        vendor_id: '0C45',
-        product_id: '6452',
-        serial_number: '7F3A9D2KJ',
-        device_type: 'Webcam',
-        reason: 'HP True Vision FHD Camera (Webcam) connected to system',
-        action: 'Connected',
-        verdict: 'SAFE'
-      }
-    },
-    {
-      id: 'mock_2',
-      time: new Date().toISOString(),
-      device_id: 'USB\\VID_0BDA&PID_A71D\\8C4F12D0',
-      severity: 'info',
-      event_type: 'device.connected',
-      details: {
-        name: 'Realtek Wireless Bluetooth Adapter',
-        vendor_id: '0BDA',
-        product_id: 'A71D',
-        serial_number: '8C4F12D0',
-        device_type: 'Bluetooth Adapter',
-        reason: 'Realtek Wireless Bluetooth Adapter (Bluetooth Adapter) connected to system',
-        action: 'Connected',
-        verdict: 'SAFE'
-      }
-    },
-    {
-      id: 'mock_3',
-      time: new Date().toISOString(),
-      device_id: 'USB\\VID_03F0&PID_2311\\00000000162C',
-      severity: 'info',
-      event_type: 'device.connected',
-      details: {
-        name: 'HID Keyboard Device',
-        vendor_id: '03F0',
-        product_id: '2311',
-        serial_number: '00000000162C',
-        device_type: 'Keyboard & Mouse',
-        reason: 'HID Keyboard Device (Keyboard & Mouse) connected to system',
-        action: 'Connected',
-        verdict: 'SAFE'
-      }
-    }
-  ];
-
   // --- Events Table Render ---
   function renderEventsTable() {
     const tbody = document.getElementById('events-table-body');
@@ -609,13 +570,14 @@
         const connectEv = evList.find(e => e.details && (e.details.name || e.details.vendor_id)) || latestEv;
         const reasonEv = evList.find(e => e.details && (e.details.reason || e.details.threat_type || e.details.summary)) || latestEv;
 
-        const isAllowed = evList.some(e => e.event_type === 'device.allowed');
+        const isAllowed = state.allowedDevices.has(deviceId) || evList.some(e => e.event_type === 'device.allowed');
         const hasCritical = evList.some(e => e.severity === 'critical');
         const isBlocked = !isAllowed && (evList.some(e => e.event_type === 'device.blocked') || hasCritical);
         const isWarning = !isAllowed && !isBlocked && evList.some(e => e.severity === 'warning' || e.event_type === 'device.suspicious');
 
-        const severity = isBlocked ? 'critical' : (isWarning ? 'warning' : 'info');
+        const severity = isBlocked ? 'critical' : (isAllowed ? 'info' : (isWarning ? 'warning' : 'info'));
         const eventType = isBlocked ? 'device.blocked' : (isAllowed ? 'device.allowed' : latestEv.event_type);
+        const verdict = isAllowed ? 'SAFE' : (isBlocked ? 'BLOCKED' : (isWarning ? 'CONTAINED' : 'SAFE'));
 
         const reason = isAllowed ? 'Approved by security officer' : (reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || `${connectEv.details?.name || deviceId} connected to system`);
         const action = isBlocked ? 'Isolated & Disabled' : (isAllowed ? 'Allowed & Active' : (latestEv.details?.action_taken || latestEv.details?.action || 'Connected'));
@@ -636,16 +598,12 @@
             device_type: connectEv.details?.device_type || latestEv.details?.device_type || (latestEv.source === 'storage-scanner' ? 'Storage Volume' : 'USB Bus'),
             reason: reason,
             action: action,
+            verdict: verdict,
           }
         };
       });
-
-      // If database has 0 events, show the 3 canonical reference peripherals from the screenshot
-      if (displayList.length === 0 && !state.searchTerm) {
-        displayList = DEFAULT_DEVICES;
-      }
     } else {
-      displayList = state.events.length > 0 ? state.events : DEFAULT_DEVICES;
+      displayList = state.events;
     }
 
     // Filter by search
@@ -672,8 +630,8 @@
           <td colspan="7">
             <div class="empty-state-wrap">
               <i data-lucide="shield-check" class="empty-icon-shield" style="width: 32px; height: 32px;"></i>
-              <strong class="empty-title">No Matching Devices Found</strong>
-              <span class="empty-desc">No events matched query "${escapeHtml(state.searchTerm)}". Clear search filter to view all hardware logs.</span>
+              <strong class="empty-title">${state.searchTerm ? 'No Matching Devices Found' : 'Hardware Bus Log Cleared'}</strong>
+              <span class="empty-desc">${state.searchTerm ? `No events matched query "${escapeHtml(state.searchTerm)}". Clear search filter to view all hardware logs.` : 'No events in audit log. Live monitoring active. Connect a USB device or click Refresh to re-sync bus inventory.'}</span>
             </div>
           </td>
         </tr>
@@ -692,14 +650,17 @@
       const hardwareSub = `VID: ${vidHex} | PID: ${pidHex} | SN: ${serial}`;
 
       const catInfo = resolveDeviceCategory(name, det.device_class, det.device_type);
-      const badge = getSeverityBadge(ev.severity, ev.event_type);
-      const reason = det.reason || det.summary || `${name} (${catInfo.category}) connected to system`;
-      const actionText = det.action || (ev.event_type === 'device.blocked' ? 'Isolated & Disabled' : 'Connected');
+      const isDevAllowed = state.allowedDevices.has(ev.device_id) || ev.event_type === 'device.allowed' || det.action === 'Allowed & Active' || det.action_taken === 'Allowed & Active' || det.verdict === 'SAFE';
+      const badge = isDevAllowed
+        ? getSeverityBadge('info', 'device.allowed', 'SAFE', 'Allowed & Active')
+        : getSeverityBadge(ev.severity, ev.event_type, det.verdict, det.action);
+      const reasonText = isDevAllowed ? 'Approved by security officer' : (det.reason || det.summary || `${name} (${catInfo.category}) connected to system`);
+      const actionText = isDevAllowed ? 'Allowed & Active' : (det.action || (ev.event_type === 'device.blocked' ? 'Isolated & Disabled' : 'Connected'));
 
-      let actionDotClass = 'action-dot-green';
-      if (ev.severity === 'critical' || ev.event_type === 'device.blocked') {
+      let actionDotClass = isDevAllowed ? 'action-dot-green' : 'action-dot-green';
+      if (!isDevAllowed && (ev.severity === 'critical' || ev.event_type === 'device.blocked')) {
         actionDotClass = 'action-dot-red';
-      } else if (ev.severity === 'warning' || ev.event_type === 'device.suspicious') {
+      } else if (!isDevAllowed && (ev.severity === 'warning' || ev.event_type === 'device.suspicious')) {
         actionDotClass = 'action-dot-amber';
       }
 
@@ -726,7 +687,7 @@
             </div>
           </td>
           <td>${badge}</td>
-          <td style="font-size: 12px; color: var(--text-body); max-width: 280px;">${escapeHtml(reason)}</td>
+          <td style="font-size: 12px; color: var(--text-body); max-width: 280px;">${escapeHtml(reasonText)}</td>
           <td>
             <div class="action-taken-cell">
               <span class="${actionDotClass}"></span>
@@ -755,8 +716,8 @@
     };
   }
 
-  function getSeverityBadge(sev, eventType) {
-    if (eventType === 'device.allowed') {
+  function getSeverityBadge(sev, eventType, verdict = '', actionTaken = '') {
+    if (eventType === 'device.allowed' || verdict === 'SAFE' || actionTaken === 'Allowed & Active') {
       return `
         <span class="badge-status badge-safe">
           <i data-lucide="check" style="width: 12px; height: 12px;"></i>
@@ -764,7 +725,7 @@
         </span>
       `;
     }
-    if (eventType === 'device.blocked' || sev === 'critical') {
+    if (eventType === 'device.blocked' || sev === 'critical' || verdict === 'BLOCKED' || verdict === 'DANGER') {
       return `
         <span class="badge-status badge-danger">
           <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
@@ -772,7 +733,7 @@
         </span>
       `;
     }
-    if (sev === 'warning' || eventType === 'device.suspicious') {
+    if (sev === 'warning' || eventType === 'device.suspicious' || verdict === 'CONTAINED' || verdict === 'WARNING') {
       return `
         <span class="badge-status badge-warning">
           <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
@@ -833,11 +794,6 @@
     if (!modal || !content) return;
 
     let deviceEvents = findDeviceEvents(deviceId);
-    if (deviceEvents.length === 0) {
-      // Mock entry lookup if inspecting demo devices
-      const mock = DEFAULT_DEVICES.find(d => d.device_id === deviceId);
-      if (mock) deviceEvents = [mock];
-    }
 
     const connectEv = deviceEvents.find(e => e.details && (e.details.name || e.details.vendor_id)) || deviceEvents[0] || {};
     const specificEv = (eventId && deviceEvents.find(e => String(e.id) === String(eventId))) || deviceEvents[0] || {};
@@ -851,8 +807,8 @@
 
     const catInfo = resolveDeviceCategory(name, connectEv.details?.device_class, connectEv.details?.device_type);
 
-    const isAllowedByUser = deviceEvents.some(e => e.event_type === 'device.allowed');
-    const hasCriticalEvent = deviceEvents.some(e => {
+    const isAllowedByUser = state.allowedDevices.has(resolvedId) || state.allowedDevices.has(deviceId) || deviceEvents.some(e => e.event_type === 'device.allowed');
+    const hasCriticalEvent = !isAllowedByUser && deviceEvents.some(e => {
       if (e.severity === 'critical') return true;
       const t = (e.details?.threat_type || '').toLowerCase();
       const r = (e.details?.reason || '').toLowerCase();
@@ -860,7 +816,7 @@
       return t.includes('badusb') || t.includes('malware') || t.includes('attack') || t.includes('cloned') || t.includes('spoof') ||
              r.includes('keystroke') || r.includes('trojan') || r.includes('autorun') || s.includes('trojan') || s.includes('badusb');
     });
-    const isExplicitlyBlocked = deviceEvents.some(e => e.event_type === 'device.blocked');
+    const isExplicitlyBlocked = !isAllowedByUser && deviceEvents.some(e => e.event_type === 'device.blocked');
 
     const isCriticalThreat = (hasCriticalEvent || isExplicitlyBlocked) && !isAllowedByUser;
     const isSuspiciousContained = !isCriticalThreat && !isAllowedByUser && deviceEvents.some(e => {
@@ -871,8 +827,9 @@
 
     const effectiveSeverity = isCriticalThreat ? 'critical' : (isSuspiciousContained ? 'warning' : 'info');
     const effectiveEventType = isCriticalThreat ? 'device.blocked' : (isSuspiciousContained ? 'device.suspicious' : (isAllowedByUser ? 'device.allowed' : (specificEv.event_type || 'device.connected')));
+    const effectiveVerdict = isAllowedByUser ? 'SAFE' : (isCriticalThreat ? 'BLOCKED' : (isSuspiciousContained ? 'CONTAINED' : 'SAFE'));
 
-    const reason = reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Hardware signature inspected against corporate heuristics.';
+    const reason = isAllowedByUser ? 'Approved by security officer' : (reasonEv.details?.reason || reasonEv.details?.threat_type || reasonEv.details?.summary || 'Hardware signature inspected against corporate heuristics.');
     const threatEv = deviceEvents.find(e => e.details && e.details.flagged_files);
     const flaggedFiles = threatEv?.details?.flagged_files || [];
 
@@ -884,7 +841,7 @@
         </div>
         <div class="detail-meta-cell">
           <div class="detail-label">SECURITY VERDICT</div>
-          <div class="detail-value">${getSeverityBadge(effectiveSeverity, effectiveEventType)}</div>
+          <div class="detail-value">${getSeverityBadge(effectiveSeverity, effectiveEventType, effectiveVerdict, isAllowedByUser ? 'Allowed & Active' : '')}</div>
         </div>
         <div class="detail-meta-cell">
           <div class="detail-label">HARDWARE IDENTITY</div>
@@ -971,9 +928,29 @@
 
   async function allowDevice(deviceId) {
     try {
+      state.allowedDevices.add(deviceId);
+      // Immediately reflect locally for instantaneous responsive UI update
+      state.events.unshift({
+        id: `allow_${Date.now()}`,
+        time: new Date().toISOString(),
+        device_id: deviceId,
+        source: 'user-decision',
+        severity: 'info',
+        event_type: 'device.allowed',
+        details: {
+          action: 'allowed_by_user',
+          verdict: 'SAFE',
+          action_taken: 'Allowed & Active',
+          reason: 'Approved by security officer',
+          summary: `Device ${deviceId} was permitted to run by security officer.`
+        }
+      });
+      renderEventsTable();
+      renderMetrics();
+
       await apiPost('/devices/allow', { device_id: deviceId, reason: 'Approved by security officer' });
       soundEngine.playSuccessChime();
-      showToast(`Device ${deviceId} permitted to run.`, 'safe');
+      showToast(`Device permitted to run and marked SAFE.`, 'safe');
       closeDetailModal();
       await fetchTelemetry();
       await fetchWhitelist();
@@ -1144,8 +1121,11 @@
       clearLogBtn.addEventListener('click', async () => {
         try {
           await apiDelete('/events');
+          state.events = [];
+          state.allowedDevices.clear();
+          renderMetrics();
+          renderEventsTable();
           showToast('Hardware bus audit log cleared.', 'safe');
-          await fetchTelemetry();
         } catch (e) {
           showToast(`Clear log failed: ${e.message}`, 'danger');
         }
@@ -1154,9 +1134,10 @@
 
     if (refreshBtn) {
       refreshBtn.addEventListener('click', async () => {
+        await syncConnectedDevices();
         await fetchTelemetry();
         await fetchWhitelist();
-        showToast('Telemetry refreshed.', 'info');
+        showToast('Telemetry and connected devices synchronized.', 'info');
       });
     }
 
@@ -1378,11 +1359,12 @@
   }
 
   // --- Initialize Application ---
-  function init() {
+  async function init() {
     initCharts();
     setupEventListeners();
-    fetchTelemetry();
-    fetchWhitelist();
+    await syncConnectedDevices();
+    await fetchTelemetry();
+    await fetchWhitelist();
     initWebSocket();
     refreshIcons();
 

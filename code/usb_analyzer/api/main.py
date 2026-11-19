@@ -1,6 +1,8 @@
 import csv
 import io
 import json
+import logging
+import os
 import time
 import urllib.parse
 from pathlib import Path
@@ -23,6 +25,8 @@ from usb_analyzer.policy.enforcement import get_platform_blocker
 from usb_analyzer.policy.models import PolicyMode, WhitelistEntry
 from usb_analyzer.policy.store import WhitelistStore
 from usb_analyzer.reports.incident_pdf import generate_incident_pdf
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 event_store = EventStore(settings.database_path)
@@ -302,6 +306,70 @@ async def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
         "device_id": req.device_id,
         "summary": f"Device {req.device_id} was permitted to run by user.",
     }
+
+
+@app.get(f"{settings.api_prefix}/devices/connected")
+def list_connected_devices() -> list[dict[str, Any]]:
+    """Return live inventory of physically connected USB devices."""
+    if os.name == "nt":
+        try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+            except Exception:
+                pass
+            from usb_analyzer.device_monitor.windows import WindowsWmiProvider
+            from usb_analyzer.device_monitor.monitor import _event_for
+
+            provider = WindowsWmiProvider()
+            devs = provider.list_devices()
+            return [_event_for(d, connected=True).model_dump(mode="json") for d in devs.values()]
+        except Exception as e:
+            logger.warning("Could not list connected devices: %s", e)
+    return []
+
+
+@app.post(f"{settings.api_prefix}/devices/scan")
+def scan_and_sync_connected_devices() -> dict[str, Any]:
+    """Scan and synchronize all currently connected physical devices into event history."""
+    if os.name == "nt":
+        try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+            except Exception:
+                pass
+            from usb_analyzer.device_monitor.windows import WindowsWmiProvider
+            from usb_analyzer.device_monitor.monitor import _event_for
+
+            provider = WindowsWmiProvider()
+            devs = provider.list_devices()
+            existing_events = event_store.list(limit=500)
+            existing_ids = {e.device_id for e in existing_events}
+            added = 0
+            for d in devs.values():
+                if d.device_id not in existing_ids:
+                    ev = _event_for(d, connected=True)
+                    event_store.add(ev)
+                    added += 1
+            return {
+                "status": "ok",
+                "connected_count": len(devs),
+                "added_count": added,
+                "devices": [
+                    {
+                        "device_id": d.device_id,
+                        "name": d.name,
+                        "device_type": d.device_type,
+                        "serial_number": d.serial_number,
+                    }
+                    for d in devs.values()
+                ],
+            }
+        except Exception as e:
+            logger.warning("Hardware device scan error: %s", e)
+            return {"status": "error", "detail": str(e)}
+    return {"status": "unsupported", "detail": "Hardware device scan only supported on Windows host"}
 
 
 @app.delete(f"{settings.api_prefix}/events", status_code=200)
