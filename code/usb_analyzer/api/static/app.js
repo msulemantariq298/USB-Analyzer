@@ -359,7 +359,6 @@
     const flaggedFilesEl = document.getElementById('flagged-files');
     const storageScansEl = document.getElementById('storage-scans');
     const navActiveBadge = document.getElementById('nav-active-badge');
-    const notifCountBadge = document.getElementById('notifications-count-badge');
 
     let total = state.events.length;
     let blocked = 0;
@@ -416,48 +415,6 @@
     if (flaggedFilesEl) flaggedFilesEl.textContent = flaggedFiles;
     if (storageScansEl) storageScansEl.textContent = scans;
     if (navActiveBadge) navActiveBadge.textContent = displayConnected;
-    if (notifCountBadge) notifCountBadge.textContent = (critical + warnings) > 0 ? (critical + warnings) : 2;
-
-    // Update real-time notifications list in flyout
-    const flyoutList = document.getElementById('flyout-notifications-list');
-    if (flyoutList) {
-      const threatEvents = state.events.filter(e => e.severity === 'critical' || e.severity === 'warning').slice(0, 4);
-      if (threatEvents.length > 0) {
-        flyoutList.innerHTML = threatEvents.map(e => `
-          <div class="flyout-item flyout-threat-clickable" data-device-id="${escapeHtml(e.device_id)}" style="cursor: pointer;">
-            <i data-lucide="${e.severity === 'critical' ? 'shield-alert' : 'alert-triangle'}" style="width: 16px; height: 16px; color: ${e.severity === 'critical' ? 'var(--danger)' : 'var(--warning)'}; flex-shrink: 0; margin-top: 2px;"></i>
-            <div>
-              <div style="font-weight: 600; color: var(--text-main); font-size: 11.5px;">${escapeHtml((e.event_type || 'THREAT').toUpperCase())}</div>
-              <div style="color: var(--text-muted); font-size: 11px;">${escapeHtml(e.details?.name || e.device_id)} — ${escapeHtml(e.details?.reason || e.details?.summary || 'Threat intercepted')}</div>
-            </div>
-          </div>
-        `).join('');
-        flyoutList.querySelectorAll('.flyout-threat-clickable').forEach(item => {
-          item.onclick = () => {
-            const devId = item.getAttribute('data-device-id');
-            if (devId) openDeviceInspection(devId);
-          };
-        });
-      } else {
-        flyoutList.innerHTML = `
-          <div class="flyout-item">
-            <i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--safe); flex-shrink: 0; margin-top: 2px;"></i>
-            <div>
-              <div style="font-weight: 600; color: var(--text-main);">Zero-Trust Bus Active</div>
-              <div style="color: var(--text-muted); font-size: 11px;">All connected hardware ports validated under strict containment.</div>
-            </div>
-          </div>
-          <div class="flyout-item">
-            <i data-lucide="activity" style="width: 16px; height: 16px; color: var(--primary-blue); flex-shrink: 0; margin-top: 2px;"></i>
-            <div>
-              <div style="font-weight: 600; color: var(--text-main);">Live Stream Online</div>
-              <div style="color: var(--text-muted); font-size: 11px;">WebSocket bi-directional telemetry connection synchronized.</div>
-            </div>
-          </div>
-        `;
-      }
-      refreshIcons();
-    }
 
     updateChartData({
       total: total,
@@ -1209,22 +1166,7 @@
       });
     }
 
-    // 5. Notifications Bell Flyout Toggle
-    const notifBtn = document.getElementById('notifications-bell-btn');
-    const notifFlyout = document.getElementById('notifications-flyout');
-    if (notifBtn && notifFlyout) {
-      notifBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        notifFlyout.classList.toggle('hidden');
-      });
-      document.addEventListener('click', (e) => {
-        if (!notifFlyout.contains(e.target) && e.target !== notifBtn) {
-          notifFlyout.classList.add('hidden');
-        }
-      });
-    }
-
-    // 6. Time Range Buttons with Live Analytics API Integration
+    // 5. Time Range Buttons with Live Analytics API Integration
     async function loadTimeRangeAnalytics(range) {
       try {
         const data = await apiGet(`/analytics/activity?range=${range}`);

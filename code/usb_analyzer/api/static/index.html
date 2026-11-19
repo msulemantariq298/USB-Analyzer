@@ -148,40 +148,6 @@
           <input type="text" id="search-input" class="search-input" placeholder="Search device, VID, PID, serial, policy..." aria-label="Filter bus devices">
           <div class="search-kbd-badge">Ctrl + K</div>
         </div>
-
-        <!-- Right Quick Actions & User Profile -->
-        <div class="topbar-actions">
-          <!-- Notification Bell with Counter -->
-          <div style="position: relative;">
-            <button type="button" class="btn-icon-circle" id="notifications-bell-btn" title="View Recent Threat Intercepts" aria-label="Notifications">
-              <i data-lucide="bell" style="width: 18px; height: 18px;"></i>
-              <span class="notification-badge" id="notifications-count-badge">2</span>
-            </button>
-            
-            <!-- Notifications Flyout (Toggleable) -->
-            <div id="notifications-flyout" class="notifications-flyout hidden" role="region" aria-label="Recent Intercept Notifications">
-              <div class="flyout-header">
-                <span class="flyout-title">Security Intercepts</span>
-                <span style="font-size: 11px; color: var(--safe); font-weight: 600;">Bus Armed</span>
-              </div>
-              <div class="flyout-list" id="flyout-notifications-list">
-                <div class="flyout-item">
-                  <i data-lucide="shield-check" style="width: 16px; height: 16px; color: var(--safe); flex-shrink: 0; margin-top: 2px;"></i>
-                  <div>
-                    <div style="font-weight: 600; color: var(--text-main);">Zero-Trust Bus Active</div>
-                    <div style="color: var(--text-muted); font-size: 11px;">All connected hardware ports validated under strict containment.</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- User Profile Avatar Pill -->
-          <div class="user-profile-badge" id="user-profile-pill" title="Security Officer: Muhammad Suleman Tariq (Active Admin)">
-            <div class="avatar-initials">ST</div>
-            <span style="font-size: 11.5px; font-weight: 600; color: var(--text-body); padding: 0 4px;">Officer</span>
-          </div>
-        </div>
       </header>
 
       <!-- Dashboard Hero Section -->
