@@ -106,6 +106,7 @@ class WindowsWmiProvider(DeviceProvider):
             else:
                 standalone.append((entity, device_id))
 
+        parent_hw_by_serial: dict[str, set[str]] = {}
         # 1. Consolidate composite devices under their physical parent
         for key, (entity, device_id) in parents.items():
             extra_info = hid_info_by_vid_pid.get(key, {"names": set(), "classes": set()})
@@ -113,6 +114,10 @@ class WindowsWmiProvider(DeviceProvider):
 
             vol_set = set(volume_paths_by_device.get(device_id.casefold(), ()))
             hw_ids = set(_string_sequence(entity, "HardwareID"))
+            parent_serial = extract_serial_number(device_id)
+            if parent_serial:
+                parent_hw_by_serial.setdefault(parent_serial.casefold(), set()).update(hw_ids)
+                parent_hw_by_serial[parent_serial.casefold()].add(device_id)
             for c_entity, c_dev_id in sub_children:
                 vol_set.update(volume_paths_by_device.get(c_dev_id.casefold(), ()))
                 hw_ids.update(_string_sequence(c_entity, "HardwareID"))
@@ -189,12 +194,16 @@ class WindowsWmiProvider(DeviceProvider):
         # 3. Standalone non-composite devices (e.g. USBSTOR mass storage drives)
         for entity, device_id in standalone:
             vol = volume_paths_by_device.get(device_id.casefold(), ())
+            hw_ids = set(_string_sequence(entity, "HardwareID"))
+            serial = extract_serial_number(device_id)
+            if serial and serial.casefold() in parent_hw_by_serial:
+                hw_ids.update(parent_hw_by_serial[serial.casefold()])
             category = infer_device_category(
                 device_id=device_id,
                 name=_string_value(entity, "Name"),
                 pnp_class=_string_value(entity, "PNPClass"),
                 service=_string_value(entity, "Service"),
-                hardware_ids=_string_sequence(entity, "HardwareID"),
+                hardware_ids=tuple(sorted(hw_ids)),
             )
             friendly = infer_friendly_name(
                 device_id=device_id,
@@ -208,10 +217,10 @@ class WindowsWmiProvider(DeviceProvider):
                 manufacturer=_string_value(entity, "Manufacturer"),
                 pnp_class=_string_value(entity, "PNPClass"),
                 service=_string_value(entity, "Service"),
-                hardware_ids=_string_sequence(entity, "HardwareID"),
+                hardware_ids=tuple(sorted(hw_ids)),
                 status=_string_value(entity, "Status"),
                 volume_paths=vol,
-                serial_number=extract_serial_number(device_id),
+                serial_number=serial,
                 device_type=category,
             )
             devices[device_id] = device

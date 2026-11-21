@@ -7,6 +7,9 @@ from usb_analyzer.device_monitor.fingerprint import (
     detect_spoofed_identity,
     extract_fingerprint,
     extract_serial_number,
+    infer_device_category,
+    infer_friendly_name,
+    is_standard_peripheral,
 )
 from usb_analyzer.device_monitor.monitor import DeviceMonitor, UsbDevice
 from usb_analyzer.policy.engine import PolicyEngine
@@ -144,4 +147,70 @@ def test_monitor_spoofed_identity_scenario(tmp_path: Path):
     assert "device.spoofed_identity" in event_types
     assert "device.blocked" in event_types
     assert spoofed_device.device_id in blocker.blocked_devices
+
+
+def test_card_reader_and_usb_hub_classified_as_standard_peripherals() -> None:
+    cr_cat = infer_device_category(
+        device_id=r"USB\VID_0BDA&PID_0129\20100201396000000",
+        name="Realtek USB 2.0 Card Reader",
+        pnp_class="USB",
+        service="RTSUER",
+    )
+    assert cr_cat == "Card Reader"
+    assert is_standard_peripheral(cr_cat) is True
+
+    hub_cat = infer_device_category(
+        device_id=r"USB\VID_1A86&PID_8098\5&E5AA38C&0&2",
+        name="Generic USB Hub",
+        pnp_class="USB",
+        service="USBHUB3",
+    )
+    assert hub_cat == "USB Hub"
+    assert is_standard_peripheral(hub_cat) is True
+    assert infer_friendly_name(
+        device_id=r"USB\VID_1A86&PID_8098\5&E5AA38C&0&2",
+        name="Generic USB Hub",
+        device_category=hub_cat,
+    ) == "USB Hub"
+
+
+def test_monitor_allows_whitelisted_device_with_policy_allowed_event(tmp_path: Path) -> None:
+    store = WhitelistStore(tmp_path / "wl.db")
+    blocker = MockDeviceBlocker()
+    engine = PolicyEngine(store=store, blocker=blocker, mode=PolicyMode.ENFORCE)
+
+    store.add(
+        WhitelistEntry(
+            name="Trusted Lab Drive",
+            vendor_id="0951",
+            product_id="1666",
+            serial_number="SN_WHITELIST_OK",
+        )
+    )
+    dev = UsbDevice(
+        device_id=r"USB\VID_0951&PID_1666\SN_WHITELIST_OK",
+        name="Kingston DataTraveler",
+        device_type="USB Storage Drive",
+    )
+    provider = FakeProvider([{}, {dev.device_id: dev}])
+    sink = FakeSink()
+    stop_event = Event()
+
+    import threading
+    timer = threading.Timer(0.1, stop_event.set)
+    timer.start()
+    try:
+        DeviceMonitor(
+            provider=provider,
+            event_sink=sink,
+            interval_seconds=0.01,
+            policy_engine=engine,
+        ).run(stop_event)
+    finally:
+        timer.cancel()
+
+    event_types = [e.event_type for e in sink.events]
+    assert "device.connected" in event_types
+    assert "policy.allowed" in event_types
+    assert dev.device_id not in blocker.blocked_devices
 

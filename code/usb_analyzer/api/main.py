@@ -5,6 +5,7 @@ import logging
 import os
 import time
 import urllib.parse
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -24,20 +25,49 @@ from usb_analyzer.policy.engine import PolicyEngine
 from usb_analyzer.policy.enforcement import get_platform_blocker
 from usb_analyzer.policy.models import PolicyMode, WhitelistEntry
 from usb_analyzer.policy.store import WhitelistStore
+from usb_analyzer.reports.common import (
+    build_device_identity_lookup,
+    classify_event_verdict,
+    csv_safe_cell,
+    extract_device_name,
+    extract_usb_ids,
+)
 from usb_analyzer.reports.incident_pdf import generate_incident_pdf
+from usb_analyzer.storage_scanner.service import StorageScanService
+from usb_analyzer.storage_scanner.signatures import DEFAULT_RULES_DIR, SignatureEngine
 
 logger = logging.getLogger(__name__)
 
 settings = get_settings()
 event_store = EventStore(settings.database_path)
 whitelist_store = WhitelistStore(settings.database_path)
-current_policy_mode = PolicyMode(settings.policy_mode)
+current_policy_mode = whitelist_store.get_policy_mode() or PolicyMode(settings.policy_mode)
 policy_engine = PolicyEngine(
     store=whitelist_store,
-    blocker=get_platform_blocker(dry_run=True),
+    blocker=get_platform_blocker(dry_run=bool(os.environ.get("PYTEST_CURRENT_TEST"))),
     mode=current_policy_mode,
 )
 hid_detector = BadUsbDetector(event_sink=event_store, policy_engine=policy_engine)
+
+
+class _ApiScanEventSink:
+    """Persist scan events emitted inside API handlers and retain recent events for WS broadcast."""
+
+    def __init__(self) -> None:
+        self.pending_broadcasts: list[DeviceEvent] = []
+
+    def add(self, event: DeviceEvent) -> DeviceEvent:
+        added = event_store.add(event)
+        self.pending_broadcasts.append(added)
+        return added
+
+
+_api_scan_sink = _ApiScanEventSink()
+storage_scan_service = StorageScanService(
+    event_sink=_api_scan_sink,
+    policy_engine=policy_engine,
+    max_workers=2,
+)
 
 app = FastAPI(title=settings.app_name, version="0.1.0")
 
@@ -105,6 +135,16 @@ _pending_notification_actions: list[dict[str, Any]] = []
 @app.get("/", include_in_schema=False)
 def dashboard() -> FileResponse:
     return FileResponse(static_directory / "index.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+        'stroke="#1D4ED8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+    )
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @app.get("/open", include_in_schema=False)
@@ -228,16 +268,41 @@ def list_events(
 async def create_event(event: DeviceEvent) -> DeviceEvent:
     added = event_store.add(event)
     await broadcast_telemetry("event_added", added.model_dump(mode="json"))
+
+    details = event.details or {}
+    if details.get("suppress_toast"):
+        return added
+
+    # Unrecognized hardware emits both device.blocked and policy.violation; let the warning toast handle it once.
+    if (
+        event.event_type == "device.blocked"
+        and details.get("reason") == "Unauthorized device: not found on the whitelist"
+    ):
+        return added
+
     if event.severity == EventSeverity.CRITICAL:
-        summary = event.details.get("summary") or event.details.get("reason") or "Critical hardware threat intercepted"
-        send_desktop_notification(
-            "USB Analyzer — Threat Neutralized",
-            f"Action taken: Port disabled. {summary}",
-            severity="critical",
-            device_id=event.device_id,
-        )
+        summary = details.get("summary") or details.get("reason") or "Critical hardware threat intercepted"
+        if event.event_type == "device.blocked" and details.get("blocked") is False:
+            msg_body = (
+                summary
+                if "administrator" in summary.lower()
+                else f"Could not disable port automatically (run as Administrator). {summary}"
+            )
+            send_desktop_notification(
+                "USB Analyzer — Threat Detected (Elevation Required)",
+                msg_body,
+                severity="critical",
+                device_id=event.device_id,
+            )
+        else:
+            send_desktop_notification(
+                "USB Analyzer — Threat Neutralized",
+                f"Action taken: Port disabled. {summary}",
+                severity="critical",
+                device_id=event.device_id,
+            )
     elif event.severity == EventSeverity.WARNING:
-        summary = event.details.get("summary") or event.details.get("reason") or "Unregistered device connected"
+        summary = details.get("summary") or details.get("reason") or "Unregistered device connected"
         send_desktop_notification(
             "USB Analyzer — Suspicious Device Alert",
             f"Problem: {summary}",
@@ -265,25 +330,40 @@ async def block_device_manually(req: DeviceBlockRequest) -> dict[str, Any]:
         threat_type="user_containment_action",
         details={"action": "blocked_by_user"},
     )
+    if not decision.blocked_successfully:
+        block_event.details["action_taken"] = "Block Failed (Administrator Privileges Required)"
+    else:
+        block_event.details["action_taken"] = "Isolated & Disabled"
     event_store.add(block_event)
-    await broadcast_telemetry("device_blocked", {"device_id": req.device_id, "reason": req.reason})
-    send_desktop_notification(
-        "USB Analyzer — Device Blocked",
-        f"Action taken: Port disabled for {req.device_id}.",
-        severity="critical",
-        device_id=req.device_id,
-    )
+    await broadcast_telemetry("device_blocked", {"device_id": req.device_id, "reason": req.reason, "blocked": decision.blocked_successfully})
+    if decision.blocked_successfully:
+        send_desktop_notification(
+            "USB Analyzer — Device Blocked",
+            f"Action taken: Port disabled for {req.device_id}.",
+            severity="critical",
+            device_id=req.device_id,
+        )
+        summary = f"Device {req.device_id} has been disabled and isolated at the hardware port."
+    else:
+        send_desktop_notification(
+            "USB Analyzer — Block Failed (Admin Required)",
+            f"Could not disable {req.device_id}: Administrator privileges required.",
+            severity="warning",
+            device_id=req.device_id,
+        )
+        summary = f"Device {req.device_id} could not be isolated at the port: Administrator privileges required."
     return {
         "status": "blocked",
         "device_id": req.device_id,
         "blocked": decision.blocked_successfully,
-        "summary": f"Device {req.device_id} has been disabled and isolated at the hardware port.",
+        "summary": summary,
     }
 
 
 @app.post(f"{settings.api_prefix}/devices/allow")
 async def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
-    policy_engine.unblock_device(req.device_id, reason=req.reason)
+    whitelist_store.allow_device_session(req.device_id)
+    port_enabled, enable_msg = policy_engine.unblock_device(req.device_id, reason=req.reason)
     allow_event = DeviceEvent(
         device_id=req.device_id,
         source="user-decision",
@@ -295,7 +375,9 @@ async def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
             "reason": req.reason,
             "verdict": "SAFE",
             "risk": "None (Authorized by User)",
-            "action_taken": "Allowed & Active",
+            "action_taken": "Allowed & Active" if port_enabled else "Allowed in Policy (Admin Required to Re-enable Port)",
+            "port_enabled": port_enabled,
+            "enforcement_message": enable_msg,
             "summary": f"Device {req.device_id} was permitted to run by user.",
         },
     )
@@ -304,6 +386,7 @@ async def allow_device_manually(req: DeviceAllowRequest) -> dict[str, Any]:
     return {
         "status": "allowed",
         "device_id": req.device_id,
+        "port_enabled": port_enabled,
         "summary": f"Device {req.device_id} was permitted to run by user.",
     }
 
@@ -329,6 +412,110 @@ def list_connected_devices() -> list[dict[str, Any]]:
     return []
 
 
+class StorageScanRequest(BaseModel):
+    volume_path: str | None = None
+    device_id: str | None = None
+
+
+@app.get(f"{settings.api_prefix}/scanner/rules")
+def list_scanner_rules() -> dict[str, Any]:
+    """Return active YARA rules and hash IOC database metadata."""
+    engine = SignatureEngine()
+    return {
+        "engine_mode": "yara-python + builtin" if engine._has_native_yara else "yara-dsl (.yar parser) + heuristics",
+        "rules_dir": str(DEFAULT_RULES_DIR),
+        "hash_ioc_count": len(engine.known_hashes),
+        "rules": engine.get_rule_inventory(),
+    }
+
+
+@app.post(f"{settings.api_prefix}/storage/scan")
+async def scan_usb_storage_volumes(req: StorageScanRequest | None = None) -> dict[str, Any]:
+    """Scan specified or all connected USB mass storage volumes with hashes, entropy, magic types & YARA."""
+    targets: list[tuple[str, str]] = []
+
+    if req and req.volume_path:
+        target_path = Path(req.volume_path)
+        if not target_path.exists() or not target_path.is_dir():
+            raise HTTPException(status_code=400, detail=f"Storage volume path not accessible: {req.volume_path}")
+        dev_id = req.device_id or f"USBSTOR\\VOLUME\\{target_path.drive or target_path.name}"
+        targets.append((dev_id, str(target_path)))
+    elif os.name == "nt":
+        try:
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+            except Exception:
+                pass
+            from usb_analyzer.device_monitor.windows import WindowsWmiProvider
+
+            devs = WindowsWmiProvider().list_devices()
+            for dev in devs.values():
+                for vol in dev.volume_paths:
+                    if req and req.device_id and dev.device_id != req.device_id:
+                        continue
+                    targets.append((dev.device_id, vol))
+        except Exception as exc:
+            logger.warning("Failed to enumerate Windows USB volumes for scan: %s", exc)
+            raise HTTPException(status_code=500, detail=f"Volume enumeration failed: {exc}") from exc
+
+    results: list[dict[str, Any]] = []
+    _api_scan_sink.pending_broadcasts.clear()
+
+    for dev_id, vol_path in targets:
+        details = storage_scan_service.scan_volume_now(dev_id, vol_path)
+        if details:
+            results.append({"device_id": dev_id, "volume_path": vol_path, **details})
+
+    for ev in list(_api_scan_sink.pending_broadcasts):
+        await broadcast_telemetry("event_added", ev.model_dump(mode="json"))
+        ev_details = ev.details or {}
+        if ev_details.get("suppress_toast"):
+            continue
+        if ev.event_type == "device.blocked":
+            summary = str(ev_details.get("summary") or ev_details.get("reason") or "Malicious USB threat blocked")
+            if ev_details.get("blocked") is False:
+                send_desktop_notification(
+                    "USB Analyzer — Threat Detected (Elevation Required)",
+                    summary,
+                    severity="critical",
+                    device_id=ev.device_id,
+                )
+            else:
+                send_desktop_notification(
+                    "USB Analyzer — Threat Neutralized",
+                    summary,
+                    severity="critical",
+                    device_id=ev.device_id,
+                )
+        elif ev.event_type == "scan.completed":
+            if ev.severity == EventSeverity.CRITICAL:
+                send_desktop_notification(
+                    "USB Analyzer — Malware Detected",
+                    str(ev_details.get("summary") or "Malware signature detected on USB storage"),
+                    severity="critical",
+                    device_id=ev.device_id,
+                )
+            elif ev.severity == EventSeverity.WARNING:
+                send_desktop_notification(
+                    "USB Analyzer — Suspicious USB Files",
+                    str(ev_details.get("summary") or "Suspicious files detected on USB storage"),
+                    severity="warning",
+                    device_id=ev.device_id,
+                )
+    _api_scan_sink.pending_broadcasts.clear()
+
+    return {
+        "status": "ok",
+        "volumes_scanned": len(results),
+        "files_scanned": sum(int(r.get("files_scanned", 0)) for r in results),
+        "new_files_count": sum(int(r.get("new_files_count", 0)) + int(r.get("modified_files_count", 0)) for r in results),
+        "flagged_count": sum(int(r.get("flagged_count", 0)) for r in results),
+        "max_risk_score": max((int(r.get("max_risk_score", 0)) for r in results), default=0),
+        "results": results,
+    }
+
+
 @app.post(f"{settings.api_prefix}/devices/scan")
 def scan_and_sync_connected_devices() -> dict[str, Any]:
     """Scan and synchronize all currently connected physical devices into event history."""
@@ -345,7 +532,9 @@ def scan_and_sync_connected_devices() -> dict[str, Any]:
             provider = WindowsWmiProvider()
             devs = provider.list_devices()
             existing_events = event_store.list(limit=500)
-            existing_ids = {e.device_id for e in existing_events}
+            existing_ids = {
+                e.device_id for e in existing_events if e.event_type == "device.connected"
+            }
             added = 0
             for d in devs.values():
                 if d.device_id not in existing_ids:
@@ -362,6 +551,7 @@ def scan_and_sync_connected_devices() -> dict[str, Any]:
                         "name": d.name,
                         "device_type": d.device_type,
                         "serial_number": d.serial_number,
+                        "volume_paths": list(d.volume_paths),
                     }
                     for d in devs.values()
                 ],
@@ -411,6 +601,10 @@ async def delete_whitelist_entry(entry_id: UUID) -> None:
 @app.get(f"{settings.api_prefix}/policy/status")
 def get_policy_status() -> dict[str, object]:
     global current_policy_mode
+    persisted = whitelist_store.get_policy_mode()
+    if persisted is not None:
+        current_policy_mode = persisted
+        policy_engine.mode = persisted
     entries = whitelist_store.list()
     return {
         "mode": current_policy_mode.value,
@@ -420,7 +614,7 @@ def get_policy_status() -> dict[str, object]:
 
 @app.get(f"{settings.api_prefix}/reports/incident/pdf")
 def export_incident_report_pdf() -> Response:
-    events = event_store.list(limit=200)
+    events = event_store.list(limit=500)
     whitelist = whitelist_store.list()
     pdf_bytes = generate_incident_pdf(
         events=events,
@@ -438,36 +632,147 @@ def export_incident_report_pdf() -> Response:
 def export_events_csv() -> Response:
     events = event_store.list(limit=500)
     output = io.StringIO()
+    output.write("\ufeff")  # UTF-8 BOM for direct Microsoft Excel compatibility
     writer = csv.writer(output)
     writer.writerow([
         "Event ID",
+        "Record Type",
         "Timestamp (UTC)",
-        "Device ID",
-        "Subsystem Source",
         "Severity",
+        "Verdict",
         "Event Type",
+        "Subsystem Source",
+        "Device Name",
+        "Device ID",
+        "Vendor ID",
+        "Product ID",
+        "Serial Number",
+        "Volume / File Path",
+        "File Type",
+        "Entropy (b/B)",
+        "Risk Score",
+        "SHA-256",
+        "MD5",
+        "Indicators / YARA Rules",
         "Reason / Risk",
         "Action Taken",
         "Details JSON",
     ])
+    identity_lookup = build_device_identity_lookup(events)
     for ev in events:
         details = ev.details or {}
-        reason = details.get("reason") or details.get("summary") or details.get("threat") or ""
-        action = details.get("action") or ("blocked" if ev.event_type == "device.blocked" else "logged")
+        verdict, reason, action = classify_event_verdict(ev)
+        vid, pid, serial = extract_usb_ids(ev.device_id, details)
+        dev_name = extract_device_name(ev.device_id, details)
+        if vid == "N/A" or pid == "N/A":
+            base_sn = serial.split("&")[0].lower() if serial != "N/A" else ""
+            fallback = identity_lookup.get(ev.device_id.lower()) or (identity_lookup.get(f"sn:{base_sn}") if base_sn else None)
+            if fallback:
+                fb_name, fb_vid, fb_pid, fb_serial = fallback
+                if dev_name in ("USB Mass Storage Drive", "USB Peripheral", "USB HID Peripheral"):
+                    dev_name = fb_name
+                if vid == "N/A":
+                    vid = fb_vid
+                if pid == "N/A":
+                    pid = fb_pid
+                if fb_serial != "N/A" and "&" in serial:
+                    serial = fb_serial
+        vol_or_path = str(details.get("volume_path") or details.get("mount_point") or details.get("path") or "")
+
+        ev_file_type = str(details.get("file_type") or "")
+        ev_entropy = f"{float(details['entropy']):.2f}" if "entropy" in details else ""
+        ev_risk = ""
+        if "risk_score" in details:
+            ev_risk = f"{int(details['risk_score'])}/100"
+        elif ev.event_type == "scan.completed" and "max_risk_score" in details:
+            ev_risk = f"{int(details['max_risk_score'])}/100"
+
+        ev_sha256 = str(details.get("sha256") or "")
+        ev_md5 = str(details.get("md5") or "")
+        if ev.event_type == "scan.completed":
+            ev_indicators = f"Scanned {int(details.get('files_scanned', 0))}, Flagged {int(details.get('flagged_count', 0))}"
+        elif isinstance(details.get("flags"), list):
+            ev_indicators = ", ".join(str(x) for x in details["flags"])
+        elif isinstance(details.get("flagged_files"), list):
+            ev_indicators = "; ".join(str(x) for x in details["flagged_files"])
+        else:
+            ev_indicators = ""
+
         writer.writerow([
-            str(ev.id),
-            ev.time.isoformat(),
-            ev.device_id,
-            ev.source,
-            ev.severity.value,
-            ev.event_type,
-            reason,
-            action,
-            json.dumps(details),
+            csv_safe_cell(ev.id),
+            "EVENT",
+            csv_safe_cell(ev.time.isoformat()),
+            csv_safe_cell(ev.severity.value.upper()),
+            csv_safe_cell(verdict),
+            csv_safe_cell(ev.event_type),
+            csv_safe_cell(ev.source),
+            csv_safe_cell(dev_name),
+            csv_safe_cell(ev.device_id),
+            csv_safe_cell(vid),
+            csv_safe_cell(pid),
+            csv_safe_cell(serial),
+            csv_safe_cell(vol_or_path),
+            csv_safe_cell(ev_file_type),
+            csv_safe_cell(ev_entropy),
+            csv_safe_cell(ev_risk),
+            csv_safe_cell(ev_sha256),
+            csv_safe_cell(ev_md5),
+            csv_safe_cell(ev_indicators),
+            csv_safe_cell(reason),
+            csv_safe_cell(action),
+            csv_safe_cell(json.dumps(details, sort_keys=True)),
         ])
+
+        if ev.event_type == "scan.completed":
+            analyses = details.get("file_analyses") or details.get("flagged") or []
+            if isinstance(analyses, list):
+                sorted_files = sorted(
+                    (f for f in analyses if isinstance(f, dict)),
+                    key=lambda item: (-int(item.get("risk_score", 0)), str(item.get("path", ""))),
+                )
+                for item in sorted_files:
+                    score = int(item.get("risk_score", 0))
+                    fverdict = (
+                        "CRITICAL" if score >= 80
+                        else ("HIGH" if score >= 50 else ("SUSPICIOUS" if score >= 20 else "CLEAN"))
+                    )
+                    fsev = "CRITICAL" if score >= 50 else ("WARNING" if score >= 20 else "INFO")
+                    meta = item.get("metadata") or {}
+                    ftype = str(item.get("file_type") or "Unknown")
+                    if meta.get("extension_mismatch"):
+                        ftype = f"{ftype} [Mismatch: {meta.get('extension', '')}]"
+                    fpath = str(item.get("path") or "")
+                    full_loc = f"{vol_or_path.rstrip('\\/')}\\{fpath}" if vol_or_path and fpath else (fpath or vol_or_path)
+                    flags = [str(x) for x in (item.get("flags") or [])]
+                    freason = "; ".join(flags) if flags else "Clean storage file"
+                    writer.writerow([
+                        csv_safe_cell(ev.id),
+                        "FILE",
+                        csv_safe_cell(ev.time.isoformat()),
+                        csv_safe_cell(fsev),
+                        csv_safe_cell(fverdict),
+                        "storage.file_analysis",
+                        "storage-scanner",
+                        csv_safe_cell(dev_name),
+                        csv_safe_cell(ev.device_id),
+                        csv_safe_cell(vid),
+                        csv_safe_cell(pid),
+                        csv_safe_cell(serial),
+                        csv_safe_cell(full_loc),
+                        csv_safe_cell(ftype),
+                        csv_safe_cell(f"{float(item.get('entropy', 0.0)):.2f}"),
+                        csv_safe_cell(f"{score}/100"),
+                        csv_safe_cell(item.get("sha256") or ""),
+                        csv_safe_cell(item.get("md5") or ""),
+                        csv_safe_cell(", ".join(flags)),
+                        csv_safe_cell(freason),
+                        "FLAGGED" if score >= 20 else "CLEAN",
+                        csv_safe_cell(json.dumps(meta, sort_keys=True)),
+                    ])
+
     return Response(
         content=output.getvalue(),
-        media_type="text/csv",
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="usb_forensic_audit_events.csv"'},
     )
 
@@ -484,59 +789,73 @@ def export_events_json() -> Response:
 
 
 @app.post(f"{settings.api_prefix}/policy/mode")
-def update_policy_mode(req: PolicyModeUpdateRequest) -> dict[str, str]:
+async def update_policy_mode(req: PolicyModeUpdateRequest) -> dict[str, str]:
     global current_policy_mode
-    current_policy_mode = req.mode
+    current_policy_mode = whitelist_store.set_policy_mode(req.mode)
     policy_engine.mode = current_policy_mode
+    await broadcast_telemetry("policy_updated", {"mode": current_policy_mode.value})
     return {"mode": current_policy_mode.value}
 
 
 @app.get(f"{settings.api_prefix}/analytics/activity")
-def get_activity_analytics(range: str = Query("1h", pattern="^(1h|24h|7d|30d)$")) -> dict[str, Any]:
-    events = event_store.list(limit=500)
-    real_total = len(events)
-    real_suspicious = sum(1 for e in events if e.severity in (EventSeverity.WARNING, EventSeverity.CRITICAL))
+def get_activity_analytics(
+    time_range: str = Query("1h", alias="range", pattern="^(1h|24h|7d|30d)$"),
+) -> dict[str, Any]:
+    events = event_store.list(limit=1000)
+    now = datetime.now(timezone.utc)
 
-    if range == "1h":
-        labels = ["9:00 AM", "9:15 AM", "9:30 AM", "9:45 AM", "10:00 AM", "10:15 AM", "10:30 AM", "10:45 AM"]
-        base_curve = [18, 38, 26, 48, 36, 64, 45, 62]
-        total_events = 248 + real_total
-        suspicious_events = 6 + real_suspicious
-        trend_total = "+12%"
-        trend_suspicious = "+1%"
-    elif range == "24h":
-        labels = ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "23:59"]
-        base_curve = [12, 28, 55, 72, 60, 48, 35]
-        total_events = 1420 + real_total
-        suspicious_events = 18 + real_suspicious
-        trend_total = "+8%"
-        trend_suspicious = "-3%"
-    elif range == "7d":
-        labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        base_curve = [42, 68, 54, 75, 60, 30, 25]
-        total_events = 6840 + real_total
-        suspicious_events = 42 + real_suspicious
-        trend_total = "+15%"
-        trend_suspicious = "+2%"
+    if time_range == "1h":
+        bucket_count = 6
+        step = timedelta(minutes=10)
+        window_start = now - timedelta(hours=1)
+        labels = [
+            (window_start + step * (i + 1)).astimezone().strftime("%H:%M")
+            for i in range(bucket_count)
+        ]
+    elif time_range == "24h":
+        bucket_count = 8
+        step = timedelta(hours=3)
+        window_start = now - timedelta(hours=24)
+        labels = [
+            (window_start + step * (i + 1)).astimezone().strftime("%H:%M")
+            for i in range(bucket_count)
+        ]
+    elif time_range == "7d":
+        bucket_count = 7
+        step = timedelta(days=1)
+        window_start = now - timedelta(days=7)
+        labels = [
+            (window_start + step * (i + 1)).astimezone().strftime("%a")
+            for i in range(bucket_count)
+        ]
     else:  # 30d
-        labels = ["Week 1", "Week 2", "Week 3", "Week 4"]
-        base_curve = [45, 58, 70, 62]
-        total_events = 24500 + real_total
-        suspicious_events = 120 + real_suspicious
-        trend_total = "+5%"
-        trend_suspicious = "-1%"
+        bucket_count = 4
+        step = timedelta(days=7.5)
+        window_start = now - timedelta(days=30)
+        labels = [f"Week {i + 1}" for i in range(bucket_count)]
 
-    if real_total > 0:
-        base_curve[-1] = min(80, base_curve[-1] + real_total)
+    buckets = [0] * bucket_count
+    total_events = 0
+    suspicious_events = 0
+    step_seconds = step.total_seconds()
+
+    for ev in events:
+        ev_time = ev.time if ev.time.tzinfo else ev.time.replace(tzinfo=timezone.utc)
+        if ev_time < window_start:
+            continue
+        total_events += 1
+        if ev.severity in (EventSeverity.WARNING, EventSeverity.CRITICAL):
+            suspicious_events += 1
+        elapsed = max(0.0, (ev_time - window_start).total_seconds())
+        idx = min(bucket_count - 1, int(elapsed // step_seconds))
+        buckets[idx] += 1
 
     return {
-        "range": range,
+        "range": time_range,
         "labels": labels,
-        "data": base_curve,
+        "data": buckets,
         "total_events": total_events,
         "suspicious_events": suspicious_events,
-        "trend_total": trend_total,
-        "trend_suspicious": trend_suspicious,
     }
 
 

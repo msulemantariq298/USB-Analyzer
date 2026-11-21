@@ -37,12 +37,18 @@ class WindowsPnpUtilBlocker:
                 check=False,
             )
             output = (result.stdout + " " + result.stderr).strip()
-            if result.returncode == 0:
+            output_lower = output.lower()
+            has_failure = (
+                result.returncode != 0
+                or "failed to " in output_lower
+                or "access is denied" in output_lower
+            )
+            if not has_failure:
                 logger.info("Successfully disabled device %s: %s", device_id, output)
                 return True, f"Disabled device: {output}"
             else:
                 logger.warning(
-                    "pnputil failed with code %d for %s: %s",
+                    "pnputil disable failed (code %d) for %s: %s",
                     result.returncode,
                     device_id,
                     output,
@@ -69,12 +75,18 @@ class WindowsPnpUtilBlocker:
                 check=False,
             )
             output = (result.stdout + " " + result.stderr).strip()
-            if result.returncode == 0:
+            output_lower = output.lower()
+            has_failure = (
+                result.returncode != 0
+                or "failed to " in output_lower
+                or "access is denied" in output_lower
+            )
+            if not has_failure:
                 logger.info("Successfully enabled device %s: %s", device_id, output)
                 return True, f"Enabled device: {output}"
             else:
                 logger.warning(
-                    "pnputil failed with code %d for %s: %s",
+                    "pnputil enable failed (code %d) for %s: %s",
                     result.returncode,
                     device_id,
                     output,

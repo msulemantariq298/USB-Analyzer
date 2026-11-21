@@ -11,6 +11,10 @@ def test_health_endpoint() -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+    fav = client.get("/favicon.ico")
+    assert fav.status_code == 200
+    assert "image/svg+xml" in fav.headers["content-type"]
+
 
 def test_clear_events_endpoint() -> None:
     client = TestClient(app)
@@ -80,12 +84,74 @@ def test_simulate_scenario_invalid() -> None:
 
 
 def test_export_events_csv_endpoint() -> None:
+    import csv as _csv
+    import io as _io
+
+    from usb_analyzer.api.main import event_store
+    from usb_analyzer.core.events import DeviceEvent, EventSeverity
+
+    event_store.add(
+        DeviceEvent(
+            device_id="USB\\VID_058F&PID_6387\\27DB4F8B",
+            source="storage-scanner",
+            severity=EventSeverity.CRITICAL,
+            event_type="scan.completed",
+            details={
+                "name": "Flash Disk",
+                "volume_path": "F:\\",
+                "files_scanned": 2,
+                "flagged_count": 2,
+                "max_risk_score": 90,
+                "file_analyses": [
+                    {
+                        "path": "invoice_scan.pdf",
+                        "file_type": "PE32 Executable",
+                        "entropy": 7.88,
+                        "risk_score": 90,
+                        "sha256": "aa" * 32,
+                        "md5": "bb" * 16,
+                        "flags": ["extension_signature_mismatch"],
+                        "metadata": {"extension": ".pdf", "extension_mismatch": True},
+                    }
+                ],
+            },
+        )
+    )
+    event_store.add(
+        DeviceEvent(
+            device_id="=MALICIOUS_DEV",
+            source="policy-engine",
+            severity=EventSeverity.WARNING,
+            event_type="policy.violation",
+            details={"reason": "+cmd|'/C calc'!A0"},
+        )
+    )
+
     client = TestClient(app)
     response = client.get("/api/v1/reports/events.csv")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
-    assert "Event ID" in response.text
-    assert "Device ID" in response.text
+    text = response.content.decode("utf-8-sig")
+    assert "Event ID" in text
+    assert "Device ID" in text
+    assert "SHA-256" in text
+    assert "Entropy (b/B)" in text
+    rows = list(_csv.DictReader(_io.StringIO(text)))
+    file_rows = [r for r in rows if r["Record Type"] == "FILE"]
+    assert file_rows
+    matched = file_rows[0]
+    assert matched["Vendor ID"] == "0x058F"
+    assert matched["Product ID"] == "0x6387"
+    assert matched["Serial Number"] == "27DB4F8B"
+    assert matched["SHA-256"] == "aa" * 32
+    assert matched["MD5"] == "bb" * 16
+    assert matched["Risk Score"] == "90/100"
+    assert matched["Volume / File Path"] == "F:\\invoice_scan.pdf"
+
+    inj_rows = [r for r in rows if "=MALICIOUS_DEV" in r["Device ID"]]
+    assert inj_rows
+    assert inj_rows[0]["Device ID"].startswith("'=")
+    assert inj_rows[0]["Reason / Risk"].startswith("'+")
 
 
 def test_export_events_json_endpoint() -> None:
@@ -173,13 +239,56 @@ def test_websocket_telemetry_stream() -> None:
 
 def test_activity_analytics_endpoint() -> None:
     client = TestClient(app)
+    client.delete("/api/v1/events")
     res = client.get("/api/v1/analytics/activity?range=1h")
     assert res.status_code == 200
     data = res.json()
     assert data["range"] == "1h"
     assert len(data["labels"]) == len(data["data"])
-    assert "total_events" in data
-    assert "suspicious_events" in data
+    assert data["total_events"] == 0
+    assert data["suspicious_events"] == 0
+
+
+def test_create_event_notification_honesty_and_suppression(monkeypatch) -> None:
+    import usb_analyzer.api.main as api_main
+
+    sent: list[tuple[str, str, str]] = []
+
+    def fake_notify(title: str, message: str, *, severity: str = "info", **_kwargs) -> None:
+        sent.append((title, message, severity))
+
+    monkeypatch.setattr(api_main, "send_desktop_notification", fake_notify)
+    client = TestClient(app)
+
+    # 1. Suppressed preliminary event does not emit duplicate toast
+    resp1 = client.post(
+        "/api/v1/events",
+        json={
+            "device_id": "USB\\VID_1111&PID_2222\\SUPPRESS",
+            "source": "device-monitor",
+            "severity": "critical",
+            "event_type": "device.spoofed_identity",
+            "details": {"suppress_toast": True, "summary": "Spoofed"},
+        },
+    )
+    assert resp1.status_code == 201
+    assert len(sent) == 0
+
+    # 2. Failed block (blocked=False) reports elevation needed instead of "Port disabled"
+    resp2 = client.post(
+        "/api/v1/events",
+        json={
+            "device_id": "USB\\VID_1111&PID_2222\\FAIL_BLK",
+            "source": "policy-engine",
+            "severity": "critical",
+            "event_type": "device.blocked",
+            "details": {"blocked": False, "summary": "Threat detected"},
+        },
+    )
+    assert resp2.status_code == 201
+    assert len(sent) == 1
+    assert "Elevation Required" in sent[0][0]
+    assert "Action taken: Port disabled" not in sent[0][1]
 
 
 def test_connected_devices_endpoint() -> None:
@@ -195,5 +304,36 @@ def test_scan_devices_endpoint() -> None:
     assert res.status_code == 200
     data = res.json()
     assert "status" in data
+
+
+def test_scanner_rules_and_storage_scan_endpoints(tmp_path) -> None:
+    client = TestClient(app)
+
+    rules_resp = client.get("/api/v1/scanner/rules")
+    assert rules_resp.status_code == 200
+    rules_data = rules_resp.json()
+    assert len(rules_data["rules"]) >= 10
+    assert rules_data["hash_ioc_count"] >= 1
+
+    # Initial scan of clean file
+    (tmp_path / "notes.txt").write_text("Clean engineering notes", encoding="utf-8")
+    first_scan = client.post("/api/v1/storage/scan", json={"volume_path": str(tmp_path)})
+    assert first_scan.status_code == 200
+    d1 = first_scan.json()
+    assert d1["volumes_scanned"] == 1
+    assert d1["files_scanned"] == 1
+    assert d1["max_risk_score"] < 20
+
+    # Drop a new suspicious packed file and re-scan -> marked as NEW and scored >= 20
+    (tmp_path / "packed.dat").write_bytes(bytes(range(256)) * 12)
+    second_scan = client.post("/api/v1/storage/scan", json={"volume_path": str(tmp_path)})
+    assert second_scan.status_code == 200
+    d2 = second_scan.json()
+    assert d2["files_scanned"] == 2
+    assert d2["new_files_count"] == 1
+    assert d2["max_risk_score"] >= 25
+    by_name = {f["path"]: f for f in d2["results"][0]["file_analyses"]}
+    assert by_name["packed.dat"]["change_status"] == "new"
+    assert by_name["notes.txt"]["change_status"] == "existing"
 
 

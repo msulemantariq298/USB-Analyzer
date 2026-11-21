@@ -85,12 +85,13 @@ class BadUsbDetector:
                 "is_robotic_cadence": alert.is_robotic,
                 "keystrokes_counted": alert.keystroke_count,
                 "device_name": device_name,
+                "suppress_toast": self.policy_engine is not None,
             },
         )
         self.event_sink.add(event)
 
         if self.policy_engine is not None:
-            _, block_event = self.policy_engine.block_threat(
+            block_decision, block_event = self.policy_engine.block_threat(
                 device_id=device_id,
                 reason=alert.summary,
                 threat_type="badusb_keystroke_injection",
@@ -98,6 +99,11 @@ class BadUsbDetector:
                     "typing_speed_cps": alert.characters_per_second,
                     "device_name": device_name,
                 },
+            )
+            block_event.details["action_taken"] = (
+                "Hardware Blocked (Port Disabled)"
+                if block_decision.blocked_successfully
+                else "Block Failed (Administrator Privileges Required)"
             )
             self.event_sink.add(block_event)
 

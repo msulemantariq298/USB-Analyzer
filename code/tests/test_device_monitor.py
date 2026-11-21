@@ -108,3 +108,29 @@ def test_monitor_schedules_newly_mounted_volume(tmp_path) -> None:
     ).run(stop_event)
 
     scheduler.schedule.assert_called_once_with(provider.device_id, "E:\\")
+
+
+def test_monitor_populate_initial_schedules_mounted_volumes(tmp_path) -> None:
+    device = UsbDevice(
+        device_id=r"USBSTOR\DISK&VEN_DEMO\SERIAL_INIT",
+        name="Preconnected Flash Drive",
+        device_type="USB Storage Drive",
+        volume_paths=("F:\\",),
+    )
+
+    class StaticProvider:
+        def list_devices(self):
+            return {device.device_id: device}
+
+    scheduler = Mock()
+    stop_event = Mock(spec=Event)
+    stop_event.wait.return_value = True
+
+    DeviceMonitor(
+        StaticProvider(),
+        EventStore(tmp_path / "events.db"),
+        interval_seconds=0.01,
+        storage_scan_scheduler=scheduler,
+    ).run(stop_event, populate_initial=True)
+
+    scheduler.schedule.assert_called_once_with(device.device_id, "F:\\")

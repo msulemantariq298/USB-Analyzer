@@ -111,6 +111,8 @@ def infer_device_category(
     if has_mouse:
         return "Mouse"
 
+    if any(k in text for k in ("card reader", "cardreader", "sd reader", "microsd", "rtsuer")):
+        return "Card Reader"
     if any(k in text for k in ("disk", "storage", "usbstor", "flash", "thumbdrive", "cruzer", "datatraveler")):
         return "USB Storage Drive"
     if any(k in text for k in ("audio", "sound", "headset", "speaker", "microphone", "usbaudio")):
@@ -123,6 +125,8 @@ def infer_device_category(
         return "Security Token"
     if any(k in text for k in ("wireless", "wifi", "802.11", "ethernet", "lan")):
         return "Network Adapter"
+    if any(k in text for k in ("usb hub", "usbhub", "generic hub", "root hub", "usbhub3")):
+        return "USB Hub"
     if "hid" in text or "human interface" in text:
         return "Human Interface Device (HID)"
 
@@ -174,6 +178,8 @@ def infer_friendly_name(
         return meaningful[0]
 
     if device_category != "Unrecognized USB Peripheral":
+        if device_category.upper().startswith("USB"):
+            return device_category
         return f"USB {device_category}"
 
     return "Unrecognized USB Peripheral"
@@ -312,6 +318,8 @@ STANDARD_PERIPHERAL_CATEGORIES = frozenset({
     "Keyboard & Mouse",
     "Human Interface Device (HID)",
     "USB Storage Drive",
+    "Card Reader",
+    "USB Hub",
     "Audio Device",
     "Webcam",
     "Bluetooth Adapter",

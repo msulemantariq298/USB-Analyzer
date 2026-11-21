@@ -216,6 +216,8 @@ def send_desktop_notification(
     dashboard_url: str = DEFAULT_DASHBOARD_URL,
 ) -> None:
     """Send a non-blocking, clickable Windows desktop notification."""
+    if os.environ.get("USB_ANALYZER_DISABLE_NOTIFICATIONS") == "1":
+        return
     threading.Thread(
         target=_run_powershell_toast,
         args=(title, message, severity, device_id, interactive, dashboard_url),

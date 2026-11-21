@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 from uuid import uuid4
 
 import pytest
@@ -7,7 +8,7 @@ from fastapi.testclient import TestClient
 from usb_analyzer.api.main import app, whitelist_store
 from usb_analyzer.core.events import EventSeverity
 from usb_analyzer.policy.engine import PolicyEngine
-from usb_analyzer.policy.enforcement import MockDeviceBlocker
+from usb_analyzer.policy.enforcement import MockDeviceBlocker, WindowsPnpUtilBlocker
 from usb_analyzer.policy.models import PolicyMode, WhitelistEntry
 from usb_analyzer.policy.store import WhitelistStore
 
@@ -197,10 +198,12 @@ def test_policy_api_endpoints():
     entries = list_resp.json()
     assert any(e["id"] == entry_id for e in entries)
 
-    # 4. Mode update
+    # 4. Mode update (restore enforce at end so default stays enforce)
     mode_resp = client.post("/api/v1/policy/mode", json={"mode": "audit_only"})
     assert mode_resp.status_code == 200
     assert mode_resp.json()["mode"] == "audit_only"
+    restore_resp = client.post("/api/v1/policy/mode", json={"mode": "enforce"})
+    assert restore_resp.status_code == 200
 
     # 5. Delete entry
     del_resp = client.delete(f"/api/v1/policy/whitelist/{entry_id}")
@@ -209,4 +212,35 @@ def test_policy_api_endpoints():
     # 6. Delete again -> 404
     del_again = client.delete(f"/api/v1/policy/whitelist/{entry_id}")
     assert del_again.status_code == 404
+
+
+def test_windows_pnputil_blocker_detects_access_denied_on_zero_exit(monkeypatch) -> None:
+    def fake_run(*_args, **_kwargs):
+        return subprocess.CompletedProcess(
+            args=["pnputil"],
+            returncode=0,
+            stdout="Microsoft PnP Utility\n\nFailed to disable device:  USB\\VID_0BDA&PID_0129\\001\nAccess is denied.\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    blocker = WindowsPnpUtilBlocker(dry_run=False)
+    ok, msg = blocker.disable_device(r"USB\VID_0BDA&PID_0129\001")
+    assert ok is False
+    assert "access is denied" in msg.lower()
+
+
+def test_whitelist_store_policy_mode_and_session_allow(tmp_path: Path) -> None:
+    store = WhitelistStore(tmp_path / "policy_sync.db")
+    assert store.get_policy_mode() is None
+
+    assert store.set_policy_mode(PolicyMode.AUDIT_ONLY) == PolicyMode.AUDIT_ONLY
+    assert store.get_policy_mode() == PolicyMode.AUDIT_ONLY
+
+    dev_id = r"USB\VID_1234&PID_5678\SN_TEMP"
+    assert store.is_device_allowed_session(dev_id) is False
+    store.allow_device_session(dev_id)
+    assert store.is_device_allowed_session(dev_id) is True
+    store.clear_device_session(dev_id)
+    assert store.is_device_allowed_session(dev_id) is False
 

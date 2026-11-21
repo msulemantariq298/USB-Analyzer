@@ -1,8 +1,9 @@
+from datetime import datetime, timezone
 import sqlite3
 from pathlib import Path
 from uuid import UUID
 
-from usb_analyzer.policy.models import WhitelistEntry
+from usb_analyzer.policy.models import PolicyMode, WhitelistEntry
 
 
 class WhitelistStore:
@@ -39,6 +40,22 @@ class WhitelistStore:
             )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_whitelist_vid_pid ON whitelist(vendor_id, product_id)"
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS policy_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS session_allows (
+                    device_id TEXT PRIMARY KEY,
+                    granted_at TEXT NOT NULL
+                )
+                """
             )
 
     def add(self, entry: WhitelistEntry) -> WhitelistEntry:
@@ -137,4 +154,58 @@ class WhitelistStore:
             ):
                 return entry
         return None
+
+    def get_policy_mode(self) -> PolicyMode | None:
+        """Return persisted policy mode if configured, otherwise None."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT value FROM policy_settings WHERE key = 'policy_mode'"
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            return PolicyMode(row["value"])
+        except ValueError:
+            return None
+
+    def set_policy_mode(self, mode: PolicyMode | str) -> PolicyMode:
+        """Persist policy mode in SQLite so API and monitor stay synchronized."""
+        resolved = PolicyMode(mode)
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO policy_settings (key, value) VALUES ('policy_mode', ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """,
+                (resolved.value,),
+            )
+        return resolved
+
+    def allow_device_session(self, device_id: str) -> None:
+        """Record an operator 'Let It Run' override for an active device."""
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO session_allows (device_id, granted_at) VALUES (?, ?)
+                ON CONFLICT(device_id) DO UPDATE SET granted_at = excluded.granted_at
+                """,
+                (device_id, datetime.now(timezone.utc).isoformat()),
+            )
+
+    def is_device_allowed_session(self, device_id: str) -> bool:
+        """Return True if operator granted 'Let It Run' for this device."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM session_allows WHERE device_id = ?",
+                (device_id,),
+            ).fetchone()
+        return row is not None
+
+    def clear_device_session(self, device_id: str) -> None:
+        """Clear a temporary 'Let It Run' override (e.g. on disconnect)."""
+        with self._connect() as connection:
+            connection.execute(
+                "DELETE FROM session_allows WHERE device_id = ?",
+                (device_id,),
+            )
 

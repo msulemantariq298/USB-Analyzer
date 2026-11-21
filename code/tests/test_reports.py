@@ -41,6 +41,25 @@ def test_generate_incident_pdf():
             severity=EventSeverity.CRITICAL,
             details={"action": "block", "reason": "BadUSB keystroke injection detected"},
         ),
+        DeviceEvent(
+            device_id="USBSTOR\\DISK&VEN_DEMO\\SN12345678",
+            source="storage-scanner",
+            event_type="scan.completed",
+            severity=EventSeverity.WARNING,
+            details={
+                "volume_path": "F:\\",
+                "file_analyses": [
+                    {
+                        "path": "payload.bin",
+                        "file_type": "Binary Data",
+                        "entropy": 7.98,
+                        "risk_score": 45,
+                        "sha256": "deadbeef" * 8,
+                        "flags": ["high_entropy_packed"],
+                    }
+                ],
+            },
+        ),
     ]
 
     whitelist = [
@@ -56,7 +75,49 @@ def test_generate_incident_pdf():
     assert isinstance(pdf, bytes)
     assert pdf.startswith(b"%PDF-1.4")
     assert b"%%EOF" in pdf
-    assert len(pdf) > 500
+    assert len(pdf) > 1500
+    assert b"Activity & Health" in pdf
+    assert b"File Analysis" in pdf
+    assert b"deadbeef" in pdf
+    assert b"Page 1 of " in pdf
+
+
+def test_generate_incident_pdf_multipage_pagination():
+    many_files = [
+        {
+            "path": f"folder/nested_artifact_{i:02d}_payload.bin",
+            "file_type": "PE32+ Executable" if i % 2 == 0 else "Binary Data",
+            "entropy": 7.92 if i < 6 else 4.15,
+            "risk_score": 85 if i < 4 else (35 if i < 10 else 0),
+            "sha256": f"{i:02x}" * 32,
+            "md5": f"{i:02x}" * 16,
+            "size_bytes": 4096 + i * 128,
+            "flags": ["yara:Suspicious_Dropper", "high_entropy_packed"] if i < 6 else [],
+            "metadata": {"extension": ".bin", "extension_mismatch": i == 0},
+        }
+        for i in range(18)
+    ]
+    events = [
+        DeviceEvent(
+            device_id="USBSTOR\\DISK&VEN_GENERIC&PROD_FLASH_DISK\\27DB4F8B&0",
+            source="storage-scanner",
+            event_type="scan.completed",
+            severity=EventSeverity.CRITICAL,
+            details={
+                "name": "Generic Flash Disk",
+                "volume_path": "F:\\",
+                "files_scanned": len(many_files),
+                "flagged_count": 10,
+                "max_risk_score": 85,
+                "file_analyses": many_files,
+            },
+        )
+    ]
+    pdf = generate_incident_pdf(events, whitelist=[], policy_mode="audit_only")
+    assert pdf.startswith(b"%PDF-1.4")
+    assert b"Page 1 of 2" in pdf or b"Page 1 of 3" in pdf
+    assert b"Page 2 of " in pdf
+    assert b"POLICY: AUDIT ONLY" in pdf
 
 
 def test_api_export_incident_report_pdf():

