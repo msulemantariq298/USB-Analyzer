@@ -4,489 +4,368 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>USB Analyzer Dashboard — Endpoint Hardware Defense Console</title>
-  
-  <!-- Modern Inter & JetBrains Mono Fonts -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D4ED8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3C/svg%3E">
+
+  <!-- Montserrat Typography Throughout -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <!-- Core Design System Stylesheet -->
-  <link rel="stylesheet" href="/static/styles.css?v=42.0">
-  
+  <link rel="stylesheet" href="/static/styles.css?v=55.0">
+
   <!-- Local Production Chart.js & Lucide Icons -->
   <script src="/static/chart.umd.min.js"></script>
   <script src="/static/lucide.min.js"></script>
 </head>
 <body>
-  <div class="app-shell">
-    
+  <div class="app-shell" id="app-shell">
+
+    <!-- Mobile/Tablet Drawer Backdrop -->
+    <div class="sidebar-backdrop hidden" id="sidebar-backdrop" aria-hidden="true"></div>
+
     <!-- ======================================================================
-         A. FIXED SIDEBAR NAVIGATION
+         A. COLLAPSIBLE LEFT NAVIGATION DRAWER (Light in Light Theme, Dark in Dark Theme)
          ====================================================================== -->
     <aside class="app-sidebar" id="app-sidebar" aria-label="Command Navigation">
-      <!-- Brand & Security Monogram -->
-      <div class="sidebar-brand">
-        <div class="brand-icon-box" aria-hidden="true">
-          <!-- Shield with USB trident vector -->
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <path d="M12 8v7"/>
-            <path d="M9 10l3-2 3 2"/>
-            <circle cx="9" cy="13" r="1"/>
-            <circle cx="15" cy="13" r="1"/>
-          </svg>
+      <div class="sidebar-inner">
+        <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div class="brand-icon-box" aria-hidden="true">
+            <i data-lucide="shield" style="width: 17px; height: 17px;"></i>
+          </div>
+          <div class="brand-info">
+            <span class="brand-title">USB Analyzer</span>
+            <span class="brand-subtitle">Hardware Defense</span>
+          </div>
         </div>
-        <div class="brand-info">
-          <span class="brand-title">USB Analyzer</span>
-          <span class="brand-subtitle">Security. Visibility. Control.</span>
-        </div>
+        <button type="button" class="btn-drawer-close" id="sidebar-close-btn" aria-label="Collapse navigation drawer" title="Collapse drawer">
+          <i data-lucide="panel-left-close" style="width: 15px; height: 15px;"></i>
+        </button>
       </div>
 
-      <!-- Main Navigation Menu -->
       <nav class="sidebar-nav" aria-label="Main Navigation">
-        <!-- Dashboard (Active View) -->
-        <a href="#section-monitor" class="nav-item active" id="nav-dashboard">
-          <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
-          <span class="nav-label">Dashboard</span>
-        </a>
+        <div class="nav-section-label">Monitoring</div>
 
-        <!-- OPERATIONS SECTION -->
-        <div class="nav-section-label">Operations</div>
+        <a href="#section-overview" class="nav-item active" id="nav-dashboard">
+          <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
+          <span class="nav-label">Overview</span>
+        </a>
 
         <a href="#section-monitor" class="nav-item" id="nav-telemetry">
           <span class="nav-icon"><i data-lucide="activity"></i></span>
-          <span class="nav-label">Live Telemetry</span>
-          <span class="nav-badge" id="nav-active-badge">3</span>
-        </a>
-
-        <a href="#section-diagnostics" class="nav-item" id="nav-diagnostics">
-          <span class="nav-icon"><i data-lucide="flask-conical"></i></span>
-          <span class="nav-label">Diagnostics Lab</span>
+          <span class="nav-label">Audit Log</span>
+          <span class="nav-badge" id="nav-active-badge">0</span>
         </a>
 
         <a href="#section-analytics" class="nav-item" id="nav-analytics">
-          <span class="nav-icon"><i data-lucide="chart-no-axes-combined"></i></span>
-          <span class="nav-label">Threat Analytics</span>
+          <span class="nav-icon"><i data-lucide="bar-chart-3"></i></span>
+          <span class="nav-label">Activity &amp; Health</span>
         </a>
+
+        <div class="nav-section-label">Security</div>
 
         <a href="#section-whitelist" class="nav-item" id="nav-whitelist">
           <span class="nav-icon"><i data-lucide="shield-check"></i></span>
-          <span class="nav-label">Hardware Whitelist</span>
+          <span class="nav-label">Whitelist</span>
         </a>
 
-        <!-- SETTINGS SECTION -->
-        <div class="nav-section-label">Settings</div>
-
-        <a href="javascript:void(0)" class="nav-item" id="nav-security-settings">
-          <span class="nav-icon"><i data-lucide="shield"></i></span>
-          <span class="nav-label">Security Settings</span>
-        </a>
-
-        <a href="javascript:void(0)" class="nav-item" id="nav-mitre">
+        <button type="button" class="nav-item" id="nav-mitre">
           <span class="nav-icon"><i data-lucide="layers"></i></span>
-          <span class="nav-label">MITRE Defense Matrix</span>
-        </a>
+          <span class="nav-label">Threat Matrix</span>
+        </button>
+
+        <div class="nav-section-label">System</div>
+
+        <button type="button" class="nav-item" id="nav-security-settings">
+          <span class="nav-icon"><i data-lucide="sliders-horizontal"></i></span>
+          <span class="nav-label">Settings</span>
+        </button>
       </nav>
 
-      <!-- System Status Widget -->
-      <div class="sidebar-status-box">
-        <div class="status-header-row">
-          <span class="status-pulse-dot" id="bus-status-dot"></span>
-          <span class="status-title-text">System Status</span>
+      <div class="sidebar-footer">
+        <div class="sidebar-status-line">
+          <i data-lucide="radio" class="status-icon" id="bus-status-icon" style="width: 14px; height: 14px;"></i>
+          <div class="status-copy">
+            <span class="status-title-text">Telemetry Stream</span>
+            <span class="status-value-text" id="api-status">Connecting...</span>
+          </div>
         </div>
-        <div class="status-value-text" id="api-status">All Systems Operational</div>
       </div>
-
-      <!-- NUST Brand Crest at Bottom -->
-      <div class="sidebar-nust-brand">
-        <svg class="nust-crest" width="138" height="64" viewBox="0 0 160 74" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="NUST Defining Futures">
-          <!-- Crest Emblem -->
-          <g stroke="#93C5FD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <!-- Central Shield Outline -->
-            <path d="M80 6L94 13V28C94 37 87 45 80 48C73 45 66 37 66 28V13L80 6Z" fill="rgba(37, 99, 235, 0.25)"/>
-            <!-- Laurels / Rays -->
-            <path d="M80 12V38"/>
-            <path d="M73 20C75 22 78 23 80 23C82 23 85 22 87 20"/>
-            <path d="M71 27C74 30 77 31 80 31C83 31 86 30 89 27"/>
-            <path d="M60 18C61 24 64 32 68 36"/>
-            <path d="M100 18C99 24 96 32 92 36"/>
-          </g>
-          <!-- Typography -->
-          <text x="80" y="58" text-anchor="middle" fill="#FFFFFF" font-family="'Inter', sans-serif" font-size="11.5" font-weight="800" letter-spacing="0.22em">NUST</text>
-          <text x="80" y="68" text-anchor="middle" fill="#94A3B8" font-family="'Inter', sans-serif" font-size="7.5" font-weight="500" letter-spacing="0.1em">Defining Futures</text>
-        </svg>
-      </div>
-
-      <!-- Hidden utility triggers preserving existing test assertions & handlers -->
-      <div class="test-utility-hidden">
-        <button type="button" id="theme-toggle" aria-label="Toggle Theme"></button>
-        <button type="button" id="sound-toggle" aria-label="Toggle Sound"></button>
-        <button type="button" id="mitre-modal-btn" aria-label="Open MITRE"></button>
-        <button type="button" id="export-pdf-btn" aria-label="Export PDF"></button>
-        <span id="active-scans">0</span>
-        <span id="flagged-files">0</span>
-        <span id="devices-blocked">0</span>
-        <span id="policy-warnings">0</span>
-        <span id="critical-threats">0</span>
-        <span id="storage-scans">0</span>
-        <strong id="sidebar-policy-mode">ENFORCE MODE</strong>
       </div>
     </aside>
 
     <!-- ======================================================================
-         B. MAIN OPERATIONAL STAGE
+         B. MAIN OPERATIONAL CONSOLE
          ====================================================================== -->
-    <main class="app-main" id="main-content">
-      
-      <!-- Top Navigation Bar -->
+    <div class="app-main-wrap">
+      <!-- Sticky Command Topbar -->
       <header class="topbar">
-        <!-- Global Device & Policy Search -->
-        <div class="search-wrapper">
-          <div class="search-icon-box">
-            <i data-lucide="search" style="width: 17px; height: 17px;"></i>
+        <div class="topbar-left">
+          <button type="button" class="btn-icon-square" id="sidebar-toggle-btn" aria-label="Toggle navigation drawer" aria-expanded="true" aria-controls="app-sidebar" title="Toggle navigation drawer">
+            <i data-lucide="panel-left" style="width: 16px; height: 16px;"></i>
+          </button>
+
+          <div class="search-wrapper">
+            <div class="search-icon-box">
+              <i data-lucide="search" style="width: 15px; height: 15px;"></i>
+            </div>
+            <input type="text" id="search-input" class="search-input" placeholder="Filter by device name, VID, PID, serial, or reason..." aria-label="Filter bus devices">
+            <div class="search-kbd-badge">Ctrl + K</div>
           </div>
-          <input type="text" id="search-input" class="search-input" placeholder="Search device, VID, PID, serial, policy..." aria-label="Filter bus devices">
-          <div class="search-kbd-badge">Ctrl + K</div>
+        </div>
+
+        <div class="topbar-actions">
+          <button type="button" class="btn-secondary btn-sm" id="scan-storage-btn" title="Deep scan connected USB drives (hashes, magic types, entropy, metadata, and YARA rules)">
+            <i data-lucide="scan-search" style="width: 14px; height: 14px;"></i>
+            <span>Scan USB Files</span>
+          </button>
+
+          <button type="button" class="btn-secondary btn-sm" id="refresh-btn" title="Sync hardware inventory and refresh telemetry">
+            <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+            <span>Refresh</span>
+          </button>
+
+          <!-- Custom Export Dropdown Menu -->
+          <div class="custom-menu-wrap" id="export-menu-wrap">
+            <button type="button" class="btn-secondary btn-sm custom-menu-trigger" id="export-menu-btn" aria-haspopup="menu" aria-expanded="false">
+              <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+              <span>Export</span>
+              <i data-lucide="chevron-down" class="menu-chevron" style="width: 13px; height: 13px;"></i>
+            </button>
+            <div class="custom-menu-panel hidden" id="export-menu-panel" role="menu" aria-labelledby="export-menu-btn">
+              <button type="button" class="custom-menu-item" id="export-csv-btn" role="menuitem">
+                <i data-lucide="table" style="width: 14px; height: 14px;"></i>
+                <div class="menu-item-text">
+                  <span class="menu-item-title">CSV Export</span>
+                  <span class="menu-item-sub">Events, devices &amp; file hashes</span>
+                </div>
+              </button>
+              <button type="button" class="custom-menu-item" id="export-pdf-btn" role="menuitem">
+                <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                <div class="menu-item-text">
+                  <span class="menu-item-title">PDF Report</span>
+                  <span class="menu-item-sub">Executive &amp; forensic summary</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <button type="button" class="btn-icon-square" id="sound-toggle" aria-label="Toggle alert audio" title="Toggle alert audio">
+            <i data-lucide="volume-2" id="sound-toggle-icon" style="width: 15px; height: 15px;"></i>
+          </button>
+
+          <button type="button" class="btn-icon-square" id="theme-toggle" aria-label="Toggle color theme" title="Toggle light/dark theme">
+            <i data-lucide="moon" id="theme-toggle-icon" style="width: 15px; height: 15px;"></i>
+          </button>
         </div>
       </header>
 
-      <!-- Dashboard Hero Section -->
-      <section class="hero-banner">
-        <div class="hero-content">
-          <div class="hero-top-row">
-            <div class="hero-title-group">
-              <div class="hero-shield-icon" aria-hidden="true">
-                <!-- Glowing USB trident emblem -->
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="M12 9v6"/>
-                  <path d="M10 11l2-2 2 2"/>
-                  <circle cx="10" cy="14" r="1"/>
-                  <circle cx="14" cy="14" r="1"/>
-                </svg>
-              </div>
-              <div class="hero-heading-text">
-                <h1 class="hero-title">USB Analyzer Dashboard</h1>
-                <p class="hero-subtitle">Monitor, analyze and control USB device activity in real-time.</p>
-              </div>
-            </div>
+      <main class="app-main" id="main-content">
 
-            <!-- Live Monitor Pill Indicator -->
-            <div class="live-monitor-pill">
-              <span class="monitor-pulse-dot"></span>
-              <span>Live Monitor</span>
-              <svg class="monitor-wave-icon" width="18" height="12" viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="1 6 5 6 8 1 12 11 16 6 23 6"/>
-              </svg>
+        <!-- Tier 1: Urgent Threat Callout Banner (Shown only when critical events exist) -->
+        <section id="security-alert-banner" class="alert-banner hidden" role="alert">
+          <div class="alert-banner-left">
+            <div class="alert-banner-icon">
+              <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
+            </div>
+            <div class="alert-banner-copy">
+              <div id="alert-banner-title" class="alert-banner-title">CRITICAL HARDWARE THREAT INTERCEPTED</div>
+              <div id="alert-banner-msg" class="alert-banner-msg">Unauthorized USB threat activity detected.</div>
             </div>
           </div>
-
-          <!-- Action Buttons Toolbar -->
-          <div class="hero-bottom-row">
-            <button type="button" class="btn-hero-action" id="clear-log-btn" title="Purge database events">
-              <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-              <span>Clear Log</span>
-            </button>
-            <button type="button" class="btn-hero-action" id="refresh-btn" title="Force telemetry poll">
-              <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
-              <span>Refresh</span>
-            </button>
-            <button type="button" class="btn-hero-action" id="export-csv-btn" title="Download telemetry as CSV">
-              <i data-lucide="download" style="width: 14px; height: 14px;"></i>
-              <span>CSV Log</span>
+          <div class="alert-banner-actions">
+            <button type="button" class="btn-danger btn-sm" id="alert-banner-inspect-btn">Investigate</button>
+            <button type="button" class="btn-ghost-icon" id="alert-banner-dismiss-btn" aria-label="Dismiss banner">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
             </button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- High Urgency Real-Time Alert Banner (Revealed dynamically during active attacks) -->
-      <section id="security-alert-banner" class="modal-backdrop hidden" style="position: static; margin-bottom: 20px; padding: 0; background: transparent; backdrop-filter: none;" role="alert">
-        <div style="background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: var(--radius-lg); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <i data-lucide="shield-alert" style="width: 24px; height: 24px; color: var(--danger);"></i>
-            <div>
-              <div id="alert-banner-title" style="font-weight: 700; color: var(--danger-text); font-size: 13.5px;">CRITICAL HARDWARE THREAT INTERCEPTED</div>
-              <div id="alert-banner-msg" style="font-size: 12px; color: var(--danger-text); opacity: 0.9;">Unauthorized USB injection payload was blocked at the physical bus layer.</div>
+        <!-- Tier 2: Page Header + Unified Architectural KPI Telemetry Strip -->
+        <section class="console-overview-section" id="section-overview">
+          <div class="page-header-row">
+            <div class="page-heading-group">
+              <h1 class="page-title">Overview</h1>
+              <p class="page-subtitle">Endpoint USB inventory, file risk, and policy posture.</p>
+            </div>
+            <div class="page-header-actions">
+              <button type="button" class="btn-secondary btn-danger-ghost btn-sm" id="clear-log-btn" title="Clear recorded database events">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                <span>Clear Log</span>
+              </button>
             </div>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button type="button" id="alert-banner-inspect-btn" style="background: var(--danger); color: #FFFFFF; border: none; border-radius: var(--radius-sm); padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;">Investigate</button>
-            <button type="button" id="alert-banner-dismiss-btn" style="background: transparent; border: none; font-size: 18px; color: var(--danger-text); cursor: pointer;" aria-label="Dismiss">&times;</button>
-          </div>
-        </div>
-      </section>
 
-      <!-- ======================================================================
-           C. KPI / SUMMARY STAT CARDS (4 Cards Row)
-           ====================================================================== -->
-      <section class="kpi-cards-grid" aria-label="Endpoint Health Summary Metrics">
-        
-        <!-- Card 1: Connected Devices -->
-        <div class="kpi-card">
-          <div class="kpi-content-left">
-            <div class="kpi-icon-box kpi-icon-blue">
-              <i data-lucide="usb" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="kpi-number-row">
-              <span class="kpi-number" id="connected-devices-val">3</span>
-              <span class="kpi-trend">↑ +1</span>
-            </div>
-            <span class="kpi-label">Connected Devices</span>
-          </div>
-          <div class="kpi-sparkline-box">
-            <!-- Smooth SVG Sparkline (Blue) -->
-            <svg width="80" height="36" viewBox="0 0 80 36" fill="none">
-              <path d="M2 28 C 16 28, 22 14, 34 20 C 46 26, 56 6, 78 10" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M2 28 C 16 28, 22 14, 34 20 C 46 26, 56 6, 78 10 V 36 H 2 Z" fill="url(#spark-blue-grad)" opacity="0.15"/>
-              <defs>
-                <linearGradient id="spark-blue-grad" x1="0" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#2563EB"/>
-                  <stop offset="1" stop-color="#2563EB" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Card 2: Threats Detected -->
-        <div class="kpi-card">
-          <div class="kpi-content-left">
-            <div class="kpi-icon-box kpi-icon-green">
-              <i data-lucide="shield-check" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="kpi-number-row">
-              <span class="kpi-number" id="threats-detected-val">0</span>
-            </div>
-            <span class="kpi-label">Threats Detected</span>
-          </div>
-          <div class="kpi-sparkline-box">
-            <!-- Smooth Flat/Safe Sparkline (Green) -->
-            <svg width="80" height="36" viewBox="0 0 80 36" fill="none">
-              <path d="M2 24 C 18 20, 32 26, 48 18 C 60 12, 68 20, 78 16" stroke="#10B981" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M2 24 C 18 20, 32 26, 48 18 C 60 12, 68 20, 78 16 V 36 H 2 Z" fill="url(#spark-green-grad)" opacity="0.15"/>
-              <defs>
-                <linearGradient id="spark-green-grad" x1="0" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#10B981"/>
-                  <stop offset="1" stop-color="#10B981" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Card 3: Total Events -->
-        <div class="kpi-card">
-          <div class="kpi-content-left">
-            <div class="kpi-icon-box kpi-icon-purple">
-              <i data-lucide="file-text" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="kpi-number-row">
-              <span class="kpi-number" id="total-events">12</span>
-              <span class="kpi-trend">↑ +1</span>
-            </div>
-            <span class="kpi-label">Total Events</span>
-          </div>
-          <div class="kpi-sparkline-box">
-            <!-- Smooth Wavy Sparkline (Purple) -->
-            <svg width="80" height="36" viewBox="0 0 80 36" fill="none">
-              <path d="M2 26 C 14 26, 24 16, 36 22 C 48 28, 58 10, 78 14" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M2 26 C 14 26, 24 16, 36 22 C 48 28, 58 10, 78 14 V 36 H 2 Z" fill="url(#spark-purple-grad)" opacity="0.15"/>
-              <defs>
-                <linearGradient id="spark-purple-grad" x1="0" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#8B5CF6"/>
-                  <stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-
-        <!-- Card 4: System Uptime -->
-        <div class="kpi-card">
-          <div class="kpi-content-left">
-            <div class="kpi-icon-box kpi-icon-cyan">
-              <i data-lucide="clock" style="width: 20px; height: 20px;"></i>
-            </div>
-            <div class="kpi-number-row">
-              <span class="kpi-number" id="system-uptime-val">99.9%</span>
-            </div>
-            <span class="kpi-label">System Uptime</span>
-          </div>
-          <div class="kpi-sparkline-box">
-            <!-- Smooth Stable Sparkline (Cyan) -->
-            <svg width="80" height="36" viewBox="0 0 80 36" fill="none">
-              <path d="M2 22 C 16 18, 30 24, 44 16 C 56 12, 66 18, 78 12" stroke="#0284C7" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M2 22 C 16 18, 30 24, 44 16 C 56 12, 66 18, 78 12 V 36 H 2 Z" fill="url(#spark-cyan-grad)" opacity="0.15"/>
-              <defs>
-                <linearGradient id="spark-cyan-grad" x1="0" y1="0" x2="0" y2="36" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#0284C7"/>
-                  <stop offset="1" stop-color="#0284C7" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
-
-      </section>
-
-      <!-- ======================================================================
-           D. LIVE HARDWARE BUS AUDIT LOG SECTION
-           ====================================================================== -->
-      <section class="audit-log-section" id="section-monitor">
-        <div class="audit-section-header">
-          <div class="audit-title-left">
-            <i data-lucide="activity" class="audit-header-icon"></i>
-            <h2 class="audit-heading">Live Hardware Bus Audit Log</h2>
-            <span class="live-feed-pill">Live Feed</span>
-          </div>
-
-          <!-- View Mode Tab Switcher -->
-          <div class="audit-tab-switcher">
-            <button type="button" class="btn-audit-tab active" id="view-connected-btn">Connected Peripherals (Active View)</button>
-            <button type="button" class="btn-audit-tab" id="view-all-events-btn">Full Raw Telemetry Stream</button>
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table class="audit-data-table" id="events-table">
-            <thead>
-              <tr>
-                <th scope="col" style="width: 100px;">TIMESTAMP</th>
-                <th scope="col">CONNECTED PERIPHERAL / HARDWARE ID</th>
-                <th scope="col">BUS CLASS</th>
-                <th scope="col">SECURITY STATUS</th>
-                <th scope="col">RISK / POLICY REASON</th>
-                <th scope="col">ACTION TAKEN</th>
-                <th scope="col" style="text-align: right;">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody id="events-table-body">
-              <tr class="table-empty-row">
-                <td colspan="7">
-                  <div class="empty-state-wrap">
-                    <i data-lucide="shield-check" class="empty-icon-shield" style="width: 32px; height: 32px;"></i>
-                    <strong class="empty-title">Database Clean — Bus Defense Active</strong>
-                    <span class="empty-desc">Connect any USB peripheral or inject diagnostic vectors below to inspect forensic verdicts in real-time.</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- ======================================================================
-           E. INTERACTIVE TESTING LAB SECTION (5 Cards)
-           ====================================================================== -->
-      <section class="testing-lab-section" id="section-diagnostics">
-        <div class="testing-header-row">
-          <div class="testing-title-group">
-            <div class="testing-heading-line">
-              <i data-lucide="flask-conical" class="testing-icon-beaker"></i>
-              <h2 class="testing-heading">Interactive Testing Lab</h2>
-            </div>
-            <p class="testing-subtitle">Run tests, analyze threats and manage your security policies.</p>
-          </div>
-        </div>
-
-        <div class="testing-cards-grid">
-          
-          <!-- Card 1: Corporate Whitelisted Storage -->
-          <div class="test-card" id="sim-safe-btn">
-            <div class="test-card-top">
-              <div class="test-icon-square cat-blue">
-                <i data-lucide="database" style="width: 18px; height: 18px;"></i>
+          <!-- Unified Continuous KPI Strip (No floating card soup) -->
+          <div class="kpi-strip" aria-label="Endpoint Health Summary Metrics">
+            <div class="kpi-cell">
+              <div class="kpi-cell-head">
+                <span class="kpi-label">Connected</span>
+                <i data-lucide="usb" class="kpi-head-icon kpi-tint-blue" style="width: 15px; height: 15px;"></i>
               </div>
-              <h3 class="test-card-title">Corporate Whitelisted Storage</h3>
-              <p class="test-card-desc">Allow only approved storage devices (e.g. company drives).</p>
+              <div class="kpi-number tabular-num" id="connected-devices-val">0</div>
+              <div class="kpi-foot">Active USB peripherals</div>
             </div>
-            <div class="test-card-footer">
-              <span>Configure Policy</span>
-              <i data-lucide="arrow-right" class="test-arrow-icon"></i>
+
+            <div class="kpi-cell">
+              <div class="kpi-cell-head">
+                <span class="kpi-label">Critical Alerts</span>
+                <i data-lucide="shield-alert" class="kpi-head-icon kpi-tint-red" style="width: 15px; height: 15px;"></i>
+              </div>
+              <div class="kpi-number tabular-num" id="threats-detected-val">0</div>
+              <div class="kpi-foot">Warnings: <strong class="tabular-num" id="policy-warnings">0</strong></div>
+            </div>
+
+            <div class="kpi-cell">
+              <div class="kpi-cell-head">
+                <span class="kpi-label">Blocked</span>
+                <i data-lucide="ban" class="kpi-head-icon kpi-tint-amber" style="width: 15px; height: 15px;"></i>
+              </div>
+              <div class="kpi-number tabular-num" id="devices-blocked">0</div>
+              <div class="kpi-foot">Ports isolated</div>
+            </div>
+
+            <div class="kpi-cell">
+              <div class="kpi-cell-head">
+                <span class="kpi-label">Events &amp; Scans</span>
+                <i data-lucide="hard-drive" class="kpi-head-icon kpi-tint-safe" style="width: 15px; height: 15px;"></i>
+              </div>
+              <div class="kpi-number tabular-num" id="total-events">0</div>
+              <div class="kpi-foot">
+                <span>Scans: <strong class="tabular-num" id="storage-scans">0</strong></span>
+                <span class="kpi-sep">|</span>
+                <span>Active: <strong class="tabular-num" id="active-scans">0</strong></span>
+                <span class="kpi-sep">|</span>
+                <span>Flagged: <strong class="tabular-num" id="flagged-files">0</strong></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tier 3: Primary Operational Surface — Audit Log -->
+        <section class="console-band audit-log-section" id="section-monitor">
+          <div class="band-header">
+            <div class="band-title-group">
+              <h2 class="band-title">Audit Log</h2>
+              <p class="band-subtitle">Peripherals, telemetry events, and scanned files.</p>
+            </div>
+
+            <div class="band-header-controls">
+              <!-- Custom Verdict Filter Menu -->
+              <div class="custom-menu-wrap" id="audit-filter-menu-wrap">
+                <button type="button" class="btn-secondary btn-sm custom-menu-trigger" id="audit-filter-menu-btn" aria-haspopup="menu" aria-expanded="false">
+                  <i data-lucide="filter" style="width: 14px; height: 14px;"></i>
+                  <span>Verdict: <strong id="audit-filter-label">All</strong></span>
+                  <i data-lucide="chevron-down" class="menu-chevron" style="width: 13px; height: 13px;"></i>
+                </button>
+                <div class="custom-menu-panel hidden" id="audit-filter-menu-panel" role="menu" aria-labelledby="audit-filter-menu-btn">
+                  <button type="button" class="custom-menu-item active" data-filter-value="all" role="menuitemradio" aria-checked="true">
+                    <i data-lucide="list-filter" style="width: 14px; height: 14px;"></i>
+                    <div class="menu-item-text">
+                      <span class="menu-item-title">All Verdicts</span>
+                      <span class="menu-item-sub">Show every recorded hardware entry</span>
+                    </div>
+                    <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="custom-menu-item" data-filter-value="safe" role="menuitemradio" aria-checked="false">
+                    <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                    <div class="menu-item-text">
+                      <span class="menu-item-title">Safe Only</span>
+                      <span class="menu-item-sub">Verified and authorized peripherals</span>
+                    </div>
+                    <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="custom-menu-item" data-filter-value="warning" role="menuitemradio" aria-checked="false">
+                    <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i>
+                    <div class="menu-item-text">
+                      <span class="menu-item-title">Contained / Warnings</span>
+                      <span class="menu-item-sub">Zero-trust held or flagged activity</span>
+                    </div>
+                    <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="custom-menu-item" data-filter-value="danger" role="menuitemradio" aria-checked="false">
+                    <i data-lucide="shield-alert" style="width: 14px; height: 14px;"></i>
+                    <div class="menu-item-text">
+                      <span class="menu-item-title">Blocked Threats</span>
+                      <span class="menu-item-sub">Malicious or quarantined hardware</span>
+                    </div>
+                    <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="audit-tab-switcher" role="tablist" aria-label="Audit log view">
+                <button type="button" class="btn-audit-tab active" id="view-connected-btn" role="tab" aria-selected="true">Devices</button>
+                <button type="button" class="btn-audit-tab" id="view-all-events-btn" role="tab" aria-selected="false">Event Log</button>
+                <button type="button" class="btn-audit-tab" id="view-file-analysis-btn" role="tab" aria-selected="false">Files</button>
+              </div>
             </div>
           </div>
 
-          <!-- Card 2: BadUSB Keystroke Injection -->
-          <div class="test-card" id="sim-badusb-btn">
-            <div class="test-card-top">
-              <div class="test-icon-square" style="background-color: var(--warning-bg); color: var(--warning);">
-                <i data-lucide="lock" style="width: 18px; height: 18px;"></i>
-              </div>
-              <h3 class="test-card-title">BadUSB Keystroke Injection</h3>
-              <p class="test-card-desc">Detect and block malicious keystroke injection attacks.</p>
-            </div>
-            <div class="test-card-footer">
-              <span>Run Test</span>
-              <i data-lucide="arrow-right" class="test-arrow-icon"></i>
-            </div>
+          <div class="table-responsive" id="events-table-wrap">
+            <table class="audit-data-table" id="events-table">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 78px;">Time</th>
+                  <th scope="col">Peripheral / Hardware ID</th>
+                  <th scope="col">Bus Class</th>
+                  <th scope="col">Verdict</th>
+                  <th scope="col">Diagnostic / Policy</th>
+                  <th scope="col">Action Taken</th>
+                  <th scope="col" style="text-align: right; width: 84px;">Inspect</th>
+                </tr>
+              </thead>
+              <tbody id="events-table-body">
+                <tr class="table-empty-row">
+                  <td colspan="7">
+                    <div class="empty-state-wrap">
+                      <i data-lucide="usb" class="empty-icon-shield" style="width: 26px; height: 26px;"></i>
+                      <strong class="empty-title">No Hardware Events Recorded Yet</strong>
+                      <span class="empty-desc">Plug in a physical USB drive or peripheral, or click Refresh to synchronize currently attached devices.</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <!-- Card 3: Malware Carrier & Autorun -->
-          <div class="test-card" id="sim-malware-btn">
-            <div class="test-card-top">
-              <div class="test-icon-square cat-purple">
-                <i data-lucide="bug" style="width: 18px; height: 18px;"></i>
-              </div>
-              <h3 class="test-card-title">Malware Carrier &amp; Autorun</h3>
-              <p class="test-card-desc">Scan for malware and autorun threats on USB devices.</p>
-            </div>
-            <div class="test-card-footer">
-              <span>Scan Now</span>
-              <i data-lucide="arrow-right" class="test-arrow-icon"></i>
-            </div>
+          <div class="table-responsive hidden" id="file-analysis-wrap">
+            <table class="audit-data-table" id="file-analysis-table">
+              <thead>
+                <tr>
+                  <th scope="col">File &amp; Origin</th>
+                  <th scope="col">File Type (Magic vs Ext)</th>
+                  <th scope="col" style="width: 152px;">Entropy</th>
+                  <th scope="col" style="width: 172px;">Risk Score</th>
+                  <th scope="col">Digests &amp; Indicators</th>
+                  <th scope="col" style="text-align: right; width: 84px;">Inspect</th>
+                </tr>
+              </thead>
+              <tbody id="file-analysis-table-body">
+                <tr class="table-empty-row">
+                  <td colspan="6">
+                    <div class="empty-state-wrap">
+                      <i data-lucide="scan-search" class="empty-icon-shield" style="width: 26px; height: 26px;"></i>
+                      <strong class="empty-title">No USB Storage Files Scanned Yet</strong>
+                      <span class="empty-desc">Connect a USB flash drive and click Scan USB Files to inspect hashes, magic signatures, entropy, metadata, and YARA alerts.</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+        </section>
 
-          <!-- Card 4: Unknown Peripheral Triage -->
-          <div class="test-card" id="sim-unauthorized-btn">
-            <div class="test-card-top">
-              <div class="test-icon-square cat-green">
-                <i data-lucide="network" style="width: 18px; height: 18px;"></i>
-              </div>
-              <h3 class="test-card-title">Unknown Peripheral Triage</h3>
-              <p class="test-card-desc">Investigate unknown devices with detailed analysis.</p>
-            </div>
-            <div class="test-card-footer">
-              <span>Investigate</span>
-              <i data-lucide="arrow-right" class="test-arrow-icon"></i>
-            </div>
-          </div>
-
-          <!-- Card 5: Spoofed Hardware Clone -->
-          <div class="test-card" id="sim-spoofed-btn">
-            <div class="test-card-top">
-              <div class="test-icon-square cat-cyan">
-                <i data-lucide="copy" style="width: 18px; height: 18px;"></i>
-              </div>
-              <h3 class="test-card-title">Spoofed Hardware Clone</h3>
-              <p class="test-card-desc">Detect cloned or spoofed hardware devices.</p>
-            </div>
-            <div class="test-card-footer">
-              <span>Analyze</span>
-              <i data-lucide="arrow-right" class="test-arrow-icon"></i>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      <!-- ======================================================================
-           F & G. BOTTOM ROW: THREAT ANALYTICS & SYSTEM OVERVIEW
-           ====================================================================== -->
-      <section class="bottom-analytics-grid" id="section-analytics">
-        
-        <!-- Left: Threat Analytics & Activity Intelligence (Dark Navy Card) -->
-        <div class="threat-analytics-card">
-          <div class="analytics-card-header">
-            <div class="analytics-title-group">
-              <div class="analytics-heading-line">
-                <i data-lucide="chart-no-axes-combined" class="analytics-header-icon" style="width: 18px; height: 18px;"></i>
-                <h3 class="analytics-heading">Threat Analytics &amp; Activity Intelligence</h3>
-              </div>
-              <p class="analytics-subtitle">Get deeper insights into USB activity and potential threats.</p>
+        <!-- Tier 4: Unified Activity & Health Band -->
+        <section class="console-band analytics-split-band" id="section-analytics">
+          <div class="band-header">
+            <div class="band-title-group">
+              <h2 class="band-title">Activity &amp; Health</h2>
+              <p class="band-subtitle">USB event cadence and monitored device posture.</p>
             </div>
 
-            <!-- Time Range Switcher -->
-            <div class="time-range-switcher">
+            <div class="time-range-switcher" role="group" aria-label="Analytics time range">
               <button type="button" class="btn-time-range active" data-range="1h">1h</button>
               <button type="button" class="btn-time-range" data-range="24h">24h</button>
               <button type="button" class="btn-time-range" data-range="7d">7d</button>
@@ -494,105 +373,146 @@
             </div>
           </div>
 
-          <div class="analytics-card-body">
-            <!-- Chart Area -->
-            <div class="analytics-chart-container">
-              <canvas id="activity-chart" aria-label="USB Activity Intelligence Chart"></canvas>
-            </div>
+          <div class="analytics-split-body">
+            <div class="analytics-pane">
+              <div class="pane-subhead">
+                <span class="pane-subhead-title">Activity</span>
+              </div>
 
-            <!-- Stats Column -->
-            <div class="analytics-stats-column">
-              <div class="stat-item">
-                <div class="stat-val-row">
-                  <span class="stat-big-val" id="analytics-total-events">248</span>
-                  <span class="stat-trend-tag trend-up-green">
-                    <span>↑ +12%</span>
-                    <i data-lucide="activity" style="width: 12px; height: 12px;"></i>
-                  </span>
+              <div class="analytics-card-body">
+                <div class="analytics-chart-container">
+                  <canvas id="activity-chart" aria-label="USB Activity Intelligence Chart"></canvas>
                 </div>
-                <span class="stat-label-text">Total Events</span>
-              </div>
 
-              <div class="stat-item">
-                <div class="stat-val-row">
-                  <span class="stat-big-val" id="analytics-suspicious-events">6</span>
-                  <span class="stat-trend-tag trend-up-red">
-                    <span>↑ +1%</span>
-                    <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
-                  </span>
+                <div class="analytics-stats-column">
+                  <div class="stat-item">
+                    <span class="stat-label-text">Events</span>
+                    <span class="stat-big-val tabular-num" id="analytics-total-events">0</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label-text">Alerts</span>
+                    <span class="stat-big-val stat-danger-val tabular-num" id="analytics-suspicious-events">0</span>
+                  </div>
                 </div>
-                <span class="stat-label-text">Suspicious Events</span>
+              </div>
+            </div>
+
+            <div class="health-pane">
+              <div class="pane-subhead">
+                <span class="pane-subhead-title">Health</span>
+                <span class="healthy-badge" id="health-status-badge">
+                  <i data-lucide="shield-check" style="width: 13px; height: 13px;"></i>
+                  <span id="health-status-text">Healthy</span>
+                </span>
+              </div>
+
+              <div class="overview-card-body">
+                <div class="donut-chart-wrapper">
+                  <canvas id="threat-chart" class="donut-canvas" aria-label="System Health Donut Chart"></canvas>
+                  <div class="donut-center-metric tabular-num" id="overview-health-score">100%</div>
+                  <div id="donut-tooltip" class="donut-tooltip hidden" role="tooltip" aria-hidden="true"></div>
+                </div>
+
+                <div class="overview-legend-list">
+                  <div class="legend-row">
+                    <span class="legend-name">
+                      <span class="legend-swatch swatch-safe"></span>
+                      <span>Safe</span>
+                    </span>
+                    <span class="legend-count tabular-num" id="legend-safe-count">0</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-name">
+                      <span class="legend-swatch swatch-monitored"></span>
+                      <span>Warnings</span>
+                    </span>
+                    <span class="legend-count tabular-num" id="legend-monitored-count">0</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-name">
+                      <span class="legend-swatch swatch-blocked"></span>
+                      <span>Blocked</span>
+                    </span>
+                    <span class="legend-count tabular-num" id="legend-blocked-count">0</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Right: System Overview Card (White Card with Donut Chart) -->
-        <div class="system-overview-card">
-          <div class="overview-card-header">
-            <div class="overview-title-group">
-              <i data-lucide="monitor" class="overview-header-icon" style="width: 18px; height: 18px;"></i>
-              <h3 class="overview-heading">System Overview</h3>
-            </div>
-            <span class="healthy-pill">
-              <i data-lucide="check" style="width: 12px; height: 12px;"></i>
-              <span>Healthy</span>
-            </span>
-          </div>
-
-          <div class="overview-card-body">
-            <!-- Donut Chart with Centered Metric -->
-            <div class="donut-chart-wrapper">
-              <canvas id="threat-chart" class="donut-canvas" aria-label="System Health Donut Chart"></canvas>
-              <div class="donut-center-metric" id="overview-health-score">98%</div>
+        <!-- Tier 5: Whitelist -->
+        <section class="console-band whitelist-section" id="section-whitelist">
+          <div class="band-header">
+            <div class="band-title-group">
+              <h2 class="band-title">Whitelist</h2>
+              <p class="band-subtitle">Trusted devices and enforcement policy.</p>
             </div>
 
-            <!-- Legend List -->
-            <div class="overview-legend-list">
-              <div class="legend-row">
-                <span class="legend-name">
-                  <span class="legend-dot dot-safe"></span>
-                  <span>Safe Devices</span>
-                </span>
-                <span class="legend-count" id="legend-safe-count">242</span>
+            <div class="whitelist-toolbar">
+              <!-- Custom Styled Policy Mode Dropdown Menu -->
+              <div class="custom-menu-wrap" id="policy-menu-wrap">
+                <button type="button" class="btn-secondary btn-sm custom-menu-trigger" id="policy-menu-btn" aria-haspopup="menu" aria-expanded="false">
+                  <i data-lucide="shield" style="width: 14px; height: 14px;"></i>
+                  <span>Policy: <strong id="policy-menu-label">Enforce</strong></span>
+                  <i data-lucide="chevron-down" class="menu-chevron" style="width: 13px; height: 13px;"></i>
+                </button>
+                <div class="custom-menu-panel hidden" id="policy-menu-panel" role="menu" aria-labelledby="policy-menu-btn">
+                  <button type="button" class="custom-menu-item active" data-policy-value="enforce" role="menuitemradio" aria-checked="true">
+                    <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                    <div class="menu-item-text">
+                      <span class="menu-item-title">Enforce Mode</span>
+                      <span class="menu-item-sub">Disable unapproved or malicious ports</span>
+                    </div>
+                    <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <button type="button" class="custom-menu-item" data-policy-value="audit_only" role="menuitemradio" aria-checked="false">
+                    <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                    <div class="menu-item-text">
+                      <span class="menu-item-title">Audit Only</span>
+                      <span class="menu-item-sub">Log alerts without blocking hardware</span>
+                    </div>
+                    <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
               </div>
-              <div class="legend-row">
-                <span class="legend-name">
-                  <span class="legend-dot dot-monitored"></span>
-                  <span>Monitored Devices</span>
-                </span>
-                <span class="legend-count" id="legend-monitored-count">6</span>
-              </div>
-              <div class="legend-row">
-                <span class="legend-name">
-                  <span class="legend-dot dot-blocked"></span>
-                  <span>Blocked Devices</span>
-                </span>
-                <span class="legend-count" id="legend-blocked-count">0</span>
-              </div>
+
+              <button type="button" class="btn-primary btn-sm" id="open-whitelist-modal-btn">
+                <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                <span>Add Device</span>
+              </button>
             </div>
           </div>
-        </div>
 
-      </section>
+          <div class="table-responsive">
+            <table class="audit-data-table" id="whitelist-table">
+              <thead>
+                <tr>
+                  <th scope="col">Device Name</th>
+                  <th scope="col">Vendor ID</th>
+                  <th scope="col">Product ID</th>
+                  <th scope="col">Serial Number</th>
+                  <th scope="col">Notes</th>
+                  <th scope="col" style="text-align: right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="whitelist-table-body">
+                <tr class="table-empty-row">
+                  <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-muted);">
+                    No whitelisted devices registered yet. Click "Add Device" to authorize one.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      <!-- Whitelist Modal Section (Embedded in Tab/Modal) -->
-      <section id="section-whitelist" class="test-utility-hidden">
-        <select id="policy-mode-select">
-          <option value="enforce" selected>Enforce</option>
-          <option value="audit">Audit</option>
-        </select>
-        <button type="button" id="open-whitelist-modal-btn">Add Trusted Device</button>
-        <table id="whitelist-table">
-          <tbody id="whitelist-table-body"></tbody>
-        </table>
-      </section>
-
-    </main>
+      </main>
+    </div>
   </div>
 
   <!-- ======================================================================
-       MODALS: DEVICE INSPECT, WHITELIST AUTHORIZE, MITRE MATRIX
+       MODALS: DEVICE INSPECT, WHITELIST AUTHORIZE, MITRE MATRIX, SETTINGS
        ====================================================================== -->
 
   <!-- 1. Device Forensic Inspection Modal -->
@@ -600,32 +520,28 @@
     <div class="modal-window modal-wide">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="shield-alert" style="width: 20px; height: 20px; color: var(--primary-blue);"></i>
+          <i data-lucide="shield-alert" style="width: 18px; height: 18px; color: var(--primary-blue);"></i>
           <h2 class="modal-title" id="detail-modal-title">Device Forensic Inspection</h2>
         </div>
         <button type="button" class="modal-close-btn" id="close-detail-modal-btn" aria-label="Close modal">
           <i data-lucide="x" style="width: 18px; height: 18px;"></i>
         </button>
       </div>
-      <div class="modal-body" id="detail-modal-content">
-        <!-- Rendered dynamically in app.js -->
-      </div>
+      <div class="modal-body" id="detail-modal-content"></div>
       <div class="modal-footer" id="detail-modal-footer">
-        <button type="button" class="btn-hero-action" id="detail-close-btn" style="border: 1px solid var(--border-light);">Close</button>
-        <div class="modal-footer-actions" id="detail-dynamic-actions">
-          <!-- Dynamic triage actions -->
-        </div>
+        <button type="button" class="btn-secondary btn-sm" id="detail-close-btn">Close</button>
+        <div class="modal-footer-actions" id="detail-dynamic-actions"></div>
       </div>
     </div>
   </div>
 
-  <!-- 2. Add Whitelist Device Modal -->
+  <!-- 2. Add Trusted Device Modal (Connected Devices Picker by Default + Manual Mode Toggle) -->
   <div id="whitelist-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="whitelist-modal-title">
-    <div class="modal-window">
+    <div class="modal-window modal-wide">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="shield-check" style="width: 20px; height: 20px; color: var(--safe);"></i>
-          <h2 class="modal-title" id="whitelist-modal-title">Authorize New Hardware</h2>
+          <i data-lucide="shield-check" style="width: 18px; height: 18px; color: var(--safe);"></i>
+          <h2 class="modal-title" id="whitelist-modal-title">Add Trusted Device</h2>
         </div>
         <button type="button" class="modal-close-btn" id="close-whitelist-modal-btn" aria-label="Close modal">
           <i data-lucide="x" style="width: 18px; height: 18px;"></i>
@@ -633,32 +549,55 @@
       </div>
       <form id="whitelist-form">
         <div class="modal-body">
-          <div class="form-field">
-            <label for="wl-name" class="form-label">Friendly Device Name *</label>
-            <input type="text" id="wl-name" class="form-input" placeholder="e.g. Finance Vault Kingston DT50" required>
+          <!-- Mode Switcher: Connected Devices (Default) vs Manual Typing -->
+          <div class="modal-mode-bar">
+            <div class="audit-tab-switcher" role="tablist" aria-label="Device input mode">
+              <button type="button" class="btn-audit-tab active" id="wl-mode-connected-btn" role="tab" aria-selected="true">Select Connected Device</button>
+              <button type="button" class="btn-audit-tab" id="wl-mode-manual-btn" role="tab" aria-selected="false">Enter Manually</button>
+            </div>
+            <button type="button" class="btn-secondary btn-sm" id="wl-refresh-connected-btn" title="Re-scan connected USB hardware">
+              <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
+              <span>Rescan USB</span>
+            </button>
           </div>
-          <div class="form-row-2">
+
+          <!-- Connected Device Picker (Visible by Default) -->
+          <div id="wl-connected-section" class="wl-connected-section">
+            <div class="field-hint">Choose an attached USB device below to auto-populate its hardware fingerprint:</div>
+            <div class="wl-device-picker" id="wl-device-picker" role="listbox" aria-label="Connected USB devices">
+              <div class="wl-picker-empty">Scanning attached USB devices...</div>
+            </div>
+          </div>
+
+          <!-- Device Identity Fields (Readonly summary in picker mode or editable in manual mode) -->
+          <div id="wl-fields-section" class="wl-fields-section">
             <div class="form-field">
-              <label for="wl-vid" class="form-label">Vendor ID (VID)</label>
-              <input type="text" id="wl-vid" class="form-input" style="font-family: var(--font-mono);" placeholder="e.g. 0951" maxlength="4">
+              <label for="wl-name" class="form-label">Friendly Device Name *</label>
+              <input type="text" id="wl-name" class="form-input" placeholder="e.g. SanDisk Ultra USB 3.0" required>
+            </div>
+            <div class="form-row-2" id="wl-manual-ids-row">
+              <div class="form-field">
+                <label for="wl-vid" class="form-label">Vendor ID (VID)</label>
+                <input type="text" id="wl-vid" class="form-input tabular-num" placeholder="e.g. 0781" maxlength="4">
+              </div>
+              <div class="form-field">
+                <label for="wl-pid" class="form-label">Product ID (PID)</label>
+                <input type="text" id="wl-pid" class="form-input tabular-num" placeholder="e.g. 5581" maxlength="4">
+              </div>
+            </div>
+            <div class="form-field" id="wl-manual-serial-row">
+              <label for="wl-serial" class="form-label">Hardware Serial Number *</label>
+              <input type="text" id="wl-serial" class="form-input tabular-num" placeholder="e.g. 4C530001234567" required>
             </div>
             <div class="form-field">
-              <label for="wl-pid" class="form-label">Product ID (PID)</label>
-              <input type="text" id="wl-pid" class="form-input" style="font-family: var(--font-mono);" placeholder="e.g. 1666" maxlength="4">
+              <label for="wl-notes" class="form-label">Authorization Notes</label>
+              <textarea id="wl-notes" class="form-textarea" rows="2" placeholder="Optional justification (e.g. Personal backup flash drive)"></textarea>
             </div>
-          </div>
-          <div class="form-field">
-            <label for="wl-serial" class="form-label">Hardware Serial Number *</label>
-            <input type="text" id="wl-serial" class="form-input" style="font-family: var(--font-mono);" placeholder="e.g. CORP_DRIVE_001" required>
-          </div>
-          <div class="form-field">
-            <label for="wl-notes" class="form-label">Authorization Justification</label>
-            <textarea id="wl-notes" class="form-textarea" rows="2" placeholder="Approved for executive offsite backups"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn-hero-action" id="cancel-whitelist-btn" style="border: 1px solid var(--border-light);">Cancel</button>
-          <button type="submit" class="btn-hero-action" id="submit-whitelist-btn" style="background: var(--primary-blue); color: #FFFFFF;">Authorize Device</button>
+          <button type="button" class="btn-secondary btn-sm" id="cancel-whitelist-btn">Cancel</button>
+          <button type="submit" class="btn-primary btn-sm" id="submit-whitelist-btn">Authorize Device</button>
         </div>
       </form>
     </div>
@@ -666,35 +605,131 @@
 
   <!-- 3. MITRE ATT&CK Matrix Modal -->
   <div id="mitre-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="mitre-modal-title">
-    <div class="modal-window modal-wide">
+    <div class="modal-window modal-matrix">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="shield" style="width: 20px; height: 20px; color: var(--primary-blue);"></i>
-          <h2 class="modal-title" id="mitre-modal-title">USB Attack Vector Matrix &amp; Mitigations</h2>
+          <i data-lucide="layers" style="width: 18px; height: 18px; color: var(--primary-blue);"></i>
+          <h2 class="modal-title" id="mitre-modal-title">Threat Matrix</h2>
         </div>
         <button type="button" class="modal-close-btn" id="close-mitre-modal-btn" aria-label="Close modal">
           <i data-lucide="x" style="width: 18px; height: 18px;"></i>
         </button>
       </div>
-      <div class="modal-body">
-        <div class="detail-meta-grid" style="grid-template-columns: 1fr; gap: 10px;">
-          <div style="padding: 10px; background: var(--bg-surface); border-radius: var(--radius-sm); border-left: 3px solid var(--danger);">
-            <strong>T1052.001 — Exfiltration Over USB</strong>
-            <p style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Mass storage volume containment and automated unapproved peripheral port isolation.</p>
+      <div class="modal-body modal-body-flush">
+        <div class="mitre-summary-strip">
+          <div class="mitre-summary-cell">
+            <span class="mitre-summary-label">Covered Vectors</span>
+            <strong class="mitre-summary-value tabular-num">3 MITRE Techniques</strong>
           </div>
-          <div style="padding: 10px; background: var(--bg-surface); border-radius: var(--radius-sm); border-left: 3px solid var(--warning);">
-            <strong>T1091 — Replication Through Removable Media</strong>
-            <p style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Real-time SHA-256 and YARA heuristic scanning for Autorun.inf and disguised PE dropper payloads.</p>
+          <div class="mitre-summary-cell">
+            <span class="mitre-summary-label">Defense Pipeline</span>
+            <strong class="mitre-summary-value">Policy Engine | HID Cadence | YARA</strong>
           </div>
-          <div style="padding: 10px; background: var(--bg-surface); border-radius: var(--radius-sm); border-left: 3px solid var(--danger);">
-            <strong>T1200 — Direct Hardware Keystroke Injection (BadUSB)</strong>
-            <p style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">Sub-millisecond inter-keystroke cadence analysis intercepting automated microcontroller payloads.</p>
+          <div class="mitre-summary-cell">
+            <span class="mitre-summary-label">Default Posture</span>
+            <strong class="mitre-summary-value">Zero-Trust Hardware Isolation</strong>
           </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="audit-data-table mitre-matrix-table">
+            <thead>
+              <tr>
+                <th scope="col" style="width: 150px;">Technique</th>
+                <th scope="col">Attack Vector</th>
+                <th scope="col">Mitigation Control</th>
+                <th scope="col" style="text-align: right; width: 118px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="mitre-id-col">
+                    <span class="mitre-id-code tabular-num">T1052.001</span>
+                    <span class="mitre-tactic-tag">Exfiltration</span>
+                    <span class="badge-status badge-danger">Critical</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mitre-vector-cell">
+                    <strong>Exfiltration Over USB</strong>
+                    <span>Unauthorized removable storage attachment or unapproved peripheral data transfer.</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mitre-control-cell">
+                    <strong>Zero-Trust Policy Engine</strong>
+                    <span>Hardware VID, PID, and serial fingerprinting with automated <code>pnputil</code> port disablement.</span>
+                  </div>
+                </td>
+                <td style="text-align: right;">
+                  <span class="badge-status badge-safe">
+                    <i data-lucide="check" style="width: 11px; height: 11px;"></i>
+                    <span>Enforced</span>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="mitre-id-col">
+                    <span class="mitre-id-code tabular-num">T1091</span>
+                    <span class="mitre-tactic-tag">Lateral / Access</span>
+                    <span class="badge-status badge-warning">High</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mitre-vector-cell">
+                    <strong>Replication Through Removable Media</strong>
+                    <span>Weaponized storage volumes carrying <code>autorun.inf</code> launchers or disguised dropper payloads.</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mitre-control-cell">
+                    <strong>Storage &amp; YARA Scanner</strong>
+                    <span>Mounted-volume inspection using SHA-256 hash lookups, YARA signatures, and filename indicators.</span>
+                  </div>
+                </td>
+                <td style="text-align: right;">
+                  <span class="badge-status badge-safe">
+                    <i data-lucide="check" style="width: 11px; height: 11px;"></i>
+                    <span>Armed</span>
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="mitre-id-col">
+                    <span class="mitre-id-code tabular-num">T1200</span>
+                    <span class="mitre-tactic-tag">Hardware Injection</span>
+                    <span class="badge-status badge-danger">Critical</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mitre-vector-cell">
+                    <strong>Direct Hardware Keystroke Injection (BadUSB)</strong>
+                    <span>Spoofed HID microcontrollers injecting rapid automated shell payloads upon enumeration.</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="mitre-control-cell">
+                    <strong>HID Cadence Detector</strong>
+                    <span>Sub-millisecond inter-keystroke velocity scoring with instant port lockdown and alert chime.</span>
+                  </div>
+                </td>
+                <td style="text-align: right;">
+                  <span class="badge-status badge-safe">
+                    <i data-lucide="check" style="width: 11px; height: 11px;"></i>
+                    <span>Armed</span>
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="modal-footer">
-        <div></div>
-        <button type="button" class="btn-hero-action" id="close-mitre-footer-btn" style="border: 1px solid var(--border-light);">Close Matrix</button>
+        <span class="field-hint">Mapped to MITRE ATT&amp;CK Enterprise ICS / Endpoint hardware threat vectors.</span>
+        <button type="button" class="btn-secondary btn-sm" id="close-mitre-footer-btn">Close Matrix</button>
       </div>
     </div>
   </div>
@@ -704,8 +739,8 @@
     <div class="modal-window">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <i data-lucide="sliders-horizontal" style="width: 20px; height: 20px; color: var(--primary-blue);"></i>
-          <h2 class="modal-title" id="settings-modal-title">Security Settings &amp; Defense Policies</h2>
+          <i data-lucide="sliders-horizontal" style="width: 18px; height: 18px; color: var(--primary-blue);"></i>
+          <h2 class="modal-title" id="settings-modal-title">Settings</h2>
         </div>
         <button type="button" class="modal-close-btn" id="close-settings-modal-btn" aria-label="Close modal">
           <i data-lucide="x" style="width: 18px; height: 18px;"></i>
@@ -713,42 +748,81 @@
       </div>
       <div class="modal-body">
         <div class="form-field">
-          <label for="settings-policy-mode" class="form-label">Global Policy Mode</label>
-          <select id="settings-policy-mode" class="form-input">
-            <option value="enforce" selected>Enforce (Zero-Trust Active Blocking &amp; Containment)</option>
-            <option value="audit">Audit (Passive Telemetry &amp; Alert Logging Only)</option>
-          </select>
-          <span style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">In Enforce mode, unknown or suspicious devices are held in containment until authorized by an officer.</span>
+          <span id="settings-policy-label-heading" class="form-label">Global Policy Mode</span>
+          <div class="custom-menu-wrap custom-menu-full" id="settings-policy-menu-wrap">
+            <button type="button" class="custom-menu-trigger custom-select-trigger" id="settings-policy-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-labelledby="settings-policy-label-heading settings-policy-selected-label">
+              <span class="custom-select-value-wrap">
+                <i data-lucide="shield-check" id="settings-policy-selected-icon" style="width: 15px; height: 15px; color: var(--primary-blue);"></i>
+                <span id="settings-policy-selected-label">Enforce (Active Blocking &amp; Containment)</span>
+              </span>
+              <i data-lucide="chevron-down" class="menu-chevron" style="width: 14px; height: 14px;"></i>
+            </button>
+            <div class="custom-menu-panel custom-menu-block hidden" id="settings-policy-menu-panel" role="menu" aria-labelledby="settings-policy-menu-btn">
+              <button type="button" class="custom-menu-item active" data-settings-policy-value="enforce" role="menuitemradio" aria-checked="true">
+                <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                <div class="menu-item-text">
+                  <span class="menu-item-title">Enforce (Active Blocking &amp; Containment)</span>
+                  <span class="menu-item-sub">Automatically disable unapproved or malicious ports</span>
+                </div>
+                <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+              </button>
+              <button type="button" class="custom-menu-item" data-settings-policy-value="audit_only" role="menuitemradio" aria-checked="false">
+                <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                <div class="menu-item-text">
+                  <span class="menu-item-title">Audit Only (Telemetry &amp; Alert Logging Only)</span>
+                  <span class="menu-item-sub">Record alerts without disabling USB interfaces</span>
+                </div>
+                <i data-lucide="check" class="menu-item-check" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
+            <input type="hidden" id="settings-policy-mode" value="enforce">
+          </div>
+          <span class="field-hint">In Enforce mode, unapproved or malicious devices are disabled via pnputil when running with Administrator privileges.</span>
         </div>
         <div class="form-field">
           <label class="form-label">Active Defense Capabilities</label>
-          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-body); cursor: pointer;">
-              <input type="checkbox" id="setting-auto-badusb" checked disabled style="accent-color: var(--primary-blue);">
-              <span>Sub-millisecond HID keystroke injection rate-limit defense (Armed)</span>
+          <div class="capability-list">
+            <label class="capability-row custom-checkbox is-disabled">
+              <input type="checkbox" id="setting-auto-badusb" class="custom-checkbox-input" checked disabled>
+              <span class="custom-checkbox-box" aria-hidden="true">
+                <svg class="custom-checkbox-tick" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.4 6.2L4.9 8.7L9.6 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="capability-text">Sub-millisecond HID keystroke injection rate-limit defense <span class="capability-status-tag">Armed</span></span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-body); cursor: pointer;">
-              <input type="checkbox" id="setting-storage-quarantine" checked disabled style="accent-color: var(--primary-blue);">
-              <span>Automated mass storage volume containment &amp; YARA scanning (Armed)</span>
+            <label class="capability-row custom-checkbox is-disabled">
+              <input type="checkbox" id="setting-storage-quarantine" class="custom-checkbox-input" checked disabled>
+              <span class="custom-checkbox-box" aria-hidden="true">
+                <svg class="custom-checkbox-tick" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.4 6.2L4.9 8.7L9.6 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="capability-text">Automated mass storage volume scanning &amp; YARA rules <span class="capability-status-tag">Armed</span></span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-body); cursor: pointer;">
-              <input type="checkbox" id="setting-sound-alerts" checked style="accent-color: var(--primary-blue);">
-              <span>Synthesizer audio alert chimes on critical threat detection</span>
+            <label class="capability-row custom-checkbox">
+              <input type="checkbox" id="setting-sound-alerts" class="custom-checkbox-input" checked>
+              <span class="custom-checkbox-box" aria-hidden="true">
+                <svg class="custom-checkbox-tick" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.4 6.2L4.9 8.7L9.6 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="capability-text">Audio alert chimes on critical threat detection</span>
             </label>
           </div>
         </div>
-        <div class="form-field" style="border-top: 1px solid var(--border-light); padding-top: 12px;">
+        <div class="form-field settings-export-divider">
           <label class="form-label">Forensic Audit Export</label>
-          <p style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 8px;">Download a comprehensive, cryptographic forensic incident report in PDF format.</p>
-          <button type="button" class="btn-hero-action" id="btn-export-pdf-report" style="border: 1px solid var(--border-light); display: inline-flex; align-items: center; gap: 6px; width: fit-content;">
+          <p class="field-hint">Download a forensic incident report in PDF format.</p>
+          <button type="button" class="btn-secondary btn-sm" id="btn-export-pdf-report" style="width: fit-content;">
             <i data-lucide="file-text" style="width: 14px; height: 14px; color: var(--danger);"></i>
             <span>Export Incident PDF Report</span>
           </button>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-hero-action" id="cancel-settings-btn" style="border: 1px solid var(--border-light);">Cancel</button>
-        <button type="button" class="btn-hero-action" id="save-settings-btn" style="background: var(--primary-blue); color: #FFFFFF;">Apply Policy Changes</button>
+        <button type="button" class="btn-secondary btn-sm" id="cancel-settings-btn">Cancel</button>
+        <button type="button" class="btn-primary btn-sm" id="save-settings-btn">Apply Policy Changes</button>
       </div>
     </div>
   </div>
@@ -757,6 +831,6 @@
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <!-- Core Frontend Application Logic -->
-  <script src="/static/app.js?v=42.0"></script>
+  <script src="/static/app.js?v=55.0"></script>
 </body>
 </html>
